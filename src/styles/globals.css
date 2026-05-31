@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens (Requirement 22.1).
+ *
+ * Every color/surface token is declared under BOTH the default (light) scope
+ * and the `.dark` scope, so any token a component references resolves to a value
+ * in both themes. Tailwind utilities (see tailwind.config.js) map to these
+ * variables via `hsl(var(--token))`, and the channel-only HSL values let callers
+ * add an alpha with `hsl(var(--token) / <alpha>)`.
+ *
+ * Theme switching is a single `.dark` class toggle on `document.documentElement`
+ * (see src/theme/index.ts), which re-points these variables and repaints every
+ * view without a restart (Requirement 22.2).
+ */
+@layer base {
+  :root {
+    color-scheme: light;
+
+    /* Palette knobs shared by both themes. */
+    --theme-hue: 210;
+    --theme-saturation: 35%;
+    --radius: 0.75rem;
+
+    /* Light surfaces and text. */
+    --background: 220 14% 96%;
+    --foreground: 220 20% 25%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 25%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 25%;
+
+    /* Accents. */
+    --primary: var(--theme-hue) var(--theme-saturation) 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 20% 25%;
+    --muted: 220 14% 94%;
+    --muted-foreground: 220 12% 50%;
+    --accent: var(--theme-hue) 18% 94%;
+    --accent-foreground: var(--theme-hue) var(--theme-saturation) 40%;
+    --destructive: 0 45% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Lines and focus rings. */
+    --border: 220 13% 90%;
+    --input: 220 13% 90%;
+    --ring: var(--theme-hue) var(--theme-saturation) 55%;
+
+    /* Sidebar surfaces. */
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 220 20% 25%;
+    --sidebar-accent: 220 14% 95%;
+    --sidebar-border: 220 13% 90%;
+
+    /* Elevation. */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08);
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    /* Palette knobs shared by both themes. */
+    --theme-hue: 210;
+    --theme-saturation: 35%;
+    --radius: 0.75rem;
+
+    /* Dark surfaces and text. */
+    --background: 220 25% 7%;
+    --foreground: 220 15% 92%;
+    --card: 220 22% 10%;
+    --card-foreground: 220 15% 92%;
+    --popover: 220 22% 12%;
+    --popover-foreground: 220 15% 92%;
+
+    /* Accents. */
+    --primary: var(--theme-hue) var(--theme-saturation) 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 20% 12%;
+    --secondary-foreground: 220 15% 92%;
+    --muted: 220 20% 12%;
+    --muted-foreground: 220 12% 60%;
+    --accent: var(--theme-hue) 20% 15%;
+    --accent-foreground: var(--theme-hue) var(--theme-saturation) 85%;
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Lines and focus rings. */
+    --border: 220 20% 14%;
+    --input: 220 20% 14%;
+    --ring: var(--theme-hue) var(--theme-saturation) 55%;
+
+    /* Sidebar surfaces. */
+    --sidebar: 220 25% 7%;
+    --sidebar-foreground: 220 15% 92%;
+    --sidebar-accent: 220 20% 14%;
+    --sidebar-border: 220 20% 12%;
+
+    /* Elevation. */
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
+    --shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.6);
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Custom scrollbar driven by theme tokens. */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.4);
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.2);
+  color: hsl(var(--primary));
+}

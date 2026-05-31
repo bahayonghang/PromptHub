@@ -1,0 +1,92 @@
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { BellIcon } from "lucide-react";
+import { useSystemStore } from "../systemStore";
+
+/** Backend notification length limits (Req 20.7), mirrored for client guarding. */
+const MAX_TITLE = 256;
+const MAX_BODY = 1000;
+
+/**
+ * Notification configuration (Req 20.7, 20.13). Lets the user compose a title
+ * (≤256 chars) and body (≤1000 chars) and dispatch a system notification through
+ * the system store, which calls the Window_Manager via the Runtime_Bridge
+ * (Req 3.1). A denied OS permission surfaces as a structured error through the
+ * store rather than displaying a notification (Req 20.13). All text resolves
+ * through i18n (Req 21.3) and icons are from Lucide (Req 22.4).
+ */
+export function NotificationsPanel() {
+  const { t } = useTranslation();
+  const showNotification = useSystemStore((s) => s.showNotification);
+
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [sent, setSent] = useState(false);
+
+  const labelClass = "text-sm font-medium text-foreground";
+  const hintClass = "text-xs text-muted-foreground";
+  const fieldClass =
+    "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring";
+
+  const canSend = title.trim() !== "" || body.trim() !== "";
+
+  const send = async () => {
+    setSent(false);
+    const ok = await showNotification(title, body);
+    if (ok) setSent(true);
+  };
+
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex flex-col gap-0.5">
+        <h3 className={labelClass}>{t("systemView.notifications.title")}</h3>
+        <p className={hintClass}>{t("systemView.notifications.hint")}</p>
+      </div>
+
+      <label className="flex flex-col gap-1">
+        <span className={hintClass}>{t("systemView.notifications.titleLabel")}</span>
+        <input
+          type="text"
+          value={title}
+          maxLength={MAX_TITLE}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            setSent(false);
+          }}
+          className={fieldClass}
+        />
+      </label>
+
+      <label className="flex flex-col gap-1">
+        <span className={hintClass}>{t("systemView.notifications.bodyLabel")}</span>
+        <textarea
+          value={body}
+          maxLength={MAX_BODY}
+          rows={3}
+          onChange={(e) => {
+            setBody(e.target.value);
+            setSent(false);
+          }}
+          className={`${fieldClass} resize-y`}
+        />
+      </label>
+
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => void send()}
+          disabled={!canSend}
+          className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <BellIcon className="h-4 w-4" aria-hidden="true" />
+          {t("systemView.notifications.send")}
+        </button>
+        {sent && (
+          <span className={hintClass} role="status">
+            {t("systemView.notifications.sent")}
+          </span>
+        )}
+      </div>
+    </section>
+  );
+}
