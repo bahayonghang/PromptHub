@@ -1,0 +1,124 @@
+[package]
+name = "prompthub"
+version = "0.1.0"
+description = "PromptHub Desktop"
+authors = ["PromptHub"]
+edition = "2021"
+rust-version = "1.77.2"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# The library target is required by the Tauri mobile tooling and keeps the
+# application logic reusable/testable outside of the binary entry point.
+[lib]
+name = "prompthub_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+# Window_Manager (Requirement 20): the OS-integration plugins behind the
+# window/shortcut/notification glue. `tauri-plugin-global-shortcut` registers the
+# global/local keyboard shortcuts and reports when one fires (20.6);
+# `tauri-plugin-autostart` sets the launch-on-login state (20.5); and
+# `tauri-plugin-notification` displays system notifications and surfaces a
+# permission denial (20.7, 20.13). All are version 2, matching the tauri 2.x core.
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-notification = "2"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Storage_Engine: rusqlite with the `bundled` feature compiles SQLite (incl. FTS5)
+# directly into the binary, and r2d2 provides the connection pool.
+rusqlite = { version = "0.37", features = ["bundled"] }
+r2d2 = "0.8"
+r2d2_sqlite = "0.31"
+# Timestamp utilities (Requirement 4.9): chrono converts between epoch
+# milliseconds (UTC) and the ISO_8601 millisecond format `YYYY-MM-DDTHH:mm:ss.sssZ`
+# used on the wire. `clock` enables `Utc::now()`; default features are disabled
+# to keep the dependency lean.
+chrono = { version = "0.4.38", default-features = false, features = ["clock", "std"] }
+# Identifier generation for domain records (Requirement 6.1: a generated unique
+# identifier for each created prompt). The `v4` feature provides random UUIDs.
+uuid = { version = "1", features = ["v4"] }
+# Security_Service (Requirement 15): reproduce the reference crypto construction.
+# `scrypt` derives the 32-byte key from the master password; `aes-gcm` provides
+# AES-256-GCM authenticated encryption (12-byte nonce + 16-byte tag); `rand`
+# supplies the cryptographically secure RNG (OsRng) for salts and nonces; and
+# `base64` encodes the `ENC::` envelope and the `{salt, hash}` verifier.
+aes-gcm = "0.10"
+scrypt = "0.11"
+rand = "0.8"
+base64 = "0.22"
+# SKILL.md frontmatter (Requirement 10): serde_yaml parses/serializes the YAML
+# frontmatter block, replacing the reference's hand-rolled parser so the
+# round-trip property (10.3) holds. 0.9 is the established, stable choice.
+serde_yaml = "0.9"
+# Skill import sanitization (Requirements 10.5, 10.6): regex powers the
+# conservative removal of `<script>` blocks and HTML `on*` event-handler
+# attributes. regex is already in the dependency tree transitively.
+regex = "1"
+# Rules_Service (Requirement 14): SHA-256 content hashing for rule files. The
+# managed content hash is compared to the target file's hash to compute
+# `syncStatus` (14.2) and to detect changes on save (14.4). Pinned to the stable
+# 0.10 line.
+sha2 = "0.10"
+# Skill safety scanning + remote fetch (Requirement 13): reqwest performs the
+# outbound HTTPS requests (AI safety scan, remote skill content, GitHub repo
+# listing). `default-features = false` + `rustls-tls` avoids the system/native
+# TLS stack so the build is self-contained and cross-platform; the JSON/stream
+# features are intentionally left off (bodies are serialized/parsed with
+# serde_json and size-capped manually). Redirects are followed manually so each
+# hop is re-checked against the SSRF policy (Requirement 13.5).
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+# AI_Client (Requirement 16): tokio-util provides the `CancellationToken` stored
+# in AppState's request registry so an in-flight AI request can be aborted and its
+# stream events stopped (16.7); futures-util's `StreamExt` drives reqwest's
+# streaming `bytes_stream()` response chunk-by-chunk (16.2).
+tokio-util = "0.7"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+# Sync_Service (Requirement 17). WebDAV transport: `reqwest_dav` is an async
+# WebDAV client built on `reqwest`. 0.2.x targets reqwest 0.12 (matching the
+# version above) and maps its `rustls-tls` feature to `reqwest/rustls-tls`, so
+# the TLS stack stays consistent (rustls only, no native/OpenSSL). Default
+# features are disabled to avoid pulling the default-tls (native) backend.
+reqwest_dav = { version = "0.2.2", default-features = false, features = ["rustls-tls"] }
+# S3 transport: `rusty-s3` is a pure-Rust, Sans-IO S3 client — it signs requests
+# (AWS Signature V4) and parses responses but performs no I/O itself, so the
+# request is issued through the same `reqwest` + rustls client used elsewhere.
+# This avoids the heavyweight `aws-sdk-s3` stack while satisfying Req 17.4.
+rusty-s3 = "0.9"
+# Export archive (Requirement 17.5): the `zip` crate builds the ZIP of the
+# selected export scope. 4.x is the current stable line.
+zip = { version = "4.2", default-features = false, features = ["deflate"] }
+# URL parsing for sync endpoints (Requirement 17.13 config validation, and S3
+# `Bucket` construction). Pinned to the 2.x line shared by reqwest/rusty-s3 so a
+# single `url::Url` type is used across the dependency graph.
+url = "2"
+# Updater (Requirement 24): `tauri-plugin-updater` performs the signed update
+# check/download/install against the configured endpoint, including minisign
+# signature verification (24.4, 24.5). The `2` line matches the tauri 2.x stack.
+tauri-plugin-updater = "2"
+# Version comparison / update-availability determination (Requirement 24.2): the
+# `semver` crate parses and orders version identifiers for the pure
+# availability comparator. `semver` is already in the dependency graph via the
+# tauri/updater stack; pinning it explicitly keeps a single `semver::Version`
+# type across the workspace.
+semver = "1"
+# Shell opener for validated local paths (Window_Manager Req 20.10/20.12).
+open = "5"
+
+[dev-dependencies]
+tempfile = "3"
+# Property-based testing (Property 1: persistence/serialization round-trip).
+proptest = "1.5"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

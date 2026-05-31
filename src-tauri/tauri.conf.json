@@ -1,0 +1,55 @@
+{
+  "productName": "PromptHub",
+  "version": "0.1.0",
+  "identifier": "com.prompthub.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "PromptHub",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi", "app", "dmg", "appimage", "deb"],
+    "createUpdaterArtifacts": false,
+    "category": "Productivity",
+    "shortDescription": "Local-first AI prompt, skill, and rule manager.",
+    "longDescription": "PromptHub is a local-first desktop application for managing AI prompts, prompt versions, reusable skills (SKILL.md), and platform rules, with full-text search, encryption, multi-provider AI testing, and backup/sync.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://updates.prompthub.example.com/{{target}}/{{arch}}/{{current_version}}"
+      ],
+      "pubkey": "PLACEHOLDER_REPLACE_WITH_TAURI_SIGNING_PUBLIC_KEY_RUN__tauri_signer_generate",
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}
