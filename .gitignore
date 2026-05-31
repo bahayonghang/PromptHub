@@ -1,0 +1,63 @@
+# ---------------------------------------------------------------------------
+# Reference & tooling (not part of the Tauri rewrite source)
+# ---------------------------------------------------------------------------
+# Read-only reference implementation (the original Electron app)
+ref/
+# Local agent / editor tooling state
+.omx/
+.vscode/
+.kiro/
+
+# ---------------------------------------------------------------------------
+# Node / frontend
+# ---------------------------------------------------------------------------
+node_modules/
+.pnp
+.pnp.js
+
+# Vite / TypeScript build output
+dist/
+dist-ssr/
+*.tsbuildinfo
+
+# Test & coverage output
+coverage/
+*.lcov
+.vitest/
+
+# ---------------------------------------------------------------------------
+# Rust / Tauri backend (src-tauri)
+# ---------------------------------------------------------------------------
+# Cargo build artifacts
+src-tauri/target/
+# Tauri-generated schemas (regenerated on build)
+src-tauri/gen/schemas/
+
+# ---------------------------------------------------------------------------
+# Environment & secrets
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+# Tauri updater signing keys
+*.key
+*.pem
+
+# ---------------------------------------------------------------------------
+# Logs
+# ---------------------------------------------------------------------------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------------------------------------------------------------------------
+# Editor / OS noise
+# ---------------------------------------------------------------------------
+.DS_Store
+.idea/
+*.swp
+*.swo
+Thumbs.db
+Desktop.ini
