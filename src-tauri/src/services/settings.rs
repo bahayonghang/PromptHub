@@ -113,6 +113,22 @@ pub fn update(conn: &Connection, patch: &Value) -> Result<Settings, AppError> {
     Ok(result)
 }
 
+/// Enumerates the OS-installed font family names, sorted and de-duplicated
+/// (settings-appearance-redesign). Best-effort: returns an empty list when no
+/// system fonts can be loaded. Each face contributes its primary (English US)
+/// family name, so variants like "Arial Bold" collapse onto "Arial".
+pub fn list_system_fonts() -> Vec<String> {
+    let mut db = fontdb::Database::new();
+    db.load_system_fonts();
+    let mut names: Vec<String> = db
+        .faces()
+        .filter_map(|face| face.families.first().map(|(name, _)| name.clone()))
+        .collect();
+    names.sort_unstable();
+    names.dedup();
+    names
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -125,6 +141,16 @@ mod tests {
         let pool = create_memory_pool().unwrap();
         init_schema(&pool.get().unwrap()).unwrap();
         pool.get().unwrap()
+    }
+
+    #[test]
+    fn list_system_fonts_is_sorted_and_deduplicated() {
+        let fonts = list_system_fonts();
+        // Invariant holds regardless of how many fonts the host has: the result
+        // is strictly ascending (sorted with no adjacent duplicates).
+        for pair in fonts.windows(2) {
+            assert!(pair[0] < pair[1], "fonts not sorted/unique: {pair:?}");
+        }
     }
 
     #[test]

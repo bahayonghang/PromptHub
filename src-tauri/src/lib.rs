@@ -149,6 +149,7 @@ pub fn run() {
             commands::skill::skill_remote_scan_repo,
             commands::settings::settings_get,
             commands::settings::settings_update,
+            commands::settings::settings_list_system_fonts,
             commands::security::security_status,
             commands::security::security_set_master_password,
             commands::security::security_change_master_password,
