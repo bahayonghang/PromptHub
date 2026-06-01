@@ -40,16 +40,29 @@ const anyValue = fc.oneof(
 /** Per-field normalizers paired with their catalog and default. */
 const FIELDS = [
   { name: "accent", normalize: normalizeAccent, catalog: ACCENT_COLORS, default: DEFAULT_ACCENT },
-  { name: "displayFont", normalize: normalizeFont, catalog: FONT_CATALOG, default: DEFAULT_FONT },
-  { name: "bodyFont", normalize: normalizeFont, catalog: FONT_CATALOG, default: DEFAULT_FONT },
   { name: "fontScale", normalize: normalizeFontScale, catalog: FONT_SCALES, default: DEFAULT_FONT_SCALE },
   { name: "density", normalize: normalizeDensity, catalog: DENSITIES, default: DEFAULT_DENSITY },
+] as const;
+
+/** Font fields: open-ended, accept any non-empty string. */
+const FONT_FIELDS = [
+  { name: "displayFont", normalize: normalizeFont, catalog: FONT_CATALOG, default: DEFAULT_FONT },
+  { name: "bodyFont", normalize: normalizeFont, catalog: FONT_CATALOG, default: DEFAULT_FONT },
 ] as const;
 
 describe("Appearance normalization properties (P1-P5)", () => {
   // Feature: settings-appearance-redesign, Property 1: Normalization returns valid values unchanged
   it("P1: returns valid catalog values unchanged", () => {
     for (const field of FIELDS) {
+      fc.assert(
+        fc.property(fc.constantFrom(...field.catalog), (value) => {
+          expect(field.normalize(value)).toBe(value);
+        }),
+        { numRuns: 100 },
+      );
+    }
+    // Font fields: catalog values pass through unchanged.
+    for (const field of FONT_FIELDS) {
       fc.assert(
         fc.property(fc.constantFrom(...field.catalog), (value) => {
           expect(field.normalize(value)).toBe(value);
@@ -155,8 +168,8 @@ describe("Appearance normalization properties (P1-P5)", () => {
         const a = normalizeAppearance(raw as Record<string, unknown>, legacy);
         expect(FLAVORS.includes(a.flavor)).toBe(true);
         expect(ACCENT_COLORS.includes(a.accentColor)).toBe(true);
-        expect(FONT_CATALOG.includes(a.displayFont)).toBe(true);
-        expect(FONT_CATALOG.includes(a.bodyFont)).toBe(true);
+        expect(typeof a.displayFont === "string" && a.displayFont.length > 0).toBe(true);
+        expect(typeof a.bodyFont === "string" && a.bodyFont.length > 0).toBe(true);
         expect(FONT_SCALES.includes(a.fontScale)).toBe(true);
         expect(DENSITIES.includes(a.density)).toBe(true);
       }),

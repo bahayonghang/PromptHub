@@ -60,7 +60,6 @@ export function SettingsView() {
 
   const load = useSettingsStore((s) => s.load);
   const updateSettings = useSettingsStore((s) => s.updateSettings);
-  const mergeLocalSettings = useSettingsStore((s) => s.mergeLocalSettings);
   const setMasterPassword = useSettingsStore((s) => s.setMasterPassword);
   const changeMasterPassword = useSettingsStore((s) => s.changeMasterPassword);
   const unlock = useSettingsStore((s) => s.unlock);
@@ -141,7 +140,6 @@ export function SettingsView() {
             <GeneralPanel
               settings={settings}
               onUpdate={(patch) => void updateSettings(patch)}
-              onLocalMerge={mergeLocalSettings}
             />
           )}
           {section === "security" && (

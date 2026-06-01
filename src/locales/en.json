@@ -2277,6 +2277,10 @@
         "Space Grotesk": "Space Grotesk",
         "JetBrains Mono": "JetBrains Mono"
       },
+      "fontGroup": {
+        "builtin": "Built-in",
+        "system": "System fonts"
+      },
       "fontScaleOption": {
         "Small": "Small (90%)",
         "Default": "Default (100%)",

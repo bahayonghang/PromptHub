@@ -8,7 +8,6 @@ import {
   ACCENT_COLORS,
   DEFAULT_ACCENT,
   DEFAULT_APPEARANCE,
-  DEFAULT_FONT,
   DEFAULT_FONT_SCALE,
   FLAVORS,
   FONT_CATALOG,
@@ -99,8 +98,9 @@ describe("SummaryStrip derivation (Property 12)", () => {
         expect(summary.language).toBe(DEFAULT_LOCALE);
         expect(summary.accentColor).toBe(DEFAULT_ACCENT);
         expect(summary.fontScale).toBe(DEFAULT_FONT_SCALE);
-        expect(summary.displayFont).toBe(DEFAULT_FONT);
-        expect(summary.bodyFont).toBe(DEFAULT_FONT);
+        // Font fields accept any non-empty string; only non-string/empty defaults.
+        expect(typeof summary.displayFont === "string" && summary.displayFont.length > 0).toBe(true);
+        expect(typeof summary.bodyFont === "string" && summary.bodyFont.length > 0).toBe(true);
         for (const c of SUMMARY_CATEGORIES) expect(summary[c].length).toBeGreaterThan(0);
       }),
       { numRuns: 100 },

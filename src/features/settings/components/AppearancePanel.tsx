@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   DropletIcon,
@@ -24,7 +24,6 @@ import {
   type Flavor,
   FONT_CATALOG,
   FONT_SCALES,
-  type FontFamilyName,
   type FontScale,
   normalizeAppearance,
   setAccentColor,
@@ -114,6 +113,13 @@ export function AppearancePanel({ invoke, controller, changeLocaleFn = changeLoc
   const { t, i18n } = useTranslation();
   const settings = useSettingsStore((s) => s.settings);
   const mergeLocalSettings = useSettingsStore((s) => s.mergeLocalSettings);
+
+  // Fetch OS-installed font families once on mount.
+  const [systemFonts, setSystemFonts] = useState<string[]>([]);
+  useEffect(() => {
+    const baseInvoke = invoke ?? runtime.invoke.bind(runtime);
+    baseInvoke<string[]>("settings.list_system_fonts").then((r) => setSystemFonts(r ?? [])).catch(() => {});
+  }, [invoke]);
 
   // The applied appearance: persisted values normalized, defaulting when unset.
   const applied = normalizeAppearance(
@@ -223,14 +229,23 @@ export function AppearancePanel({ invoke, controller, changeLocaleFn = changeLoc
         <select
           value={applied.displayFont}
           aria-label={t("settingsView.appearance.displayFont")}
-          onChange={(e) => apply("displayFont", e.target.value as FontFamilyName, setDisplayFont)}
+          onChange={(e) => apply("displayFont", e.target.value, setDisplayFont)}
           className={selectClass}
         >
-          {FONT_CATALOG.map((font) => (
-            <option key={font} value={font}>
-              {t(`settingsView.appearance.fontOption.${font}`)}
-            </option>
-          ))}
+          <optgroup label={t("settingsView.appearance.fontGroup.builtin")}>
+            {FONT_CATALOG.map((font) => (
+              <option key={font} value={font}>
+                {t(`settingsView.appearance.fontOption.${font}`)}
+              </option>
+            ))}
+          </optgroup>
+          {systemFonts.length > 0 && (
+            <optgroup label={t("settingsView.appearance.fontGroup.system")}>
+              {systemFonts.map((font) => (
+                <option key={font} value={font}>{font}</option>
+              ))}
+            </optgroup>
+          )}
         </select>
       </Section>
 
@@ -239,14 +254,23 @@ export function AppearancePanel({ invoke, controller, changeLocaleFn = changeLoc
         <select
           value={applied.bodyFont}
           aria-label={t("settingsView.appearance.bodyFont")}
-          onChange={(e) => apply("bodyFont", e.target.value as FontFamilyName, setBodyFont)}
+          onChange={(e) => apply("bodyFont", e.target.value, setBodyFont)}
           className={selectClass}
         >
-          {FONT_CATALOG.map((font) => (
-            <option key={font} value={font}>
-              {t(`settingsView.appearance.fontOption.${font}`)}
-            </option>
-          ))}
+          <optgroup label={t("settingsView.appearance.fontGroup.builtin")}>
+            {FONT_CATALOG.map((font) => (
+              <option key={font} value={font}>
+                {t(`settingsView.appearance.fontOption.${font}`)}
+              </option>
+            ))}
+          </optgroup>
+          {systemFonts.length > 0 && (
+            <optgroup label={t("settingsView.appearance.fontGroup.system")}>
+              {systemFonts.map((font) => (
+                <option key={font} value={font}>{font}</option>
+              ))}
+            </optgroup>
+          )}
         </select>
       </Section>
 

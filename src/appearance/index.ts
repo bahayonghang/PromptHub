@@ -61,8 +61,8 @@ export type AppearanceBase = "light" | "dark";
 export interface Appearance {
   flavor: Flavor;
   accentColor: AccentColor;
-  displayFont: FontFamilyName;
-  bodyFont: FontFamilyName;
+  displayFont: string;
+  bodyFont: string;
   fontScale: FontScale;
   density: Density;
 }
@@ -141,11 +141,13 @@ export function normalizeAccent(value: unknown): AccentColor {
     : DEFAULT_ACCENT;
 }
 
-/** Shared by both the display and body font fields. */
-export function normalizeFont(value: unknown): FontFamilyName {
-  return (FONT_CATALOG as readonly string[]).includes(value as string)
-    ? (value as FontFamilyName)
-    : DEFAULT_FONT;
+/** Shared by both the display and body font fields. Accepts any non-empty string
+ * (catalog values and arbitrary OS family names); defaults only on empty/invalid. */
+export function normalizeFont(value: unknown): string {
+  if (typeof value === "string" && value.trim() !== "") {
+    return value;
+  }
+  return DEFAULT_FONT;
 }
 
 export function normalizeFontScale(value: unknown): FontScale {
@@ -391,6 +393,12 @@ export const FONT_STACK: Record<FontFamilyName, string> = {
   "JetBrains Mono": '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
 };
 
+/** Resolves a font name to its CSS font-family stack (known or arbitrary). */
+export function fontStack(name: string): string {
+  if (name in FONT_STACK) return FONT_STACK[name as FontFamilyName];
+  return `"${name}", ui-sans-serif, system-ui, sans-serif`;
+}
+
 /** Density -> spacing rhythm variables (Req 6.2). */
 export const DENSITY_RHYTHM: Record<Density, { "--density-padding": string; "--density-gap": string }> = {
   Compact: { "--density-padding": "0.375rem", "--density-gap": "0.5rem" },
@@ -458,12 +466,12 @@ export function createAppearanceController(deps: Partial<AppearanceDeps> = {}): 
     setVars(ACCENT_PALETTE[FLAVOR_BASE[current.flavor]][accent]);
   }
 
-  function applyDisplayFont(font: FontFamilyName): void {
-    root.style.setProperty("--font-display", FONT_STACK[font]);
+  function applyDisplayFont(font: string): void {
+    root.style.setProperty("--font-display", fontStack(font));
   }
 
-  function applyBodyFont(font: FontFamilyName): void {
-    root.style.setProperty("--font-body", FONT_STACK[font]);
+  function applyBodyFont(font: string): void {
+    root.style.setProperty("--font-body", fontStack(font));
   }
 
   function applyFontScale(scale: FontScale): void {
@@ -617,7 +625,7 @@ export function setAccentColor(
 }
 
 export function setDisplayFont(
-  value: FontFamilyName,
+  value: string,
   invoke: Invoke = runtime.invoke.bind(runtime),
   controller: AppearanceController = getDefaultController(),
 ): Promise<void> {
@@ -625,7 +633,7 @@ export function setDisplayFont(
 }
 
 export function setBodyFont(
-  value: FontFamilyName,
+  value: string,
   invoke: Invoke = runtime.invoke.bind(runtime),
   controller: AppearanceController = getDefaultController(),
 ): Promise<void> {
