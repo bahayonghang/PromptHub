@@ -18,6 +18,24 @@ pub struct Settings {
     pub language: String,
     /// Whether auto-save is enabled.
     pub auto_save: bool,
+    /// Theme flavor name.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub flavor: Option<String>,
+    /// Named accent color.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub accent_color: Option<String>,
+    /// Display font family.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display_font: Option<String>,
+    /// Body font family.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub body_font: Option<String>,
+    /// Font scale preset.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_scale: Option<String>,
+    /// Density preset.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub density: Option<String>,
     /// Tag filter mode: `single` | `multi`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tag_filter_mode: Option<String>,

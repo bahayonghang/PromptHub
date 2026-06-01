@@ -521,6 +521,8 @@ fn settings_strategy() -> impl Strategy<Value = Settings> {
             minimize_on_launch,
             github_token,
             security,
+            // Appearance fields are not exercised by this round-trip; default them.
+            ..Default::default()
         },
     )
 }

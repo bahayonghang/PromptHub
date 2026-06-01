@@ -117,6 +117,7 @@ pub fn update(conn: &Connection, patch: &Value) -> Result<Settings, AppError> {
 mod tests {
     use super::*;
     use crate::storage::{create_memory_pool, init_schema};
+    use proptest::prelude::*;
     use serde_json::json;
 
     /// Builds an in-memory pooled connection with the schema initialized.
@@ -199,5 +200,226 @@ mod tests {
         assert_eq!(err.code_str(), "VALIDATION");
         // The earlier value is still stored (no mutation on error).
         assert_eq!(get(&conn).unwrap().theme, "light");
+    }
+
+    // ---- Appearance settings (settings-appearance-redesign) --------------
+
+    /// camelCase wire names for the six appearance fields.
+    const APPEARANCE_KEYS: [&str; 6] = [
+        "flavor",
+        "accentColor",
+        "displayFont",
+        "bodyFont",
+        "fontScale",
+        "density",
+    ];
+
+    /// Valid value catalog for the appearance field at index `i`.
+    fn catalog(i: usize) -> &'static [&'static str] {
+        match i {
+            0 => &[
+                "Latte",
+                "Frappé",
+                "Macchiato",
+                "Mocha",
+                "Claude Light",
+                "Claude Dark",
+            ],
+            1 => &[
+                "Rosewater",
+                "Flamingo",
+                "Pink",
+                "Mauve",
+                "Red",
+                "Maroon",
+                "Peach",
+                "Yellow",
+                "Green",
+                "Teal",
+                "Sky",
+                "Sapphire",
+                "Blue",
+                "Lavender",
+            ],
+            2 | 3 => &["System", "Inter", "Space Grotesk", "JetBrains Mono"],
+            4 => &["Small", "Default", "Large", "Extra Large"],
+            _ => &["Compact", "Default", "Comfortable"],
+        }
+    }
+
+    /// Strategy yielding one valid value from the field's catalog.
+    fn value(i: usize) -> impl Strategy<Value = String> {
+        let owned: Vec<String> = catalog(i).iter().map(|s| (*s).to_string()).collect();
+        proptest::sample::select(owned)
+    }
+
+    /// Strategy yielding an arbitrary subset of the six appearance fields, each
+    /// either absent or set to a valid catalog value.
+    fn appearance_subset() -> impl Strategy<Value = [Option<String>; 6]> {
+        (
+            proptest::option::of(value(0)),
+            proptest::option::of(value(1)),
+            proptest::option::of(value(2)),
+            proptest::option::of(value(3)),
+            proptest::option::of(value(4)),
+            proptest::option::of(value(5)),
+        )
+            .prop_map(|(a, b, c, d, e, f)| [a, b, c, d, e, f])
+    }
+
+    /// Extracts the six appearance fields in `APPEARANCE_KEYS` order.
+    fn appearance_of(s: &Settings) -> [Option<String>; 6] {
+        [
+            s.flavor.clone(),
+            s.accent_color.clone(),
+            s.display_font.clone(),
+            s.body_font.clone(),
+            s.font_scale.clone(),
+            s.density.clone(),
+        ]
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// Feature: settings-appearance-redesign, Property 13: Partial settings updates are isolated
+        ///
+        /// **Validates: Requirements 10.3**
+        #[test]
+        fn partial_settings_updates_are_isolated(
+            theme in proptest::sample::select(vec!["light", "dark", "system"]),
+            language in proptest::sample::select(vec!["en", "zh", "zh-TW", "ja", "fr", "de", "es"]),
+            auto_save in any::<bool>(),
+            prior in appearance_subset(),
+            patch in appearance_subset(),
+        ) {
+            let conn = conn();
+
+            // Persist arbitrary prior settings (non-appearance + a subset of appearance).
+            let mut prior_obj = serde_json::Map::new();
+            prior_obj.insert("theme".to_string(), Value::String(theme.to_string()));
+            prior_obj.insert("language".to_string(), Value::String(language.to_string()));
+            prior_obj.insert("autoSave".to_string(), Value::Bool(auto_save));
+            for (i, field) in prior.iter().enumerate() {
+                if let Some(v) = field {
+                    prior_obj.insert(APPEARANCE_KEYS[i].to_string(), Value::String(v.clone()));
+                }
+            }
+            update(&conn, &Value::Object(prior_obj)).unwrap();
+
+            // Apply an arbitrary subset of appearance fields as a patch.
+            let mut patch_obj = serde_json::Map::new();
+            for (i, field) in patch.iter().enumerate() {
+                if let Some(v) = field {
+                    patch_obj.insert(APPEARANCE_KEYS[i].to_string(), Value::String(v.clone()));
+                }
+            }
+            let result = update(&conn, &Value::Object(patch_obj)).unwrap();
+
+            // Non-appearance fields are untouched by the appearance patch.
+            prop_assert_eq!(result.theme.as_str(), theme);
+            prop_assert_eq!(result.language.as_str(), language);
+            prop_assert_eq!(result.auto_save, auto_save);
+
+            // Exactly the supplied fields changed; every other field is preserved.
+            let got = appearance_of(&result);
+            for (i, got_field) in got.iter().enumerate() {
+                let expected = match &patch[i] {
+                    Some(v) => Some(v.clone()),
+                    None => prior[i].clone(),
+                };
+                prop_assert_eq!(got_field, &expected);
+            }
+
+            // The returned settings equal the stored settings.
+            prop_assert_eq!(appearance_of(&get(&conn).unwrap()), got);
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        /// Feature: settings-appearance-redesign, Property 14: Appearance persistence round-trips
+        ///
+        /// **Validates: Requirements 10.5**
+        #[test]
+        fn appearance_persistence_round_trips(
+            flavor in value(0),
+            accent in value(1),
+            display in value(2),
+            body in value(3),
+            scale in value(4),
+            density in value(5),
+        ) {
+            let conn = conn();
+            let patch = json!({
+                "flavor": flavor,
+                "accentColor": accent,
+                "displayFont": display,
+                "bodyFont": body,
+                "fontScale": scale,
+                "density": density,
+            });
+            update(&conn, &patch).unwrap();
+
+            // Read back with no intervening update.
+            let stored = get(&conn).unwrap();
+            prop_assert_eq!(stored.flavor.as_deref(), Some(flavor.as_str()));
+            prop_assert_eq!(stored.accent_color.as_deref(), Some(accent.as_str()));
+            prop_assert_eq!(stored.display_font.as_deref(), Some(display.as_str()));
+            prop_assert_eq!(stored.body_font.as_deref(), Some(body.as_str()));
+            prop_assert_eq!(stored.font_scale.as_deref(), Some(scale.as_str()));
+            prop_assert_eq!(stored.density.as_deref(), Some(density.as_str()));
+        }
+    }
+
+    #[test]
+    fn appearance_patch_round_trips_through_camel_case() {
+        let conn = conn();
+        let result = update(
+            &conn,
+            &json!({
+                "flavor": "Mocha",
+                "accentColor": "Blue",
+                "displayFont": "Inter",
+                "bodyFont": "System",
+                "fontScale": "Large",
+                "density": "Compact",
+            }),
+        )
+        .unwrap();
+
+        // The camelCase patch deserializes into the typed snake_case fields.
+        assert_eq!(result.flavor.as_deref(), Some("Mocha"));
+        assert_eq!(result.accent_color.as_deref(), Some("Blue"));
+        assert_eq!(result.display_font.as_deref(), Some("Inter"));
+        assert_eq!(result.body_font.as_deref(), Some("System"));
+        assert_eq!(result.font_scale.as_deref(), Some("Large"));
+        assert_eq!(result.density.as_deref(), Some("Compact"));
+
+        // And re-serializes back to the same camelCase wire names.
+        let value = serde_json::to_value(&result).unwrap();
+        let obj = value.as_object().unwrap();
+        assert_eq!(obj.get("flavor").and_then(Value::as_str), Some("Mocha"));
+        assert_eq!(obj.get("accentColor").and_then(Value::as_str), Some("Blue"));
+        assert_eq!(
+            obj.get("displayFont").and_then(Value::as_str),
+            Some("Inter")
+        );
+        assert_eq!(obj.get("bodyFont").and_then(Value::as_str), Some("System"));
+        assert_eq!(obj.get("fontScale").and_then(Value::as_str), Some("Large"));
+        assert_eq!(obj.get("density").and_then(Value::as_str), Some("Compact"));
+    }
+
+    #[test]
+    fn wrong_typed_appearance_field_is_rejected_without_mutating() {
+        let conn = conn();
+        // Seed a known appearance value.
+        update(&conn, &json!({ "flavor": "Latte" })).unwrap();
+        // `flavor` must be a string; a number is rejected by validate-before-write.
+        let err = update(&conn, &json!({ "flavor": 42 })).unwrap_err();
+        assert_eq!(err.code_str(), "VALIDATION");
+        // The previously stored value is unchanged (no mutation on error).
+        assert_eq!(get(&conn).unwrap().flavor.as_deref(), Some("Latte"));
     }
 }
