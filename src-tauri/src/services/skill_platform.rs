@@ -231,7 +231,7 @@ fn io_err(context: &str, e: std::io::Error) -> AppError {
 /// multi-segment roots (e.g. `.codeium/windsurf`) resolve correctly on every OS.
 fn join_relative(base: &Path, rel: &str) -> PathBuf {
     let mut path = base.to_path_buf();
-    for comp in rel.split(|c| c == '/' || c == '\\') {
+    for comp in rel.split(['/', '\\']) {
         if !comp.is_empty() {
             path.push(comp);
         }
@@ -352,7 +352,7 @@ fn safe_relative_join(base: &Path, rel: &str) -> Result<PathBuf, AppError> {
 
     let mut out = base.to_path_buf();
     let mut pushed = false;
-    for comp in rel.split(|c| c == '/' || c == '\\') {
+    for comp in rel.split(['/', '\\']) {
         if comp.is_empty() || comp == "." {
             continue;
         }

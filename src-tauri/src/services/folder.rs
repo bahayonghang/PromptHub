@@ -139,14 +139,12 @@ pub fn update(conn: &Connection, id: &str, input: UpdateFolderInput) -> Result<F
         None => None,
     };
 
-    if let Some(parent_opt) = &input.parent_id {
-        if let Some(parent_id) = parent_opt {
-            ensure_exists(conn, parent_id)?;
-            if would_create_cycle(conn, id, parent_id)? {
-                return Err(AppError::validation(
-                    "parent would make the folder its own ancestor or descendant",
-                ));
-            }
+    if let Some(Some(parent_id)) = &input.parent_id {
+        ensure_exists(conn, parent_id)?;
+        if would_create_cycle(conn, id, parent_id)? {
+            return Err(AppError::validation(
+                "parent would make the folder its own ancestor or descendant",
+            ));
         }
     }
 
@@ -228,7 +226,7 @@ pub fn reorder(conn: &Connection, ids: &[String]) -> Result<(), AppError> {
 fn validate_name(raw: &str) -> Result<String, AppError> {
     let trimmed = raw.trim();
     let len = trimmed.chars().count();
-    if len < 1 || len > MAX_NAME_LEN {
+    if !(1..=MAX_NAME_LEN).contains(&len) {
         return Err(AppError::validation(format!(
             "folder name must be 1–{MAX_NAME_LEN} characters after trimming (got {len})"
         )));

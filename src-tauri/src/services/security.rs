@@ -319,7 +319,7 @@ fn derive_key(password: &[u8], salt: &[u8]) -> Result<[u8; KEY_LEN], AppError> {
 /// Validates the master-password character length is 8–128 inclusive.
 fn validate_password_len(password: &str) -> Result<(), AppError> {
     let len = password.chars().count();
-    if len < MIN_PASSWORD_LEN || len > MAX_PASSWORD_LEN {
+    if !(MIN_PASSWORD_LEN..=MAX_PASSWORD_LEN).contains(&len) {
         return Err(AppError::validation(format!(
             "master password must be {MIN_PASSWORD_LEN} to {MAX_PASSWORD_LEN} characters"
         )));
@@ -470,11 +470,7 @@ mod tests {
 
     #[test]
     fn password_length_boundaries_7_8_128_129() {
-        assert_eq!(
-            validate_password_len(&"a".repeat(7)).is_err(),
-            true,
-            "7 rejected"
-        );
+        assert!(validate_password_len(&"a".repeat(7)).is_err(), "7 rejected");
         assert!(validate_password_len(&"a".repeat(8)).is_ok(), "8 accepted");
         assert!(
             validate_password_len(&"a".repeat(128)).is_ok(),

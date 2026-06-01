@@ -106,7 +106,7 @@ fn resolve_within(root: &Path, rel: &str) -> Result<PathBuf, AppError> {
 
     // Lexical normalization: build the component stack, refusing any escape.
     let mut stack: Vec<&str> = Vec::new();
-    for comp in rel.split(|c| c == '/' || c == '\\') {
+    for comp in rel.split(['/', '\\']) {
         match comp {
             "" | "." => continue,
             ".." => {
@@ -383,7 +383,7 @@ mod tests {
         // A non-SKILL file is ignored.
         fs::write(loc.join("release-sync").join("notes.md"), "x").unwrap();
 
-        let entries = scan(&[loc.clone()]).unwrap();
+        let entries = scan(std::slice::from_ref(&loc)).unwrap();
         assert_eq!(entries.len(), 2);
         let paths: Vec<&PathBuf> = entries.iter().map(|e| &e.repo_path).collect();
         assert!(paths.contains(&&loc.join("release-sync")));

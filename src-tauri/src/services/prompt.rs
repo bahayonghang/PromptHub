@@ -5,7 +5,7 @@
 //! rather than reaching into global [`crate::state::AppState`], so they are
 //! directly unit-testable with an in-memory pool (`storage::create_memory_pool`
 //! + `storage::init_schema`) and so the Command_Layer (task 17.1) can hand them a
-//! pooled connection.
+//!   pooled connection.
 //!
 //! ## Validation (no mutation on error — Req 2.3)
 //!

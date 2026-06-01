@@ -218,7 +218,7 @@ pub fn list(dir: &Path, allowed_exts: &[&str]) -> Result<Vec<String>, AppError> 
             continue;
         }
         let path = entry.path();
-        let matches = ext_of(&path).map_or(false, |e| allowed_exts.contains(&e.as_str()));
+        let matches = ext_of(&path).is_some_and(|e| allowed_exts.contains(&e.as_str()));
         if matches {
             if let Some(name) = path.file_name().and_then(OsStr::to_str) {
                 names.push(name.to_string());
