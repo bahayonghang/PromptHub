@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc dc08222def2156a32c4fd4f858fb53f2b119256bc087c8f31e0654ce482f1c16 # shrinks to original = ParsedSkillMd { frontmatter: {"description": String("a"), "name": String(" ")}, body: "" }
