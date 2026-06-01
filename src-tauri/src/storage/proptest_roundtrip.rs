@@ -756,7 +756,7 @@ proptest! {
             .query_row(
                 "SELECT * FROM prompt_versions WHERE id = ?1",
                 [&version.id],
-                |row| mapping::prompt_version_from_row(row),
+                mapping::prompt_version_from_row,
             )
             .unwrap();
 
@@ -813,7 +813,7 @@ proptest! {
             .query_row(
                 "SELECT * FROM skill_versions WHERE id = ?1",
                 [&version.id],
-                |row| mapping::skill_version_from_row(row),
+                mapping::skill_version_from_row,
             )
             .unwrap();
 

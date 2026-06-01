@@ -349,7 +349,7 @@ mod tests {
             .query_row(
                 "SELECT * FROM prompt_versions WHERE id = ?1",
                 ["v1"],
-                |row| prompt_version_from_row(row),
+                prompt_version_from_row,
             )
             .unwrap();
 
@@ -525,7 +525,7 @@ mod tests {
             .query_row(
                 "SELECT * FROM skill_versions WHERE id = ?1",
                 ["sv1"],
-                |row| skill_version_from_row(row),
+                skill_version_from_row,
             )
             .unwrap();
 
@@ -557,7 +557,7 @@ mod tests {
             .query_row(
                 "SELECT * FROM skill_versions WHERE id = ?1",
                 ["sv1"],
-                |row| skill_version_from_row(row),
+                skill_version_from_row,
             )
             .unwrap();
 
