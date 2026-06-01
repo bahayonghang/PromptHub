@@ -5,11 +5,13 @@ import {
   HardDriveIcon,
   type LucideIcon,
   MonitorCogIcon,
+  PaletteIcon,
   RefreshCwIcon,
   ShieldIcon,
   SlidersHorizontalIcon,
 } from "lucide-react";
 import { useSettingsStore } from "./settingsStore";
+import { AppearancePanel } from "./components/AppearancePanel";
 import { GeneralPanel } from "./components/GeneralPanel";
 import { SecurityPanel } from "./components/SecurityPanel";
 import { DataPathPanel } from "./components/DataPathPanel";
@@ -17,7 +19,7 @@ import { SyncPanel } from "./components/SyncPanel";
 import { SystemPanel } from "../system/components/SystemPanel";
 
 /** The settings sections selectable from the left rail. */
-type SettingsSection = "general" | "security" | "sync" | "dataPath" | "system";
+type SettingsSection = "appearance" | "general" | "security" | "sync" | "dataPath" | "system";
 
 interface SectionEntry {
   id: SettingsSection;
@@ -27,6 +29,7 @@ interface SectionEntry {
 
 /** The settings sections in display order (Req 22.3). */
 const SECTIONS: readonly SectionEntry[] = [
+  { id: "appearance", labelKey: "settingsView.sections.appearance", icon: PaletteIcon },
   { id: "general", labelKey: "settingsView.sections.general", icon: SlidersHorizontalIcon },
   { id: "security", labelKey: "settingsView.sections.security", icon: ShieldIcon },
   { id: "sync", labelKey: "settingsView.sections.sync", icon: DatabaseIcon },
@@ -133,6 +136,7 @@ export function SettingsView() {
         )}
 
         <div className="min-h-0 flex-1 overflow-y-auto p-6">
+          {section === "appearance" && <AppearancePanel />}
           {section === "general" && (
             <GeneralPanel
               settings={settings}

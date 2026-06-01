@@ -1,4 +1,73 @@
 {
+  "settingsView": {
+    "sections": {
+      "appearance": "Apparence"
+    },
+    "appearance": {
+      "flavor": "Variante",
+      "language": "Langue",
+      "accentColor": "Couleur d'accentuation",
+      "displayFont": "Police d'affichage",
+      "bodyFont": "Police du corps",
+      "fontScale": "Échelle de police",
+      "density": "Densité",
+      "preview": "Aperçu",
+      "summary": "Sélections actuelles",
+      "specimenDisplay": "Portez ce vieux whisky",
+      "specimenBody": "Exemple de texte de corps rendu avec la police choisie.",
+      "specimenAction": "Bouton d'accent",
+      "flavorOption": {
+        "Latte": "Latte",
+        "Frappé": "Frappé",
+        "Macchiato": "Macchiato",
+        "Mocha": "Mocha",
+        "Claude Light": "Claude Light",
+        "Claude Dark": "Claude Dark"
+      },
+      "accentOption": {
+        "Rosewater": "Rosewater",
+        "Flamingo": "Flamingo",
+        "Pink": "Pink",
+        "Mauve": "Mauve",
+        "Red": "Red",
+        "Maroon": "Maroon",
+        "Peach": "Peach",
+        "Yellow": "Yellow",
+        "Green": "Green",
+        "Teal": "Teal",
+        "Sky": "Sky",
+        "Sapphire": "Sapphire",
+        "Blue": "Blue",
+        "Lavender": "Lavender"
+      },
+      "fontOption": {
+        "System": "System",
+        "Inter": "Inter",
+        "Space Grotesk": "Space Grotesk",
+        "JetBrains Mono": "JetBrains Mono"
+      },
+      "fontScaleOption": {
+        "Small": "Petite (90 %)",
+        "Default": "Par défaut (100 %)",
+        "Large": "Grande (110 %)",
+        "Extra Large": "Très grande (125 %)"
+      },
+      "densityOption": {
+        "Compact": "Compacte",
+        "Default": "Par défaut",
+        "Comfortable": "Confortable"
+      },
+      "locale": {
+        "en": "English",
+        "zh": "简体中文",
+        "zh-TW": "繁體中文",
+        "ja": "日本語",
+        "fr": "Français",
+        "de": "Deutsch",
+        "es": "Español"
+      }
+    }
+  },
   "app": {
     "name": "PromptHub",
     "description": "Gestionnaire de Prompts local avec contrôle de version"

@@ -1,4 +1,73 @@
 {
+  "settingsView": {
+    "sections": {
+      "appearance": "Darstellung"
+    },
+    "appearance": {
+      "flavor": "Variante",
+      "language": "Sprache",
+      "accentColor": "Akzentfarbe",
+      "displayFont": "Anzeigeschriftart",
+      "bodyFont": "Fließtextschriftart",
+      "fontScale": "Schriftgröße",
+      "density": "Dichte",
+      "preview": "Vorschau",
+      "summary": "Aktuelle Auswahl",
+      "specimenDisplay": "Franz jagt im Taxi",
+      "specimenBody": "Beispieltext für den Fließtext in der gewählten Schriftart.",
+      "specimenAction": "Akzent-Schaltfläche",
+      "flavorOption": {
+        "Latte": "Latte",
+        "Frappé": "Frappé",
+        "Macchiato": "Macchiato",
+        "Mocha": "Mocha",
+        "Claude Light": "Claude Light",
+        "Claude Dark": "Claude Dark"
+      },
+      "accentOption": {
+        "Rosewater": "Rosewater",
+        "Flamingo": "Flamingo",
+        "Pink": "Pink",
+        "Mauve": "Mauve",
+        "Red": "Red",
+        "Maroon": "Maroon",
+        "Peach": "Peach",
+        "Yellow": "Yellow",
+        "Green": "Green",
+        "Teal": "Teal",
+        "Sky": "Sky",
+        "Sapphire": "Sapphire",
+        "Blue": "Blue",
+        "Lavender": "Lavender"
+      },
+      "fontOption": {
+        "System": "System",
+        "Inter": "Inter",
+        "Space Grotesk": "Space Grotesk",
+        "JetBrains Mono": "JetBrains Mono"
+      },
+      "fontScaleOption": {
+        "Small": "Klein (90 %)",
+        "Default": "Standard (100 %)",
+        "Large": "Groß (110 %)",
+        "Extra Large": "Sehr groß (125 %)"
+      },
+      "densityOption": {
+        "Compact": "Kompakt",
+        "Default": "Standard",
+        "Comfortable": "Komfortabel"
+      },
+      "locale": {
+        "en": "English",
+        "zh": "简体中文",
+        "zh-TW": "繁體中文",
+        "ja": "日本語",
+        "fr": "Français",
+        "de": "Deutsch",
+        "es": "Español"
+      }
+    }
+  },
   "app": {
     "name": "PromptHub",
     "description": "Lokaler Prompt-Manager mit Versionskontrolle"

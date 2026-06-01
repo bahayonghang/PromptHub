@@ -53,6 +53,18 @@ export interface Settings {
   minimizeOnLaunch?: boolean | null;
   githubToken?: string | null;
   security?: SecuritySettingsSummary | null;
+  /** Theme flavor: Latte | Frappé | Macchiato | Mocha | Claude Light | Claude Dark. */
+  flavor?: string | null;
+  /** Named accent color (one of the 14 Accent_Color names). */
+  accentColor?: string | null;
+  /** Display font family from the Font_Catalog. */
+  displayFont?: string | null;
+  /** Body font family from the Font_Catalog. */
+  bodyFont?: string | null;
+  /** Font scale preset: Small | Default | Large | Extra Large. */
+  fontScale?: string | null;
+  /** Density preset: Compact | Default | Comfortable. */
+  density?: string | null;
 }
 
 /** A partial settings patch for `settings.update`; only supplied fields change (Req 19.2). */

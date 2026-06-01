@@ -1,4 +1,73 @@
 {
+  "settingsView": {
+    "sections": {
+      "appearance": "Apariencia"
+    },
+    "appearance": {
+      "flavor": "Estilo",
+      "language": "Idioma",
+      "accentColor": "Color de acento",
+      "displayFont": "Fuente de display",
+      "bodyFont": "Fuente del cuerpo",
+      "fontScale": "Escala de fuente",
+      "density": "Densidad",
+      "preview": "Vista previa",
+      "summary": "Selecciones actuales",
+      "specimenDisplay": "El veloz murciélago",
+      "specimenBody": "Texto de cuerpo de ejemplo representado con la fuente elegida.",
+      "specimenAction": "Botón de acento",
+      "flavorOption": {
+        "Latte": "Latte",
+        "Frappé": "Frappé",
+        "Macchiato": "Macchiato",
+        "Mocha": "Mocha",
+        "Claude Light": "Claude Light",
+        "Claude Dark": "Claude Dark"
+      },
+      "accentOption": {
+        "Rosewater": "Rosewater",
+        "Flamingo": "Flamingo",
+        "Pink": "Pink",
+        "Mauve": "Mauve",
+        "Red": "Red",
+        "Maroon": "Maroon",
+        "Peach": "Peach",
+        "Yellow": "Yellow",
+        "Green": "Green",
+        "Teal": "Teal",
+        "Sky": "Sky",
+        "Sapphire": "Sapphire",
+        "Blue": "Blue",
+        "Lavender": "Lavender"
+      },
+      "fontOption": {
+        "System": "System",
+        "Inter": "Inter",
+        "Space Grotesk": "Space Grotesk",
+        "JetBrains Mono": "JetBrains Mono"
+      },
+      "fontScaleOption": {
+        "Small": "Pequeña (90 %)",
+        "Default": "Predeterminada (100 %)",
+        "Large": "Grande (110 %)",
+        "Extra Large": "Muy grande (125 %)"
+      },
+      "densityOption": {
+        "Compact": "Compacta",
+        "Default": "Predeterminada",
+        "Comfortable": "Cómoda"
+      },
+      "locale": {
+        "en": "English",
+        "zh": "简体中文",
+        "zh-TW": "繁體中文",
+        "ja": "日本語",
+        "fr": "Français",
+        "de": "Deutsch",
+        "es": "Español"
+      }
+    }
+  },
   "app": {
     "name": "PromptHub",
     "description": "Gestor de Prompts local con control de versiones"

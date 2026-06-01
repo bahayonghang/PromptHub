@@ -24,6 +24,17 @@
     --theme-saturation: 35%;
     --radius: 0.75rem;
 
+    /*
+     * Appearance defaults (Appearance_Controller overrides these on the root).
+     * Defaults here keep the base token set complete and renderable before the
+     * controller runs; the same token names are mirrored under `.dark`.
+     */
+    --font-scale: 1;
+    --font-display: ui-sans-serif, system-ui, sans-serif;
+    --font-body: ui-sans-serif, system-ui, sans-serif;
+    --density-padding: 0.625rem;
+    --density-gap: 1rem;
+
     /* Light surfaces and text. */
     --background: 220 14% 96%;
     --foreground: 220 20% 25%;
@@ -68,6 +79,13 @@
     --theme-hue: 210;
     --theme-saturation: 35%;
     --radius: 0.75rem;
+
+    /* Appearance defaults (mirror of `:root`; overridden by the controller). */
+    --font-scale: 1;
+    --font-display: ui-sans-serif, system-ui, sans-serif;
+    --font-body: ui-sans-serif, system-ui, sans-serif;
+    --density-padding: 0.625rem;
+    --density-gap: 1rem;
 
     /* Dark surfaces and text. */
     --background: 220 25% 7%;
@@ -119,11 +137,41 @@
     margin: 0;
   }
 
+  /* Font scale: a unitless multiplier the controller writes to rescale base text. */
+  html {
+    font-size: calc(1rem * var(--font-scale, 1));
+  }
+
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
+    font-family: var(--font-body, ui-sans-serif, system-ui, sans-serif);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/*
+ * Appearance hooks consumed by components. Fonts resolve to the controller's
+ * `--font-display` / `--font-body` variables (with the system stack as default);
+ * the density rhythm reads `--density-padding` / `--density-gap`, and the
+ * `[data-density]` attribute on the root is available for coarse-grained styling.
+ */
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display, ui-sans-serif, system-ui, sans-serif);
+  }
+
+  .font-body {
+    font-family: var(--font-body, ui-sans-serif, system-ui, sans-serif);
+  }
+
+  .density-p {
+    padding: var(--density-padding, 0.625rem);
+  }
+
+  .density-gap {
+    gap: var(--density-gap, 1rem);
   }
 }
 

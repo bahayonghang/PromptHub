@@ -1,4 +1,73 @@
 {
+  "settingsView": {
+    "sections": {
+      "appearance": "外觀"
+    },
+    "appearance": {
+      "flavor": "風格",
+      "language": "語言",
+      "accentColor": "強調色",
+      "displayFont": "顯示字型",
+      "bodyFont": "內文字型",
+      "fontScale": "字級縮放",
+      "density": "密度",
+      "preview": "預覽",
+      "summary": "目前選擇",
+      "specimenDisplay": "敏捷的棕色狐狸",
+      "specimenBody": "這是一段用於預覽所選字型的內文範例文字。",
+      "specimenAction": "強調按鈕",
+      "flavorOption": {
+        "Latte": "Latte",
+        "Frappé": "Frappé",
+        "Macchiato": "Macchiato",
+        "Mocha": "Mocha",
+        "Claude Light": "Claude Light",
+        "Claude Dark": "Claude Dark"
+      },
+      "accentOption": {
+        "Rosewater": "Rosewater",
+        "Flamingo": "Flamingo",
+        "Pink": "Pink",
+        "Mauve": "Mauve",
+        "Red": "Red",
+        "Maroon": "Maroon",
+        "Peach": "Peach",
+        "Yellow": "Yellow",
+        "Green": "Green",
+        "Teal": "Teal",
+        "Sky": "Sky",
+        "Sapphire": "Sapphire",
+        "Blue": "Blue",
+        "Lavender": "Lavender"
+      },
+      "fontOption": {
+        "System": "System",
+        "Inter": "Inter",
+        "Space Grotesk": "Space Grotesk",
+        "JetBrains Mono": "JetBrains Mono"
+      },
+      "fontScaleOption": {
+        "Small": "小 (90%)",
+        "Default": "預設 (100%)",
+        "Large": "大 (110%)",
+        "Extra Large": "超大 (125%)"
+      },
+      "densityOption": {
+        "Compact": "緊湊",
+        "Default": "預設",
+        "Comfortable": "寬鬆"
+      },
+      "locale": {
+        "en": "English",
+        "zh": "简体中文",
+        "zh-TW": "繁體中文",
+        "ja": "日本語",
+        "fr": "Français",
+        "de": "Deutsch",
+        "es": "Español"
+      }
+    }
+  },
   "app": {
     "name": "PromptHub",
     "description": "本地版的 Prompt 管理器，帶版本控制"

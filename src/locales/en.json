@@ -2227,11 +2227,76 @@
     "title": "Settings",
     "restartRequired": "A restart is required for your recent change to take effect.",
     "sections": {
+      "appearance": "Appearance",
       "general": "General",
       "security": "Security",
       "sync": "Sync & Backup",
       "dataPath": "Data Directory",
       "system": "System & Updates"
+    },
+    "appearance": {
+      "flavor": "Flavor",
+      "language": "Language",
+      "accentColor": "Accent color",
+      "displayFont": "Display font",
+      "bodyFont": "Body font",
+      "fontScale": "Font scale",
+      "density": "Density",
+      "preview": "Preview",
+      "summary": "Current selections",
+      "specimenDisplay": "The quick brown fox",
+      "specimenBody": "Pack my box with five dozen liquor jugs.",
+      "specimenAction": "Accent button",
+      "flavorOption": {
+        "Latte": "Latte",
+        "Frappé": "Frappé",
+        "Macchiato": "Macchiato",
+        "Mocha": "Mocha",
+        "Claude Light": "Claude Light",
+        "Claude Dark": "Claude Dark"
+      },
+      "accentOption": {
+        "Rosewater": "Rosewater",
+        "Flamingo": "Flamingo",
+        "Pink": "Pink",
+        "Mauve": "Mauve",
+        "Red": "Red",
+        "Maroon": "Maroon",
+        "Peach": "Peach",
+        "Yellow": "Yellow",
+        "Green": "Green",
+        "Teal": "Teal",
+        "Sky": "Sky",
+        "Sapphire": "Sapphire",
+        "Blue": "Blue",
+        "Lavender": "Lavender"
+      },
+      "fontOption": {
+        "System": "System",
+        "Inter": "Inter",
+        "Space Grotesk": "Space Grotesk",
+        "JetBrains Mono": "JetBrains Mono"
+      },
+      "fontScaleOption": {
+        "Small": "Small (90%)",
+        "Default": "Default (100%)",
+        "Large": "Large (110%)",
+        "Extra Large": "Extra Large (125%)"
+      },
+      "densityOption": {
+        "Compact": "Compact",
+        "Default": "Default",
+        "Comfortable": "Comfortable"
+      },
+      "locale": {
+        "en": "English",
+        "zh": "简体中文",
+        "zh-TW": "繁體中文",
+        "ja": "日本語",
+        "fr": "Français",
+        "de": "Deutsch",
+        "es": "Español"
+      }
     },
     "general": {
       "theme": "Theme",

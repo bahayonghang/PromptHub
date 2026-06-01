@@ -1,4 +1,73 @@
 {
+  "settingsView": {
+    "sections": {
+      "appearance": "外観"
+    },
+    "appearance": {
+      "flavor": "フレーバー",
+      "language": "言語",
+      "accentColor": "アクセントカラー",
+      "displayFont": "表示フォント",
+      "bodyFont": "本文フォント",
+      "fontScale": "文字サイズ",
+      "density": "密度",
+      "preview": "プレビュー",
+      "summary": "現在の選択",
+      "specimenDisplay": "いろはにほへと",
+      "specimenBody": "これは選択したフォントを確認するための本文サンプルです。",
+      "specimenAction": "アクセントボタン",
+      "flavorOption": {
+        "Latte": "Latte",
+        "Frappé": "Frappé",
+        "Macchiato": "Macchiato",
+        "Mocha": "Mocha",
+        "Claude Light": "Claude Light",
+        "Claude Dark": "Claude Dark"
+      },
+      "accentOption": {
+        "Rosewater": "Rosewater",
+        "Flamingo": "Flamingo",
+        "Pink": "Pink",
+        "Mauve": "Mauve",
+        "Red": "Red",
+        "Maroon": "Maroon",
+        "Peach": "Peach",
+        "Yellow": "Yellow",
+        "Green": "Green",
+        "Teal": "Teal",
+        "Sky": "Sky",
+        "Sapphire": "Sapphire",
+        "Blue": "Blue",
+        "Lavender": "Lavender"
+      },
+      "fontOption": {
+        "System": "System",
+        "Inter": "Inter",
+        "Space Grotesk": "Space Grotesk",
+        "JetBrains Mono": "JetBrains Mono"
+      },
+      "fontScaleOption": {
+        "Small": "小 (90%)",
+        "Default": "標準 (100%)",
+        "Large": "大 (110%)",
+        "Extra Large": "特大 (125%)"
+      },
+      "densityOption": {
+        "Compact": "コンパクト",
+        "Default": "標準",
+        "Comfortable": "ゆったり"
+      },
+      "locale": {
+        "en": "English",
+        "zh": "简体中文",
+        "zh-TW": "繁體中文",
+        "ja": "日本語",
+        "fr": "Français",
+        "de": "Deutsch",
+        "es": "Español"
+      }
+    }
+  },
   "app": {
     "name": "PromptHub",
     "description": "ローカル版 Prompt マネージャー、バージョン管理付き"
