@@ -1,7 +1,14 @@
 {
   "settingsView": {
+    "title": "设置",
+    "restartRequired": "最近的更改需要重启应用才能生效。",
     "sections": {
-      "appearance": "外观"
+      "appearance": "外观",
+      "general": "通用",
+      "security": "安全",
+      "sync": "同步与备份",
+      "dataPath": "数据目录",
+      "system": "系统与更新"
     },
     "appearance": {
       "flavor": "风格",
@@ -46,6 +53,10 @@
         "Space Grotesk": "Space Grotesk",
         "JetBrains Mono": "JetBrains Mono"
       },
+      "fontGroup": {
+        "builtin": "内置",
+        "system": "系统字体"
+      },
       "fontScaleOption": {
         "Small": "小 (90%)",
         "Default": "默认 (100%)",
@@ -65,6 +76,133 @@
         "fr": "Français",
         "de": "Deutsch",
         "es": "Español"
+      }
+    },
+    "general": {
+      "theme": "主题",
+      "themeHint": "选择 PromptHub 的外观。跟随系统将使用操作系统的外观设置。",
+      "themeMode": {
+        "light": "浅色",
+        "dark": "深色",
+        "system": "跟随系统"
+      },
+      "language": "语言",
+      "languageHint": "界面语言立即生效，无需重启。",
+      "locale": {
+        "en": "English",
+        "zh": "简体中文",
+        "zh-TW": "繁體中文",
+        "ja": "日本語",
+        "fr": "Français",
+        "de": "Deutsch",
+        "es": "Español"
+      },
+      "autoSave": "自动保存",
+      "autoSaveHint": "编辑时自动保存更改。",
+      "launchAtStartup": "开机启动",
+      "launchAtStartupHint": "系统启动时自动运行 PromptHub。"
+    },
+    "security": {
+      "statusConfigured": "已设置主密码",
+      "statusNotConfigured": "未设置主密码",
+      "statusNotConfiguredHint": "设置主密码以加密你的私密 Prompt 数据。",
+      "statusLocked": "已锁定",
+      "statusUnlocked": "已解锁",
+      "passwordLength": "主密码长度必须为 8 到 128 个字符。",
+      "passwordMismatch": "两次输入的密码不一致。",
+      "passwordRequired": "请输入主密码。",
+      "currentPasswordRequired": "请输入当前主密码。",
+      "setTitle": "设置主密码",
+      "setHint": "使用 8 到 128 个字符。PromptHub 只存储派生的校验值，绝不存储密码本身。",
+      "newPassword": "新密码",
+      "confirmPassword": "确认密码",
+      "setButton": "设置主密码",
+      "password": "主密码",
+      "unlockTitle": "解锁",
+      "unlockButton": "解锁",
+      "lockButton": "立即锁定",
+      "changeTitle": "修改主密码",
+      "changeRestartHint": "修改主密码会重新加密你的数据，需要重启才能完全生效。",
+      "currentPassword": "当前密码",
+      "changeButton": "修改密码"
+    },
+    "dataPath": {
+      "activeLabel": "当前数据目录",
+      "restartPending": "数据目录更改待处理。重启以切换到：",
+      "changeTitle": "更改数据目录",
+      "changeHint": "请先预览目标目录，再应用推荐的操作。应用更改需要重启。",
+      "targetPlaceholder": "输入目标目录路径",
+      "previewButton": "预览",
+      "previewExists": "目标已存在",
+      "previewHasData": "包含 PromptHub 数据",
+      "previewIsCurrent": "是当前目录",
+      "previewRecommended": "推荐操作",
+      "previewYes": "是",
+      "previewNo": "否",
+      "previewAlreadyCurrent": "这已经是当前数据目录。",
+      "action": {
+        "migrate": "迁移",
+        "switch": "切换"
+      },
+      "applyAction": {
+        "migrate": "将当前数据迁移到此处",
+        "switch": "切换到此目录",
+        "overwrite": "用当前数据覆盖"
+      },
+      "applyConfirm": "应用此数据目录更改？应用需要重启才能完成。",
+      "recoveryTitle": "恢复数据",
+      "recoveryHint": "在已知位置搜索可恢复的 PromptHub 数据。",
+      "recoveryScan": "扫描",
+      "recoveryUnavailable": "当前运行环境不支持数据恢复。",
+      "recoveryApply": "恢复",
+      "recoveryEmpty": "未找到可恢复的数据。",
+      "recoveryConfirm": "从此来源恢复数据？恢复需要重启才能完成。"
+    },
+    "sync": {
+      "testConnection": "测试连接",
+      "testing": "测试中…",
+      "webdav": {
+        "title": "WebDAV",
+        "url": "服务器地址",
+        "username": "用户名",
+        "password": "密码",
+        "urlRequired": "请输入 WebDAV 服务器地址。",
+        "urlScheme": "地址必须以 http:// 或 https:// 开头。"
+      },
+      "s3": {
+        "title": "S3",
+        "endpoint": "Endpoint",
+        "region": "区域",
+        "bucket": "存储桶",
+        "accessKey": "Access Key ID",
+        "secretKey": "Secret Access Key",
+        "endpointRequired": "请输入 S3 Endpoint。",
+        "endpointScheme": "Endpoint 必须以 http:// 或 https:// 开头。",
+        "regionRequired": "请输入 S3 区域。",
+        "bucketRequired": "请输入 S3 存储桶。",
+        "accessKeyRequired": "请输入 Access Key ID。",
+        "secretKeyRequired": "请输入 Secret Access Key。"
+      },
+      "export": {
+        "title": "导出数据",
+        "hint": "将选定的数据类别打包为 ZIP 压缩包。",
+        "data": "数据",
+        "media": "媒体",
+        "skill": "技能",
+        "rule": "规则",
+        "button": "导出 ZIP",
+        "exporting": "导出中…",
+        "done": "已导出到"
+      },
+      "backup": {
+        "title": "升级备份",
+        "hint": "本地回滚点。恢复某个备份需要重启。",
+        "create": "创建备份",
+        "empty": "暂无备份。",
+        "restore": "恢复",
+        "delete": "删除备份",
+        "restoreConfirm": "恢复此备份？恢复需要重启才能完成。",
+        "deleteConfirm": "删除此备份？此操作无法撤销。"
       }
     }
   },

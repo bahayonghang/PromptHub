@@ -1,7 +1,14 @@
 {
   "settingsView": {
+    "title": "Paramètres",
+    "restartRequired": "Un redémarrage est nécessaire pour que votre modification récente prenne effet.",
     "sections": {
-      "appearance": "Apparence"
+      "appearance": "Apparence",
+      "general": "Général",
+      "security": "Sécurité",
+      "sync": "Synchronisation et sauvegarde",
+      "dataPath": "Répertoire de données",
+      "system": "Système et mises à jour"
     },
     "appearance": {
       "flavor": "Variante",
@@ -46,6 +53,10 @@
         "Space Grotesk": "Space Grotesk",
         "JetBrains Mono": "JetBrains Mono"
       },
+      "fontGroup": {
+        "builtin": "Intégrées",
+        "system": "Polices système"
+      },
       "fontScaleOption": {
         "Small": "Petite (90 %)",
         "Default": "Par défaut (100 %)",
@@ -65,6 +76,133 @@
         "fr": "Français",
         "de": "Deutsch",
         "es": "Español"
+      }
+    },
+    "general": {
+      "theme": "Thème",
+      "themeHint": "Choisissez l'apparence de PromptHub. « Système » suit l'apparence de votre OS.",
+      "themeMode": {
+        "light": "Clair",
+        "dark": "Sombre",
+        "system": "Système"
+      },
+      "language": "Langue",
+      "languageHint": "La langue d'affichage s'applique immédiatement, sans redémarrage.",
+      "locale": {
+        "en": "English",
+        "zh": "简体中文",
+        "zh-TW": "繁體中文",
+        "ja": "日本語",
+        "fr": "Français",
+        "de": "Deutsch",
+        "es": "Español"
+      },
+      "autoSave": "Enregistrement auto",
+      "autoSaveHint": "Enregistrer automatiquement les modifications pendant l'édition.",
+      "launchAtStartup": "Lancer au démarrage",
+      "launchAtStartupHint": "Démarrer PromptHub automatiquement au démarrage du système."
+    },
+    "security": {
+      "statusConfigured": "Mot de passe maître défini",
+      "statusNotConfigured": "Aucun mot de passe maître",
+      "statusNotConfiguredHint": "Définissez un mot de passe maître pour chiffrer vos données de prompts privées.",
+      "statusLocked": "Verrouillé",
+      "statusUnlocked": "Déverrouillé",
+      "passwordLength": "Le mot de passe maître doit comporter de 8 à 128 caractères.",
+      "passwordMismatch": "Les mots de passe ne correspondent pas.",
+      "passwordRequired": "Saisissez votre mot de passe maître.",
+      "currentPasswordRequired": "Saisissez votre mot de passe maître actuel.",
+      "setTitle": "Définir le mot de passe maître",
+      "setHint": "Utilisez 8 à 128 caractères. PromptHub ne stocke qu'un vérificateur dérivé, jamais le mot de passe lui-même.",
+      "newPassword": "Nouveau mot de passe",
+      "confirmPassword": "Confirmer le mot de passe",
+      "setButton": "Définir le mot de passe maître",
+      "password": "Mot de passe maître",
+      "unlockTitle": "Déverrouiller",
+      "unlockButton": "Déverrouiller",
+      "lockButton": "Verrouiller maintenant",
+      "changeTitle": "Modifier le mot de passe maître",
+      "changeRestartHint": "La modification du mot de passe maître rechiffre vos données et nécessite un redémarrage pour prendre pleinement effet.",
+      "currentPassword": "Mot de passe actuel",
+      "changeButton": "Modifier le mot de passe"
+    },
+    "dataPath": {
+      "activeLabel": "Répertoire de données actif",
+      "restartPending": "Un changement de répertoire de données est en attente. Redémarrez pour basculer vers :",
+      "changeTitle": "Changer de répertoire de données",
+      "changeHint": "Prévisualisez d'abord un répertoire cible, puis appliquez l'action recommandée. L'application nécessite un redémarrage.",
+      "targetPlaceholder": "Saisissez le chemin du répertoire cible",
+      "previewButton": "Prévisualiser",
+      "previewExists": "La cible existe",
+      "previewHasData": "Contient des données PromptHub",
+      "previewIsCurrent": "Est le répertoire actif",
+      "previewRecommended": "Action recommandée",
+      "previewYes": "Oui",
+      "previewNo": "Non",
+      "previewAlreadyCurrent": "Il s'agit déjà du répertoire de données actif.",
+      "action": {
+        "migrate": "Migrer",
+        "switch": "Basculer"
+      },
+      "applyAction": {
+        "migrate": "Migrer les données actuelles ici",
+        "switch": "Basculer vers ce répertoire",
+        "overwrite": "Écraser avec les données actuelles"
+      },
+      "applyConfirm": "Appliquer ce changement de répertoire de données ? L'application devra redémarrer pour le terminer.",
+      "recoveryTitle": "Récupérer des données",
+      "recoveryHint": "Rechercher des données PromptHub récupérables dans les emplacements connus.",
+      "recoveryScan": "Analyser",
+      "recoveryUnavailable": "La récupération de données n'est pas disponible dans cet environnement.",
+      "recoveryApply": "Récupérer",
+      "recoveryEmpty": "Aucune donnée récupérable trouvée.",
+      "recoveryConfirm": "Récupérer les données de cette source ? L'application devra redémarrer pour le terminer."
+    },
+    "sync": {
+      "testConnection": "Tester la connexion",
+      "testing": "Test en cours…",
+      "webdav": {
+        "title": "WebDAV",
+        "url": "URL du serveur",
+        "username": "Nom d'utilisateur",
+        "password": "Mot de passe",
+        "urlRequired": "Saisissez l'URL du serveur WebDAV.",
+        "urlScheme": "L'URL doit commencer par http:// ou https://."
+      },
+      "s3": {
+        "title": "S3",
+        "endpoint": "Point de terminaison",
+        "region": "Région",
+        "bucket": "Compartiment",
+        "accessKey": "ID de clé d'accès",
+        "secretKey": "Clé d'accès secrète",
+        "endpointRequired": "Saisissez le point de terminaison S3.",
+        "endpointScheme": "Le point de terminaison doit commencer par http:// ou https://.",
+        "regionRequired": "Saisissez la région S3.",
+        "bucketRequired": "Saisissez le compartiment S3.",
+        "accessKeyRequired": "Saisissez l'ID de clé d'accès.",
+        "secretKeyRequired": "Saisissez la clé d'accès secrète."
+      },
+      "export": {
+        "title": "Exporter les données",
+        "hint": "Créer une archive ZIP des catégories de données sélectionnées.",
+        "data": "Données",
+        "media": "Médias",
+        "skill": "Compétences",
+        "rule": "Règles",
+        "button": "Exporter en ZIP",
+        "exporting": "Exportation…",
+        "done": "Exporté vers"
+      },
+      "backup": {
+        "title": "Sauvegardes de mise à niveau",
+        "hint": "Points de restauration locaux. Restaurer l'un d'eux nécessite un redémarrage.",
+        "create": "Créer une sauvegarde",
+        "empty": "Aucune sauvegarde pour l'instant.",
+        "restore": "Restaurer",
+        "delete": "Supprimer la sauvegarde",
+        "restoreConfirm": "Restaurer cette sauvegarde ? L'application devra redémarrer pour le terminer.",
+        "deleteConfirm": "Supprimer cette sauvegarde ? Cette action est irréversible."
       }
     }
   },

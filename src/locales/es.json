@@ -1,7 +1,14 @@
 {
   "settingsView": {
+    "title": "Ajustes",
+    "restartRequired": "Es necesario reiniciar para que tu cambio reciente surta efecto.",
     "sections": {
-      "appearance": "Apariencia"
+      "appearance": "Apariencia",
+      "general": "General",
+      "security": "Seguridad",
+      "sync": "Sincronización y copia de seguridad",
+      "dataPath": "Directorio de datos",
+      "system": "Sistema y actualizaciones"
     },
     "appearance": {
       "flavor": "Estilo",
@@ -46,6 +53,10 @@
         "Space Grotesk": "Space Grotesk",
         "JetBrains Mono": "JetBrains Mono"
       },
+      "fontGroup": {
+        "builtin": "Integradas",
+        "system": "Fuentes del sistema"
+      },
       "fontScaleOption": {
         "Small": "Pequeña (90 %)",
         "Default": "Predeterminada (100 %)",
@@ -65,6 +76,133 @@
         "fr": "Français",
         "de": "Deutsch",
         "es": "Español"
+      }
+    },
+    "general": {
+      "theme": "Tema",
+      "themeHint": "Elige el aspecto de PromptHub. «Sistema» sigue la apariencia de tu SO.",
+      "themeMode": {
+        "light": "Claro",
+        "dark": "Oscuro",
+        "system": "Sistema"
+      },
+      "language": "Idioma",
+      "languageHint": "El idioma de la interfaz se aplica de inmediato, sin reiniciar.",
+      "locale": {
+        "en": "English",
+        "zh": "简体中文",
+        "zh-TW": "繁體中文",
+        "ja": "日本語",
+        "fr": "Français",
+        "de": "Deutsch",
+        "es": "Español"
+      },
+      "autoSave": "Guardado automático",
+      "autoSaveHint": "Guardar los cambios automáticamente al editar.",
+      "launchAtStartup": "Iniciar al arrancar",
+      "launchAtStartupHint": "Iniciar PromptHub automáticamente cuando arranque el sistema."
+    },
+    "security": {
+      "statusConfigured": "Contraseña maestra establecida",
+      "statusNotConfigured": "Sin contraseña maestra",
+      "statusNotConfiguredHint": "Establece una contraseña maestra para cifrar tus datos de prompts privados.",
+      "statusLocked": "Bloqueado",
+      "statusUnlocked": "Desbloqueado",
+      "passwordLength": "La contraseña maestra debe tener entre 8 y 128 caracteres.",
+      "passwordMismatch": "Las contraseñas no coinciden.",
+      "passwordRequired": "Introduce tu contraseña maestra.",
+      "currentPasswordRequired": "Introduce tu contraseña maestra actual.",
+      "setTitle": "Establecer contraseña maestra",
+      "setHint": "Usa de 8 a 128 caracteres. PromptHub solo almacena un verificador derivado, nunca la contraseña en sí.",
+      "newPassword": "Nueva contraseña",
+      "confirmPassword": "Confirmar contraseña",
+      "setButton": "Establecer contraseña maestra",
+      "password": "Contraseña maestra",
+      "unlockTitle": "Desbloquear",
+      "unlockButton": "Desbloquear",
+      "lockButton": "Bloquear ahora",
+      "changeTitle": "Cambiar contraseña maestra",
+      "changeRestartHint": "Cambiar la contraseña maestra vuelve a cifrar tus datos y requiere reiniciar para surtir pleno efecto.",
+      "currentPassword": "Contraseña actual",
+      "changeButton": "Cambiar contraseña"
+    },
+    "dataPath": {
+      "activeLabel": "Directorio de datos activo",
+      "restartPending": "Hay un cambio de ruta de datos pendiente. Reinicia para cambiar a:",
+      "changeTitle": "Cambiar el directorio de datos",
+      "changeHint": "Previsualiza primero un directorio de destino y luego aplica la acción recomendada. Aplicar requiere reiniciar.",
+      "targetPlaceholder": "Introduce la ruta del directorio de destino",
+      "previewButton": "Previsualizar",
+      "previewExists": "El destino existe",
+      "previewHasData": "Contiene datos de PromptHub",
+      "previewIsCurrent": "Es el directorio activo",
+      "previewRecommended": "Acción recomendada",
+      "previewYes": "Sí",
+      "previewNo": "No",
+      "previewAlreadyCurrent": "Este ya es el directorio de datos activo.",
+      "action": {
+        "migrate": "Migrar",
+        "switch": "Cambiar"
+      },
+      "applyAction": {
+        "migrate": "Migrar los datos actuales aquí",
+        "switch": "Cambiar a este directorio",
+        "overwrite": "Sobrescribir con los datos actuales"
+      },
+      "applyConfirm": "¿Aplicar este cambio de ruta de datos? La aplicación deberá reiniciarse para completarlo.",
+      "recoveryTitle": "Recuperar datos",
+      "recoveryHint": "Buscar datos de PromptHub recuperables en ubicaciones conocidas.",
+      "recoveryScan": "Analizar",
+      "recoveryUnavailable": "La recuperación de datos no está disponible en este entorno de ejecución.",
+      "recoveryApply": "Recuperar",
+      "recoveryEmpty": "No se encontraron datos recuperables.",
+      "recoveryConfirm": "¿Recuperar datos de esta fuente? La aplicación deberá reiniciarse para completarlo."
+    },
+    "sync": {
+      "testConnection": "Probar conexión",
+      "testing": "Probando…",
+      "webdav": {
+        "title": "WebDAV",
+        "url": "URL del servidor",
+        "username": "Usuario",
+        "password": "Contraseña",
+        "urlRequired": "Introduce la URL del servidor WebDAV.",
+        "urlScheme": "La URL debe empezar por http:// o https://."
+      },
+      "s3": {
+        "title": "S3",
+        "endpoint": "Endpoint",
+        "region": "Región",
+        "bucket": "Bucket",
+        "accessKey": "ID de clave de acceso",
+        "secretKey": "Clave de acceso secreta",
+        "endpointRequired": "Introduce el endpoint de S3.",
+        "endpointScheme": "El endpoint debe empezar por http:// o https://.",
+        "regionRequired": "Introduce la región de S3.",
+        "bucketRequired": "Introduce el bucket de S3.",
+        "accessKeyRequired": "Introduce el ID de clave de acceso.",
+        "secretKeyRequired": "Introduce la clave de acceso secreta."
+      },
+      "export": {
+        "title": "Exportar datos",
+        "hint": "Crear un archivo ZIP de las categorías de datos seleccionadas.",
+        "data": "Datos",
+        "media": "Medios",
+        "skill": "Habilidades",
+        "rule": "Reglas",
+        "button": "Exportar ZIP",
+        "exporting": "Exportando…",
+        "done": "Exportado a"
+      },
+      "backup": {
+        "title": "Copias de seguridad de actualización",
+        "hint": "Puntos de restauración locales. Restaurar uno requiere reiniciar.",
+        "create": "Crear copia de seguridad",
+        "empty": "Aún no hay copias de seguridad.",
+        "restore": "Restaurar",
+        "delete": "Eliminar copia de seguridad",
+        "restoreConfirm": "¿Restaurar esta copia de seguridad? La aplicación deberá reiniciarse para completarlo.",
+        "deleteConfirm": "¿Eliminar esta copia de seguridad? Esta acción no se puede deshacer."
       }
     }
   },

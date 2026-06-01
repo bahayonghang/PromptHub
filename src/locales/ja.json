@@ -1,7 +1,14 @@
 {
   "settingsView": {
+    "title": "設定",
+    "restartRequired": "最近の変更を反映するには再起動が必要です。",
     "sections": {
-      "appearance": "外観"
+      "appearance": "外観",
+      "general": "一般",
+      "security": "セキュリティ",
+      "sync": "同期とバックアップ",
+      "dataPath": "データディレクトリ",
+      "system": "システムと更新"
     },
     "appearance": {
       "flavor": "フレーバー",
@@ -46,6 +53,10 @@
         "Space Grotesk": "Space Grotesk",
         "JetBrains Mono": "JetBrains Mono"
       },
+      "fontGroup": {
+        "builtin": "組み込み",
+        "system": "システムフォント"
+      },
       "fontScaleOption": {
         "Small": "小 (90%)",
         "Default": "標準 (100%)",
@@ -65,6 +76,133 @@
         "fr": "Français",
         "de": "Deutsch",
         "es": "Español"
+      }
+    },
+    "general": {
+      "theme": "テーマ",
+      "themeHint": "PromptHub の外観を選択します。「システム」は OS の設定に従います。",
+      "themeMode": {
+        "light": "ライト",
+        "dark": "ダーク",
+        "system": "システム"
+      },
+      "language": "言語",
+      "languageHint": "表示言語はすぐに適用され、再起動は不要です。",
+      "locale": {
+        "en": "English",
+        "zh": "简体中文",
+        "zh-TW": "繁體中文",
+        "ja": "日本語",
+        "fr": "Français",
+        "de": "Deutsch",
+        "es": "Español"
+      },
+      "autoSave": "自動保存",
+      "autoSaveHint": "編集中に変更を自動的に保存します。",
+      "launchAtStartup": "起動時に実行",
+      "launchAtStartupHint": "システム起動時に PromptHub を自動的に起動します。"
+    },
+    "security": {
+      "statusConfigured": "マスターパスワード設定済み",
+      "statusNotConfigured": "マスターパスワード未設定",
+      "statusNotConfiguredHint": "マスターパスワードを設定して、非公開の Prompt データを暗号化します。",
+      "statusLocked": "ロック中",
+      "statusUnlocked": "ロック解除済み",
+      "passwordLength": "マスターパスワードは 8〜128 文字で入力してください。",
+      "passwordMismatch": "パスワードが一致しません。",
+      "passwordRequired": "マスターパスワードを入力してください。",
+      "currentPasswordRequired": "現在のマスターパスワードを入力してください。",
+      "setTitle": "マスターパスワードを設定",
+      "setHint": "8〜128 文字を使用してください。PromptHub は導出された検証値のみを保存し、パスワード自体は保存しません。",
+      "newPassword": "新しいパスワード",
+      "confirmPassword": "パスワードの確認",
+      "setButton": "マスターパスワードを設定",
+      "password": "マスターパスワード",
+      "unlockTitle": "ロック解除",
+      "unlockButton": "ロック解除",
+      "lockButton": "今すぐロック",
+      "changeTitle": "マスターパスワードを変更",
+      "changeRestartHint": "マスターパスワードを変更すると暗号化データが再暗号化され、完全に反映するには再起動が必要です。",
+      "currentPassword": "現在のパスワード",
+      "changeButton": "パスワードを変更"
+    },
+    "dataPath": {
+      "activeLabel": "現在のデータディレクトリ",
+      "restartPending": "データパスの変更が保留中です。再起動して次に切り替えます：",
+      "changeTitle": "データディレクトリを変更",
+      "changeHint": "まず対象ディレクトリをプレビューし、推奨される操作を適用します。適用には再起動が必要です。",
+      "targetPlaceholder": "対象ディレクトリのパスを入力",
+      "previewButton": "プレビュー",
+      "previewExists": "対象が存在します",
+      "previewHasData": "PromptHub データを含みます",
+      "previewIsCurrent": "現在のディレクトリです",
+      "previewRecommended": "推奨される操作",
+      "previewYes": "はい",
+      "previewNo": "いいえ",
+      "previewAlreadyCurrent": "これはすでに現在のデータディレクトリです。",
+      "action": {
+        "migrate": "移行",
+        "switch": "切り替え"
+      },
+      "applyAction": {
+        "migrate": "現在のデータをここに移行",
+        "switch": "このディレクトリに切り替え",
+        "overwrite": "現在のデータで上書き"
+      },
+      "applyConfirm": "このデータパスの変更を適用しますか？完了するにはアプリの再起動が必要です。",
+      "recoveryTitle": "データを復元",
+      "recoveryHint": "既知の場所から復元可能な PromptHub データを検索します。",
+      "recoveryScan": "スキャン",
+      "recoveryUnavailable": "この実行環境ではデータ復元を利用できません。",
+      "recoveryApply": "復元",
+      "recoveryEmpty": "復元可能なデータが見つかりませんでした。",
+      "recoveryConfirm": "このソースからデータを復元しますか？完了するにはアプリの再起動が必要です。"
+    },
+    "sync": {
+      "testConnection": "接続をテスト",
+      "testing": "テスト中…",
+      "webdav": {
+        "title": "WebDAV",
+        "url": "サーバー URL",
+        "username": "ユーザー名",
+        "password": "パスワード",
+        "urlRequired": "WebDAV サーバーの URL を入力してください。",
+        "urlScheme": "URL は http:// または https:// で始まる必要があります。"
+      },
+      "s3": {
+        "title": "S3",
+        "endpoint": "エンドポイント",
+        "region": "リージョン",
+        "bucket": "バケット",
+        "accessKey": "アクセスキー ID",
+        "secretKey": "シークレットアクセスキー",
+        "endpointRequired": "S3 エンドポイントを入力してください。",
+        "endpointScheme": "エンドポイントは http:// または https:// で始まる必要があります。",
+        "regionRequired": "S3 リージョンを入力してください。",
+        "bucketRequired": "S3 バケットを入力してください。",
+        "accessKeyRequired": "アクセスキー ID を入力してください。",
+        "secretKeyRequired": "シークレットアクセスキーを入力してください。"
+      },
+      "export": {
+        "title": "データをエクスポート",
+        "hint": "選択したデータカテゴリの ZIP アーカイブを作成します。",
+        "data": "データ",
+        "media": "メディア",
+        "skill": "スキル",
+        "rule": "ルール",
+        "button": "ZIP をエクスポート",
+        "exporting": "エクスポート中…",
+        "done": "エクスポート先"
+      },
+      "backup": {
+        "title": "アップグレードバックアップ",
+        "hint": "ローカルのロールバックポイント。復元するには再起動が必要です。",
+        "create": "バックアップを作成",
+        "empty": "バックアップはまだありません。",
+        "restore": "復元",
+        "delete": "バックアップを削除",
+        "restoreConfirm": "このバックアップを復元しますか？完了するにはアプリの再起動が必要です。",
+        "deleteConfirm": "このバックアップを削除しますか？この操作は元に戻せません。"
       }
     }
   },

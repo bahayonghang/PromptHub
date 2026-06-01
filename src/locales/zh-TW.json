@@ -1,7 +1,14 @@
 {
   "settingsView": {
+    "title": "設定",
+    "restartRequired": "最近的變更需要重新啟動應用程式才能生效。",
     "sections": {
-      "appearance": "外觀"
+      "appearance": "外觀",
+      "general": "一般",
+      "security": "安全",
+      "sync": "同步與備份",
+      "dataPath": "資料目錄",
+      "system": "系統與更新"
     },
     "appearance": {
       "flavor": "風格",
@@ -46,6 +53,10 @@
         "Space Grotesk": "Space Grotesk",
         "JetBrains Mono": "JetBrains Mono"
       },
+      "fontGroup": {
+        "builtin": "內建",
+        "system": "系統字型"
+      },
       "fontScaleOption": {
         "Small": "小 (90%)",
         "Default": "預設 (100%)",
@@ -65,6 +76,133 @@
         "fr": "Français",
         "de": "Deutsch",
         "es": "Español"
+      }
+    },
+    "general": {
+      "theme": "主題",
+      "themeHint": "選擇 PromptHub 的外觀。跟隨系統將使用作業系統的外觀設定。",
+      "themeMode": {
+        "light": "淺色",
+        "dark": "深色",
+        "system": "跟隨系統"
+      },
+      "language": "語言",
+      "languageHint": "介面語言立即生效，無需重新啟動。",
+      "locale": {
+        "en": "English",
+        "zh": "简体中文",
+        "zh-TW": "繁體中文",
+        "ja": "日本語",
+        "fr": "Français",
+        "de": "Deutsch",
+        "es": "Español"
+      },
+      "autoSave": "自動儲存",
+      "autoSaveHint": "編輯時自動儲存變更。",
+      "launchAtStartup": "開機啟動",
+      "launchAtStartupHint": "系統啟動時自動執行 PromptHub。"
+    },
+    "security": {
+      "statusConfigured": "已設定主密碼",
+      "statusNotConfigured": "未設定主密碼",
+      "statusNotConfiguredHint": "設定主密碼以加密你的私密 Prompt 資料。",
+      "statusLocked": "已鎖定",
+      "statusUnlocked": "已解鎖",
+      "passwordLength": "主密碼長度必須為 8 到 128 個字元。",
+      "passwordMismatch": "兩次輸入的密碼不一致。",
+      "passwordRequired": "請輸入主密碼。",
+      "currentPasswordRequired": "請輸入目前的主密碼。",
+      "setTitle": "設定主密碼",
+      "setHint": "使用 8 到 128 個字元。PromptHub 只儲存衍生的驗證值，絕不儲存密碼本身。",
+      "newPassword": "新密碼",
+      "confirmPassword": "確認密碼",
+      "setButton": "設定主密碼",
+      "password": "主密碼",
+      "unlockTitle": "解鎖",
+      "unlockButton": "解鎖",
+      "lockButton": "立即鎖定",
+      "changeTitle": "變更主密碼",
+      "changeRestartHint": "變更主密碼會重新加密你的資料，需要重新啟動才能完全生效。",
+      "currentPassword": "目前的密碼",
+      "changeButton": "變更密碼"
+    },
+    "dataPath": {
+      "activeLabel": "目前的資料目錄",
+      "restartPending": "資料目錄變更待處理。重新啟動以切換至：",
+      "changeTitle": "變更資料目錄",
+      "changeHint": "請先預覽目標目錄，再套用建議的操作。套用變更需要重新啟動。",
+      "targetPlaceholder": "輸入目標目錄路徑",
+      "previewButton": "預覽",
+      "previewExists": "目標已存在",
+      "previewHasData": "包含 PromptHub 資料",
+      "previewIsCurrent": "是目前的目錄",
+      "previewRecommended": "建議的操作",
+      "previewYes": "是",
+      "previewNo": "否",
+      "previewAlreadyCurrent": "這已經是目前的資料目錄。",
+      "action": {
+        "migrate": "遷移",
+        "switch": "切換"
+      },
+      "applyAction": {
+        "migrate": "將目前的資料遷移至此處",
+        "switch": "切換至此目錄",
+        "overwrite": "以目前的資料覆寫"
+      },
+      "applyConfirm": "套用此資料目錄變更？套用需要重新啟動才能完成。",
+      "recoveryTitle": "復原資料",
+      "recoveryHint": "在已知位置搜尋可復原的 PromptHub 資料。",
+      "recoveryScan": "掃描",
+      "recoveryUnavailable": "目前的執行環境不支援資料復原。",
+      "recoveryApply": "復原",
+      "recoveryEmpty": "找不到可復原的資料。",
+      "recoveryConfirm": "從此來源復原資料？復原需要重新啟動才能完成。"
+    },
+    "sync": {
+      "testConnection": "測試連線",
+      "testing": "測試中…",
+      "webdav": {
+        "title": "WebDAV",
+        "url": "伺服器位址",
+        "username": "使用者名稱",
+        "password": "密碼",
+        "urlRequired": "請輸入 WebDAV 伺服器位址。",
+        "urlScheme": "位址必須以 http:// 或 https:// 開頭。"
+      },
+      "s3": {
+        "title": "S3",
+        "endpoint": "Endpoint",
+        "region": "區域",
+        "bucket": "儲存桶",
+        "accessKey": "Access Key ID",
+        "secretKey": "Secret Access Key",
+        "endpointRequired": "請輸入 S3 Endpoint。",
+        "endpointScheme": "Endpoint 必須以 http:// 或 https:// 開頭。",
+        "regionRequired": "請輸入 S3 區域。",
+        "bucketRequired": "請輸入 S3 儲存桶。",
+        "accessKeyRequired": "請輸入 Access Key ID。",
+        "secretKeyRequired": "請輸入 Secret Access Key。"
+      },
+      "export": {
+        "title": "匯出資料",
+        "hint": "將選定的資料類別打包為 ZIP 壓縮檔。",
+        "data": "資料",
+        "media": "媒體",
+        "skill": "技能",
+        "rule": "規則",
+        "button": "匯出 ZIP",
+        "exporting": "匯出中…",
+        "done": "已匯出至"
+      },
+      "backup": {
+        "title": "升級備份",
+        "hint": "本機回復點。復原某個備份需要重新啟動。",
+        "create": "建立備份",
+        "empty": "尚無備份。",
+        "restore": "復原",
+        "delete": "刪除備份",
+        "restoreConfirm": "復原此備份？復原需要重新啟動才能完成。",
+        "deleteConfirm": "刪除此備份？此操作無法復原。"
       }
     }
   },
