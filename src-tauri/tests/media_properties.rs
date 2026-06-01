@@ -217,6 +217,7 @@ proptest! {
 
 /// The three input shapes a session-path image save can take.
 #[derive(Debug, Clone)]
+#[allow(clippy::enum_variant_names)]
 enum PathCase {
     /// A supported image whose source path was selected this session.
     SessionImage(Vec<u8>),

@@ -555,16 +555,16 @@ proptest! {
 
         // record: (id, updated) with distinct updated values.
         let mut records: Vec<(String, i64)> = Vec::with_capacity(n);
-        for i in 0..n {
+        for &updated in updated_perm.iter().take(n) {
             let created = prompt::create(&conn, base_create("seed", "body")).unwrap();
-            set_updated(&conn, &created.id, updated_perm[i] as i64);
-            records.push((created.id, updated_perm[i] as i64));
+            set_updated(&conn, &created.id, updated as i64);
+            records.push((created.id, updated as i64));
         }
 
         // Independent ground-truth order: updatedAt descending (the default,
         // Req 5.8). updated values are distinct, so this is unambiguous.
         let mut full_sorted = records.clone();
-        full_sorted.sort_by(|a, b| b.1.cmp(&a.1));
+        full_sorted.sort_by_key(|b| std::cmp::Reverse(b.1));
         let full: Vec<String> = full_sorted.into_iter().map(|r| r.0).collect();
 
         // Default query (no sort, no pagination) returns the full default order.

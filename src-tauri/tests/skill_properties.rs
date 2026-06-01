@@ -561,6 +561,7 @@ fn local_escape_payload(case: EscapingPathCase, outside: &Path) -> String {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::enum_variant_names)]
 enum PlatformEscapeCase {
     SkillNameParent,
     SkillNameNested,
