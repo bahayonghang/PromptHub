@@ -23,9 +23,12 @@ install:
 dev:
     npm run dev
 
-# Full desktop dev environment (Vite + native window).
+# Full desktop dev environment (Vite + native window + Rust backend).
 tauri-dev:
     npm run tauri dev
+
+# Short alias for `tauri-dev` (frontend-only `dev` cannot reach the backend).
+alias tdev := tauri-dev
 
 # --- Build ---
 
