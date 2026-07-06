@@ -120,8 +120,14 @@ fn parsed_skill_md() -> impl Strategy<Value = ParsedSkillMd> {
     );
 
     (
-        proptest::string::string_regex("[a-zA-Z0-9 好世界_-]{1,32}").unwrap(),
-        proptest::string::string_regex("[a-zA-Z0-9 好世界_.,;:!?/-]{1,80}").unwrap(),
+        proptest::string::string_regex("[a-zA-Z0-9 好世界_-]{1,32}")
+            .unwrap()
+            .prop_filter("name must not be whitespace-only", |s| !s.trim().is_empty()),
+        proptest::string::string_regex("[a-zA-Z0-9 好世界_.,;:!?/-]{1,80}")
+            .unwrap()
+            .prop_filter("description must not be whitespace-only", |s| {
+                !s.trim().is_empty()
+            }),
         optional_pairs,
         prop_oneof![
             Just(String::new()),
