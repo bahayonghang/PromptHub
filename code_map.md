@@ -9,8 +9,11 @@ commands, and safety constraints live in `AGENTS.md`.
   Runtime Bridge. See `src/code_map.md`.
 - `src-tauri/` — Rust/Tauri backend; start here for commands, services, storage,
   and the SQLite schema. See `src-tauri/code_map.md`.
-- `.kiro/specs/tauri-rewrite/` — requirements, design, and tasks; the source of
-  the `Req N.M` references sprinkled through the code.
+- `.trellis/workflow.md` — task lifecycle, planning, implementation, and finish
+  rules for Trellis-managed sessions.
+- `.trellis/spec/` — project coding guidelines loaded for Trellis tasks; start
+  here when updating durable AI-facing conventions.
+- `.trellis/tasks/` — active and archived task artifacts, PRDs, and context.
 - `ref/PromptHub/` — read-only Electron reference implementation; consult for
   intended behavior, never edit.
 - `index.html` — Vite HTML entry; loads `src/main.tsx`.
@@ -50,11 +53,16 @@ commands, and safety constraints live in `AGENTS.md`.
 - `src-tauri/gen/schemas/` — Tauri-generated ACL/capability schemas; regenerated on build.
 - `node_modules/` — installed dependencies; skip during guidance/navigation.
 - `ref/` — read-only reference tree; gitignored, excluded from the build.
+- `.agents/`, `.codex/`, `.claude/` — local agent/platform tooling; inspect only
+  for agent workflow changes and do not treat as application source.
+- `.trellis/workspace/` — per-developer journals/session traces; prefer Trellis
+  scripts for lifecycle edits.
 - `.omx/state/`, `.kiro/`, `.vscode/` — local tooling/editor state.
 
 ## Verification Command Index
 
-- `npm run build` — frontend typecheck + production build (run from root).
-- `npm run test` — frontend Vitest suite (run from root).
-- `cargo test` — backend tests (run from `src-tauri/`).
-- `cargo fmt` / `cargo clippy` — backend format/lint (run from `src-tauri/`).
+- `just build` — frontend typecheck + production build (run from root).
+- `just test` — frontend Vitest suite (run from root).
+- `just test-rust` — backend tests (run from root via `src-tauri/Cargo.toml`).
+- `just fmt-check` / `just clippy` — backend format/lint gates.
+- `just ci` — full local gate for broad or cross-boundary changes.

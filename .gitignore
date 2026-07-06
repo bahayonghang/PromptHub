@@ -61,3 +61,7 @@ pnpm-debug.log*
 *.swo
 Thumbs.db
 Desktop.ini
+
+.agents/
+.claude/
+.codex/
