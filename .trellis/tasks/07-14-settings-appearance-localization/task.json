@@ -1,0 +1,31 @@
+{
+  "id": "settings-appearance-localization",
+  "name": "settings-appearance-localization",
+  "title": "Improve settings appearance and localization",
+  "description": "Unify settings bootstrap, live i18n, named themes, and interface font fallbacks with packaged-app verification.",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": "cross-layer",
+  "package": null,
+  "priority": "P2",
+  "creator": "lyh",
+  "assignee": "lyh",
+  "createdAt": "2026-07-14",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "PRODUCT.md",
+    "DESIGN.md",
+    ".impeccable/design.json",
+    ".impeccable/live/config.json"
+  ],
+  "notes": "",
+  "meta": {}
+}

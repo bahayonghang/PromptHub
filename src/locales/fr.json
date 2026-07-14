@@ -2,6 +2,12 @@
   "settingsView": {
     "title": "Paramètres",
     "restartRequired": "Un redémarrage est nécessaire pour que votre modification récente prenne effet.",
+    "preferences": {
+      "saving": "Enregistrement…",
+      "saved": "Enregistré",
+      "unsaved": "Appliqué pour cette session, mais non enregistré.",
+      "retry": "Réessayer"
+    },
     "sections": {
       "appearance": "Apparence",
       "general": "Général",
@@ -11,6 +17,35 @@
       "system": "Système et mises à jour"
     },
     "appearance": {
+      "themeFamily": "Famille de thème",
+      "themeFamilyHint": "Choisissez la palette indépendamment du mode clair, sombre ou système.",
+      "familyOption": {
+        "catppuccin": "Catppuccin",
+        "claude": "Claude"
+      },
+      "familyDescription": {
+        "catppuccin": "Palettes officielles Latte, Frappé, Macchiato et Mocha",
+        "claude": "Palettes claires et sombres, chaleureuses et concentrées"
+      },
+      "colorMode": "Mode de couleur",
+      "catppuccinDarkVariant": "Variante sombre Catppuccin",
+      "darkVariantOption": {
+        "frappe": "Frappé",
+        "macchiato": "Macchiato",
+        "mocha": "Mocha"
+      },
+      "interfaceFonts": "Polices de repli de l’interface",
+      "interfaceFontsHint": "PromptHub essaie ces polices dans l’ordre, puis ajoute les replis de langue et du système.",
+      "primaryFont": "Police principale",
+      "fallbackFont": "Police de repli {{index}}",
+      "addFallback": "Ajouter une police de repli",
+      "moveFontUp": "Monter la police",
+      "moveFontDown": "Descendre la police",
+      "removeFont": "Supprimer la police",
+      "systemFontsLoading": "Chargement des polices système",
+      "systemFontsEmpty": "Aucune autre police système trouvée.",
+      "systemFontsError": "Impossible de charger les polices système.",
+      "specimenMultilingual": "简体中文 · 繁體中文 · 日本語 · Aa 0123 → {} []",
       "flavor": "Variante",
       "language": "Langue",
       "accentColor": "Couleur d'accentuation",

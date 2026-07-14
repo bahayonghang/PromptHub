@@ -36,6 +36,14 @@ describe("createSettingsApi command contract (Req 3.1)", () => {
     expect(invoke).toHaveBeenCalledWith("settings.update", { patch });
   });
 
+  it("routes system font discovery through the bridge", async () => {
+    const { bridge, invoke } = makeBridge(["Inter", "Segoe UI"]);
+    const api = createSettingsApi(bridge);
+
+    await expect(api.listSystemFonts()).resolves.toEqual(["Inter", "Segoe UI"]);
+    expect(invoke).toHaveBeenCalledWith("settings.list_system_fonts");
+  });
+
   it("routes security commands through the bridge (Req 15)", async () => {
     const { bridge, invoke } = makeBridge(null);
     const api = createSettingsApi(bridge);

@@ -2,145 +2,112 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import appearancePanelSrc from "./AppearancePanel.tsx?raw";
-import specimenCardSrc from "./SpecimenCard.tsx?raw";
-import summaryStripSrc from "./SummaryStrip.tsx?raw";
-import appearanceIndexSrc from "../../../appearance/index.ts?raw";
-import { AppearancePanel, type AppearancePanelProps } from "./AppearancePanel";
-import { useSettingsStore } from "../settingsStore";
-import type { Settings } from "../types";
-import { createAppearanceController } from "../../../appearance";
-import { BridgeError } from "../../../runtime";
-import i18n from "../../../runtime/i18n";
+import preferencesSrc from "../../../appearance/preferences.ts?raw";
+import { AppearancePanel } from "./AppearancePanel";
+import { useSettingsStore, type PreferenceRuntime } from "../settingsStore";
+import type { SettingsApi } from "../api";
+import type { Settings, SettingsPatch } from "../types";
 
-/** A resolved-bridge invoke spy typed for the panel prop. */
-function okInvoke() {
-  return vi.fn().mockResolvedValue(undefined) as unknown as AppearancePanelProps["invoke"];
+const baseSettings: Settings = {
+  theme: "dark",
+  language: "en",
+  autoSave: true,
+  themeFamily: "catppuccin",
+  catppuccinDarkVariant: "mocha",
+  interfaceFontStack: ["System"],
+};
+
+function makeApi(updateSettings?: (patch: SettingsPatch) => Promise<Settings>) {
+  return {
+    updateSettings:
+      updateSettings ??
+      vi.fn(async (patch: SettingsPatch) => ({ ...baseSettings, ...patch })),
+    listSystemFonts: vi.fn(async () => ["Arial", "Microsoft YaHei UI"]),
+  } as unknown as SettingsApi;
 }
 
-function group(name: string) {
-  return within(screen.getByRole("group", { name }));
-}
-
-function combobox(name: string): HTMLSelectElement {
-  return screen.getByRole("combobox", { name }) as HTMLSelectElement;
+function makeRuntime(): PreferenceRuntime {
+  return {
+    currentLocale: () => "en",
+    changeLocale: vi.fn(async () => {}),
+    applyAppearance: vi.fn(),
+  };
 }
 
 beforeEach(() => {
   useSettingsStore.setState({
-    settings: { theme: "dark", language: "en", autoSave: false } as Settings,
+    api: makeApi(),
+    settings: baseSettings,
     error: null,
+    systemFonts: [],
+    systemFontsStatus: "idle",
+    preferenceRuntime: makeRuntime(),
+    preferenceStatus: {},
+    preferenceErrors: {},
+    pendingPreferences: {},
   });
 });
 
 afterEach(cleanup);
 
-describe("AppearancePanel controls (Req 1-7)", () => {
-  it("offers exactly each control's catalog and uses Lucide icons", () => {
-    const { container } = render(<AppearancePanel invoke={okInvoke()} changeLocaleFn={vi.fn()} />);
+describe("AppearancePanel", () => {
+  it("renders the independent theme, mode, accent, font, scale, and density controls", async () => {
+    render(<AppearancePanel />);
 
-    expect(group("Flavor").getAllByRole("button")).toHaveLength(6);
-    expect(group("Accent color").getAllByRole("button")).toHaveLength(14);
-    expect(group("Font scale").getAllByRole("button")).toHaveLength(4);
-    expect(group("Density").getAllByRole("button")).toHaveLength(3);
-    expect(within(combobox("Display font")).getAllByRole("option")).toHaveLength(4);
-    expect(within(combobox("Body font")).getAllByRole("option")).toHaveLength(4);
-    expect(within(combobox("Language")).getAllByRole("option")).toHaveLength(7);
-
-    // Every control section renders a Lucide icon (svg).
-    expect(container.querySelectorAll("svg").length).toBeGreaterThanOrEqual(8);
+    expect(within(screen.getByRole("group", { name: "Theme family" })).getAllByRole("button")).toHaveLength(2);
+    expect(within(screen.getByRole("group", { name: "Color mode" })).getAllByRole("button")).toHaveLength(3);
+    expect(within(screen.getByRole("group", { name: "Accent color" })).getAllByRole("button")).toHaveLength(14);
+    expect(within(screen.getByRole("group", { name: "Font scale" })).getAllByRole("button")).toHaveLength(4);
+    expect(within(screen.getByRole("group", { name: "Density" })).getAllByRole("button")).toHaveLength(3);
+    expect(screen.getByRole("combobox", { name: "Catppuccin dark variant" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Primary font" })).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("option", { name: "Arial" })).toBeTruthy());
   });
 
-  it("pre-selects the documented defaults when no appearance is persisted", () => {
-    render(<AppearancePanel invoke={okInvoke()} changeLocaleFn={vi.fn()} />);
-
-    expect(screen.getByRole("button", { name: "Mocha" }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: "Blue" }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: "Default (100%)" }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: "Default" }).getAttribute("aria-pressed")).toBe("true");
-    expect(combobox("Display font").value).toBe("System");
-    expect(combobox("Body font").value).toBe("System");
-    expect(combobox("Language").value).toBe("en");
-  });
-
-  it("pre-selects the applied value when appearance is persisted", () => {
+  it("migrates a legacy Claude flavor into the selected family and mode", () => {
     useSettingsStore.setState({
-      settings: {
-        theme: "dark",
-        language: "en",
-        autoSave: false,
-        flavor: "Latte",
-        accentColor: "Red",
-        displayFont: "Inter",
-        bodyFont: "JetBrains Mono",
-        fontScale: "Large",
-        density: "Compact",
-      } as Settings,
+      settings: { ...baseSettings, themeFamily: null, flavor: "Claude Light" },
     });
-    render(<AppearancePanel invoke={okInvoke()} changeLocaleFn={vi.fn()} />);
+    render(<AppearancePanel />);
 
-    expect(screen.getByRole("button", { name: "Latte" }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: "Red" }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: "Large (110%)" }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: "Compact" }).getAttribute("aria-pressed")).toBe("true");
-    expect(combobox("Display font").value).toBe("Inter");
-    expect(combobox("Body font").value).toBe("JetBrains Mono");
-  });
-});
-
-describe("AppearancePanel persistence (Req 1.5, 2.5)", () => {
-  it("routes persistence through the injected bridge and syncs the store", () => {
-    const invoke = okInvoke();
-    render(<AppearancePanel invoke={invoke} changeLocaleFn={vi.fn()} />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Latte" }));
-
-    expect(invoke).toHaveBeenCalledWith("settings.update", { patch: { flavor: "Latte" } });
-    expect(useSettingsStore.getState().settings?.flavor).toBe("Latte");
+    expect(screen.getByRole("button", { name: /Claude/ }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Light" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByRole("combobox", { name: "Catppuccin dark variant" })).toBeNull();
   });
 
-  it("keeps the applied value and sets the store error when persistence is rejected (Req 3.8)", async () => {
-    const invoke = vi
-      .fn()
-      .mockRejectedValue(new BridgeError("INTERNAL", "nope")) as unknown as AppearancePanelProps["invoke"];
-    const controller = createAppearanceController({ root: document.createElement("div") });
-    render(<AppearancePanel invoke={invoke} controller={controller} changeLocaleFn={vi.fn()} />);
+  it("persists through the settings store and adopts the returned canonical settings", async () => {
+    const update = vi.fn(async (patch: SettingsPatch) => ({
+      ...baseSettings,
+      ...patch,
+      themeFamily: "claude",
+    }));
+    useSettingsStore.setState({ api: makeApi(update) });
+    render(<AppearancePanel />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Latte" }));
+    fireEvent.click(screen.getByRole("button", { name: /Claude/ }));
 
-    await waitFor(() => expect(useSettingsStore.getState().error).toBeTruthy());
-    // The applied value is kept for the session despite the failed persist.
-    expect(controller.current().flavor).toBe("Latte");
+    await waitFor(() => expect(useSettingsStore.getState().preferenceStatus.themeFamily).toBe("saved"));
+    expect(update).toHaveBeenCalledOnce();
+    expect(useSettingsStore.getState().settings?.themeFamily).toBe("claude");
+    expect(screen.getByText("Saved")).toBeTruthy();
   });
-});
 
-describe("AppearancePanel language delegation (Req 7)", () => {
-  it("delegates language selection to changeLocale and reflects the active locale", () => {
-    const changeLocaleFn = vi.fn().mockResolvedValue(undefined);
-    render(
-      <AppearancePanel
-        invoke={okInvoke()}
-        changeLocaleFn={changeLocaleFn as AppearancePanelProps["changeLocaleFn"]}
-      />,
-    );
+  it("keeps a failed preview and offers an inline retry", async () => {
+    useSettingsStore.setState({
+      api: makeApi(vi.fn(async () => { throw new Error("disk full"); })),
+    });
+    render(<AppearancePanel />);
 
-    const select = combobox("Language");
-    expect(select.value).toBe(i18n.language); // reflects the active locale
+    fireEvent.click(screen.getByRole("button", { name: /Claude/ }));
 
-    fireEvent.change(select, { target: { value: "ja" } });
-    expect(changeLocaleFn).toHaveBeenCalledWith("ja");
+    await waitFor(() => expect(screen.getByText("Applied for this session, but not saved.")).toBeTruthy());
+    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(useSettingsStore.getState().settings?.themeFamily).toBe("claude");
   });
-});
 
-describe("AppearancePanel routing constraint (Req 1.5)", () => {
-  it("does not import @tauri-apps/api in any appearance module", () => {
-    const sources: Record<string, string> = {
-      "AppearancePanel.tsx": appearancePanelSrc,
-      "SpecimenCard.tsx": specimenCardSrc,
-      "SummaryStrip.tsx": summaryStripSrc,
-      "appearance/index.ts": appearanceIndexSrc,
-    };
-    for (const [name, source] of Object.entries(sources)) {
-      expect(source, `${name} must not import @tauri-apps/api`).not.toContain("@tauri-apps/api");
-    }
+  it("keeps the Runtime Bridge boundary outside the component", () => {
+    expect(appearancePanelSrc).not.toContain("@tauri-apps/api");
+    expect(appearancePanelSrc).not.toContain("runtime.invoke");
+    expect(preferencesSrc).not.toContain("settings.update");
   });
 });

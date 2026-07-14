@@ -14,6 +14,18 @@
  * this state or logged (security note in task 22.4).
  */
 import { create } from "zustand";
+import {
+  applyAppearancePreferences,
+  normalizeAppearancePreferences,
+  normalizeInterfaceFontStack,
+} from "../../appearance/preferences";
+import i18n, {
+  changeLocale as applyLocale,
+  DEFAULT_LOCALE,
+  isSupportedLocale,
+  type LocaleGateway,
+  type SupportedLocale,
+} from "../../runtime/i18n";
 import { settingsApi, type SettingsApi } from "./api";
 import type {
   ApplyResult,
@@ -48,6 +60,96 @@ function errorCode(err: unknown): string | null {
   return null;
 }
 
+export const PREFERENCE_KEYS = [
+  "language",
+  "theme",
+  "themeFamily",
+  "catppuccinDarkVariant",
+  "accentColor",
+  "interfaceFontStack",
+  "fontScale",
+  "density",
+] as const;
+
+export type PreferenceKey = (typeof PREFERENCE_KEYS)[number];
+export type PreferenceValue = string | string[];
+export type PreferenceSaveStatus = "idle" | "saving" | "saved" | "unsaved";
+export type SystemFontsStatus = "idle" | "loading" | "ready" | "empty" | "error";
+
+export interface PreferenceRuntime {
+  currentLocale(): SupportedLocale;
+  changeLocale(locale: SupportedLocale): Promise<void>;
+  applyAppearance(settings: Settings, locale: SupportedLocale): void;
+}
+
+const sessionOnlyLocaleGateway: LocaleGateway = {
+  loadPersistedLocale: async () => null,
+  detectOsLocale: () => "",
+  persistLocale: async () => {},
+};
+
+const defaultPreferenceRuntime: PreferenceRuntime = {
+  currentLocale: () => (isSupportedLocale(i18n.language) ? i18n.language : DEFAULT_LOCALE),
+  changeLocale: (locale) => applyLocale(locale, sessionOnlyLocaleGateway),
+  applyAppearance: applyAppearancePreferences,
+};
+
+function preferencePatch(
+  current: Settings,
+  key: PreferenceKey,
+  value: PreferenceValue,
+): SettingsPatch {
+  if (key === "language") return { language: String(value) };
+
+  const migrated = normalizeAppearancePreferences(current);
+  const normalizedValue =
+    key === "interfaceFontStack" ? normalizeInterfaceFontStack(value) : value;
+  return {
+    themeFamily: current.themeFamily ?? migrated.themeFamily,
+    catppuccinDarkVariant:
+      current.catppuccinDarkVariant ?? migrated.catppuccinDarkVariant,
+    interfaceFontStack: current.interfaceFontStack ?? migrated.interfaceFontStack,
+    [key]: normalizedValue,
+  };
+}
+
+let preferenceWriteTail: Promise<void> = Promise.resolve();
+
+async function serializePreferenceWrite<T>(operation: () => Promise<T>): Promise<T> {
+  const previous = preferenceWriteTail;
+  let release!: () => void;
+  preferenceWriteTail = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await previous;
+  try {
+    return await operation();
+  } finally {
+    release();
+  }
+}
+
+function overlayPendingPreferences(
+  canonical: Settings,
+  completedKey: PreferenceKey,
+  pending: Partial<Record<PreferenceKey, PreferenceValue>>,
+  statuses: Partial<Record<PreferenceKey, PreferenceSaveStatus>>,
+): Settings {
+  let result = canonical;
+  for (const key of PREFERENCE_KEYS) {
+    const value = pending[key];
+    if (
+      key === completedKey ||
+      value === undefined ||
+      !["saving", "unsaved"].includes(statuses[key] ?? "idle")
+    ) {
+      continue;
+    }
+    result = { ...result, ...preferencePatch(result, key, value) };
+  }
+  return result;
+}
+
 interface SettingsStoreState {
   /** Backend command surface; injectable so tests can supply a fake. */
   api: SettingsApi;
@@ -66,6 +168,15 @@ interface SettingsStoreState {
   recoveryUnavailable: boolean;
   /** Upgrade backups (Req 17.8), most-recent first as returned by the backend. */
   backups: BackupEntry[];
+  /** Cached system font families for the appearance controls. */
+  systemFonts: string[];
+  systemFontsStatus: SystemFontsStatus;
+
+  /** DOM/i18n preference application boundary; injectable for store tests. */
+  preferenceRuntime: PreferenceRuntime;
+  preferenceStatus: Partial<Record<PreferenceKey, PreferenceSaveStatus>>;
+  preferenceErrors: Partial<Record<PreferenceKey, string>>;
+  pendingPreferences: Partial<Record<PreferenceKey, PreferenceValue>>;
 
   /**
    * True once an operation that needs a restart to take effect has been applied
@@ -79,6 +190,10 @@ interface SettingsStoreState {
 
   /** Loads settings, security status, data status, and backups (Req 15, 17, 19). */
   load: () => Promise<void>;
+  /** Seeds the settings loaded by the awaited application bootstrap. */
+  hydrateSettings: (settings: Settings) => void;
+  loadSystemFonts: () => Promise<void>;
+  retrySystemFonts: () => Promise<void>;
 
   // General preferences ----------------------------------------------------
   /** Persists a partial settings update and stores the result (Req 19.2). */
@@ -90,6 +205,11 @@ interface SettingsStoreState {
    * write.
    */
   mergeLocalSettings: (patch: SettingsPatch) => void;
+  setPreference: (
+    key: PreferenceKey,
+    value: PreferenceValue,
+  ) => Promise<boolean>;
+  retryPreference: (key: PreferenceKey) => Promise<boolean>;
 
   // Security (Req 15) -------------------------------------------------------
   refreshSecurityStatus: () => Promise<void>;
@@ -151,16 +271,24 @@ export const useSettingsStore = create<SettingsStoreState>((set, get) => ({
   recoverySources: [],
   recoveryUnavailable: false,
   backups: [],
+  systemFonts: [],
+  systemFontsStatus: "idle",
+  preferenceRuntime: defaultPreferenceRuntime,
+  preferenceStatus: {},
+  preferenceErrors: {},
+  pendingPreferences: {},
   restartRequired: false,
   loading: false,
   error: null,
+
+  hydrateSettings: (settings) => set({ settings }),
 
   load: async () => {
     const { api } = get();
     set({ loading: true, error: null });
     try {
       const [settings, securityStatus, dataStatus] = await Promise.all([
-        api.getSettings(),
+        get().settings == null ? api.getSettings() : Promise.resolve(get().settings as Settings),
         api.securityStatus(),
         api.getDataStatus(),
       ]);
@@ -177,6 +305,26 @@ export const useSettingsStore = create<SettingsStoreState>((set, get) => ({
     }
     // Backups load best-effort so a failure there never blocks the panels.
     await get().refreshBackups();
+  },
+
+  loadSystemFonts: async () => {
+    const { api, systemFontsStatus } = get();
+    if (["loading", "ready", "empty"].includes(systemFontsStatus)) return;
+    set({ systemFontsStatus: "loading" });
+    try {
+      const systemFonts = await api.listSystemFonts();
+      set({
+        systemFonts,
+        systemFontsStatus: systemFonts.length > 0 ? "ready" : "empty",
+      });
+    } catch {
+      set({ systemFonts: [], systemFontsStatus: "error" });
+    }
+  },
+
+  retrySystemFonts: async () => {
+    set({ systemFontsStatus: "idle" });
+    await get().loadSystemFonts();
   },
 
   updateSettings: async (patch) => {
@@ -196,6 +344,67 @@ export const useSettingsStore = create<SettingsStoreState>((set, get) => ({
     const current = get().settings;
     if (current == null) return;
     set({ settings: { ...current, ...patch } });
+  },
+
+  setPreference: async (key, value) => {
+    const { api, preferenceRuntime } = get();
+    const current = get().settings;
+    if (current == null) return false;
+
+    const patch = preferencePatch(current, key, value);
+    const preview = { ...current, ...patch };
+    const locale =
+      key === "language" && isSupportedLocale(value)
+        ? value
+        : preferenceRuntime.currentLocale();
+    set((state) => ({
+      settings: preview,
+      error: null,
+      preferenceStatus: { ...state.preferenceStatus, [key]: "saving" },
+      preferenceErrors: { ...state.preferenceErrors, [key]: undefined },
+      pendingPreferences: { ...state.pendingPreferences, [key]: value },
+    }));
+
+    try {
+      if (key === "language") await preferenceRuntime.changeLocale(locale);
+      preferenceRuntime.applyAppearance(preview, locale);
+      const canonical = await serializePreferenceWrite(() => api.updateSettings(patch));
+      const state = get();
+      const settings = overlayPendingPreferences(
+        canonical,
+        key,
+        state.pendingPreferences,
+        state.preferenceStatus,
+      );
+      const canonicalLocale = isSupportedLocale(settings.language)
+        ? settings.language
+        : locale;
+      if (canonicalLocale !== preferenceRuntime.currentLocale()) {
+        await preferenceRuntime.changeLocale(canonicalLocale);
+      }
+      preferenceRuntime.applyAppearance(settings, canonicalLocale);
+      set((state) => ({
+        settings,
+        preferenceStatus: { ...state.preferenceStatus, [key]: "saved" },
+        preferenceErrors: { ...state.preferenceErrors, [key]: undefined },
+        pendingPreferences: { ...state.pendingPreferences, [key]: undefined },
+      }));
+      return true;
+    } catch {
+      set((state) => ({
+        preferenceStatus: { ...state.preferenceStatus, [key]: "unsaved" },
+        preferenceErrors: {
+          ...state.preferenceErrors,
+          [key]: "settingsView.preferences.unsaved",
+        },
+      }));
+      return false;
+    }
+  },
+
+  retryPreference: async (key) => {
+    const value = get().pendingPreferences[key];
+    return value === undefined ? false : get().setPreference(key, value);
   },
 
   refreshSecurityStatus: async () => {

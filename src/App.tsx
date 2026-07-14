@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "./store/appStore";
-import { initializeTheme } from "./theme";
 import { AppShell } from "./components/layout/AppShell";
 
 function App() {
@@ -10,11 +9,6 @@ function App() {
   const initialize = useAppStore((state) => state.initialize);
 
   useEffect(() => {
-    // Load the persisted theme selection and apply it, defaulting to dark when
-    // none exists (Requirement 22.5). Best-effort: failures keep the default
-    // theme applied synchronously in main.tsx.
-    void initializeTheme();
-
     // Bootstrap app-level state (readiness + fatal init failures) through the
     // Runtime_Bridge (Req 3.1 / 23.3). The store owns all backend access.
     let unsubscribe: (() => void) | undefined;

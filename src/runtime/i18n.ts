@@ -82,12 +82,14 @@ const LOADERS: Record<SupportedLocale, () => Promise<Record<string, unknown>>> =
 
 /** Loads a locale's resource bundle into i18next once, if not already present. */
 export async function ensureBundle(locale: SupportedLocale): Promise<void> {
+  await waitForI18n();
   if (i18n.hasResourceBundle(locale, NS)) return;
   const resources = await LOADERS[locale]();
   i18n.addResourceBundle(locale, NS, resources, true, true);
 }
 
 let initialized = false;
+let initializationPromise: Promise<void> | null = null;
 
 /**
  * Initializes the shared i18next instance once, with English loaded eagerly and
@@ -97,15 +99,23 @@ let initialized = false;
  */
 export function ensureI18nInitialized(): typeof i18n {
   if (initialized) return i18n;
-  void i18n.use(initReactI18next).init({
-    resources: { en: { [NS]: en } },
-    lng: DEFAULT_LOCALE,
-    fallbackLng: DEFAULT_LOCALE,
-    defaultNS: NS,
-    interpolation: { escapeValue: false },
-  });
+  initializationPromise = i18n
+    .use(initReactI18next)
+    .init({
+      resources: { en: { [NS]: en } },
+      lng: DEFAULT_LOCALE,
+      fallbackLng: DEFAULT_LOCALE,
+      defaultNS: NS,
+      interpolation: { escapeValue: false },
+    })
+    .then(() => undefined);
   initialized = true;
   return i18n;
+}
+
+async function waitForI18n(): Promise<void> {
+  ensureI18nInitialized();
+  await initializationPromise;
 }
 
 /**
@@ -151,13 +161,14 @@ function bridgeGateway(bridge: RuntimeBridge): LocaleGateway {
 export async function initI18n(
   gateway: LocaleGateway = bridgeGateway(runtime),
 ): Promise<SupportedLocale> {
-  ensureI18nInitialized();
+  await waitForI18n();
   const persisted = await gateway.loadPersistedLocale();
   const active = resolveActiveLocale(persisted, gateway.detectOsLocale());
   await ensureBundle(active);
   if (i18n.language !== active) {
     await i18n.changeLanguage(active);
   }
+  if (typeof document !== "undefined") document.documentElement.lang = active;
   return active;
 }
 
@@ -170,8 +181,10 @@ export async function changeLocale(
   locale: SupportedLocale,
   gateway: LocaleGateway = bridgeGateway(runtime),
 ): Promise<void> {
+  await waitForI18n();
   await ensureBundle(locale);
   await i18n.changeLanguage(locale);
+  if (typeof document !== "undefined") document.documentElement.lang = locale;
   await gateway.persistLocale(locale);
 }
 

@@ -2,6 +2,12 @@
   "settingsView": {
     "title": "Einstellungen",
     "restartRequired": "Ein Neustart ist erforderlich, damit Ihre letzte Änderung wirksam wird.",
+    "preferences": {
+      "saving": "Wird gespeichert…",
+      "saved": "Gespeichert",
+      "unsaved": "Für diese Sitzung angewendet, aber nicht gespeichert.",
+      "retry": "Erneut versuchen"
+    },
     "sections": {
       "appearance": "Darstellung",
       "general": "Allgemein",
@@ -11,6 +17,35 @@
       "system": "System & Updates"
     },
     "appearance": {
+      "themeFamily": "Theme-Familie",
+      "themeFamilyHint": "Wähle die Palette unabhängig vom hellen, dunklen oder Systemmodus.",
+      "familyOption": {
+        "catppuccin": "Catppuccin",
+        "claude": "Claude"
+      },
+      "familyDescription": {
+        "catppuccin": "Offizielle Paletten Latte, Frappé, Macchiato und Mocha",
+        "claude": "Warme, fokussierte helle und dunkle Paletten"
+      },
+      "colorMode": "Farbmodus",
+      "catppuccinDarkVariant": "Dunkle Catppuccin-Variante",
+      "darkVariantOption": {
+        "frappe": "Frappé",
+        "macchiato": "Macchiato",
+        "mocha": "Mocha"
+      },
+      "interfaceFonts": "Fallback-Schriften der Oberfläche",
+      "interfaceFontsHint": "PromptHub versucht diese Schriften der Reihe nach und ergänzt Sprach- und System-Fallbacks.",
+      "primaryFont": "Primäre Schrift",
+      "fallbackFont": "Fallback {{index}}",
+      "addFallback": "Fallback hinzufügen",
+      "moveFontUp": "Schrift nach oben",
+      "moveFontDown": "Schrift nach unten",
+      "removeFont": "Schrift entfernen",
+      "systemFontsLoading": "Systemschriften werden geladen",
+      "systemFontsEmpty": "Keine zusätzlichen Systemschriften gefunden.",
+      "systemFontsError": "Systemschriften konnten nicht geladen werden.",
+      "specimenMultilingual": "简体中文 · 繁體中文 · 日本語 · Aa 0123 → {} []",
       "flavor": "Variante",
       "language": "Sprache",
       "accentColor": "Akzentfarbe",

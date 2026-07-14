@@ -34,6 +34,7 @@ export interface SettingsApi {
   // Settings (Req 19.1, 19.2)
   getSettings(): Promise<Settings>;
   updateSettings(patch: SettingsPatch): Promise<Settings>;
+  listSystemFonts(): Promise<string[]>;
 
   // Security (Req 15)
   securityStatus(): Promise<SecurityStatus>;
@@ -72,6 +73,7 @@ export function createSettingsApi(bridge: RuntimeBridge = runtime): SettingsApi 
   return {
     getSettings: () => bridge.invoke<Settings>("settings.get"),
     updateSettings: (patch) => bridge.invoke<Settings>("settings.update", { patch }),
+    listSystemFonts: () => bridge.invoke<string[]>("settings.list_system_fonts"),
 
     securityStatus: () => bridge.invoke<SecurityStatus>("security.status"),
     setMasterPassword: (password) =>

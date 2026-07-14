@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-14T20:30:14.4411051+08:00",
+  "title": "Design System: PromptHub",
+  "extensions": {
+    "colorMeta": {
+      "signal-blue-light": {
+        "role": "primary",
+        "displayName": "Signal Blue Light",
+        "canonical": "#1f66f4",
+        "tonalRamp": ["oklch(15% 0.224 262.1)", "oklch(25% 0.224 262.1)", "oklch(35% 0.224 262.1)", "oklch(45% 0.224 262.1)", "oklch(55% 0.224 262.1)", "oklch(65% 0.224 262.1)", "oklch(80% 0.224 262.1)", "oklch(95% 0.224 262.1)"]
+      },
+      "signal-blue-dark": {
+        "role": "primary",
+        "displayName": "Signal Blue Dark",
+        "canonical": "#89b5fa",
+        "tonalRamp": ["oklch(15% 0.110 259.2)", "oklch(25% 0.110 259.2)", "oklch(35% 0.110 259.2)", "oklch(45% 0.110 259.2)", "oklch(55% 0.110 259.2)", "oklch(65% 0.110 259.2)", "oklch(80% 0.110 259.2)", "oklch(95% 0.110 259.2)"]
+      },
+      "on-primary-light": { "role": "neutral", "displayName": "On Signal Light", "canonical": "#ffffff", "tonalRamp": ["oklch(15% 0 0)", "oklch(25% 0 0)", "oklch(35% 0 0)", "oklch(45% 0 0)", "oklch(55% 0 0)", "oklch(65% 0 0)", "oklch(80% 0 0)", "oklch(95% 0 0)"] },
+      "on-primary-dark": { "role": "neutral", "displayName": "On Signal Dark", "canonical": "#1e1e2e", "tonalRamp": ["oklch(15% 0.030 283.9)", "oklch(25% 0.030 283.9)", "oklch(35% 0.030 283.9)", "oklch(45% 0.030 283.9)", "oklch(55% 0.030 283.9)", "oklch(65% 0.030 283.9)", "oklch(80% 0.030 283.9)", "oklch(95% 0.030 283.9)"] },
+      "latte-canvas": { "role": "neutral", "displayName": "Catppuccin Latte Base", "canonical": "#eff1f5", "tonalRamp": ["oklch(15% 0.006 264.5)", "oklch(25% 0.006 264.5)", "oklch(35% 0.006 264.5)", "oklch(45% 0.006 264.5)", "oklch(55% 0.006 264.5)", "oklch(65% 0.006 264.5)", "oklch(80% 0.006 264.5)", "oklch(95% 0.006 264.5)"] },
+      "latte-surface": { "role": "neutral", "displayName": "Catppuccin Latte Mantle", "canonical": "#e6e9ef", "tonalRamp": ["oklch(15% 0.009 264.5)", "oklch(25% 0.009 264.5)", "oklch(35% 0.009 264.5)", "oklch(45% 0.009 264.5)", "oklch(55% 0.009 264.5)", "oklch(65% 0.009 264.5)", "oklch(80% 0.009 264.5)", "oklch(95% 0.009 264.5)"] },
+      "latte-ink": { "role": "neutral", "displayName": "Catppuccin Latte Text", "canonical": "#4b4e68", "tonalRamp": ["oklch(15% 0.043 279.3)", "oklch(25% 0.043 279.3)", "oklch(35% 0.043 279.3)", "oklch(45% 0.043 279.3)", "oklch(55% 0.043 279.3)", "oklch(65% 0.043 279.3)", "oklch(80% 0.043 279.3)", "oklch(95% 0.043 279.3)"] },
+      "latte-muted": { "role": "neutral", "displayName": "Catppuccin Latte Subtext", "canonical": "#6c6f84", "tonalRamp": ["oklch(15% 0.033 278.8)", "oklch(25% 0.033 278.8)", "oklch(35% 0.033 278.8)", "oklch(45% 0.033 278.8)", "oklch(55% 0.033 278.8)", "oklch(65% 0.033 278.8)", "oklch(80% 0.033 278.8)", "oklch(95% 0.033 278.8)"] },
+      "latte-divider": { "role": "neutral", "displayName": "Catppuccin Latte Divider", "canonical": "#bcc0cd", "tonalRamp": ["oklch(15% 0.019 272.3)", "oklch(25% 0.019 272.3)", "oklch(35% 0.019 272.3)", "oklch(45% 0.019 272.3)", "oklch(55% 0.019 272.3)", "oklch(65% 0.019 272.3)", "oklch(80% 0.019 272.3)", "oklch(95% 0.019 272.3)"] },
+      "mocha-canvas": { "role": "neutral", "displayName": "Catppuccin Mocha Base", "canonical": "#1e1e2e", "tonalRamp": ["oklch(15% 0.030 283.9)", "oklch(25% 0.030 283.9)", "oklch(35% 0.030 283.9)", "oklch(45% 0.030 283.9)", "oklch(55% 0.030 283.9)", "oklch(65% 0.030 283.9)", "oklch(80% 0.030 283.9)", "oklch(95% 0.030 283.9)"] },
+      "mocha-surface": { "role": "neutral", "displayName": "Catppuccin Mocha Mantle", "canonical": "#181825", "tonalRamp": ["oklch(15% 0.025 284.1)", "oklch(25% 0.025 284.1)", "oklch(35% 0.025 284.1)", "oklch(45% 0.025 284.1)", "oklch(55% 0.025 284.1)", "oklch(65% 0.025 284.1)", "oklch(80% 0.025 284.1)", "oklch(95% 0.025 284.1)"] },
+      "mocha-elevated": { "role": "neutral", "displayName": "Catppuccin Mocha Surface", "canonical": "#313244", "tonalRamp": ["oklch(15% 0.032 282.0)", "oklch(25% 0.032 282.0)", "oklch(35% 0.032 282.0)", "oklch(45% 0.032 282.0)", "oklch(55% 0.032 282.0)", "oklch(65% 0.032 282.0)", "oklch(80% 0.032 282.0)", "oklch(95% 0.032 282.0)"] },
+      "mocha-ink": { "role": "neutral", "displayName": "Catppuccin Mocha Text", "canonical": "#cdd6f4", "tonalRamp": ["oklch(15% 0.043 272.3)", "oklch(25% 0.043 272.3)", "oklch(35% 0.043 272.3)", "oklch(45% 0.043 272.3)", "oklch(55% 0.043 272.3)", "oklch(65% 0.043 272.3)", "oklch(80% 0.043 272.3)", "oklch(95% 0.043 272.3)"] },
+      "mocha-muted": { "role": "neutral", "displayName": "Catppuccin Mocha Subtext", "canonical": "#a6adc9", "tonalRamp": ["oklch(15% 0.041 274.3)", "oklch(25% 0.041 274.3)", "oklch(35% 0.041 274.3)", "oklch(45% 0.041 274.3)", "oklch(55% 0.041 274.3)", "oklch(65% 0.041 274.3)", "oklch(80% 0.041 274.3)", "oklch(95% 0.041 274.3)"] },
+      "mocha-divider": { "role": "neutral", "displayName": "Catppuccin Mocha Divider", "canonical": "#454759", "tonalRamp": ["oklch(15% 0.030 280.0)", "oklch(25% 0.030 280.0)", "oklch(35% 0.030 280.0)", "oklch(45% 0.030 280.0)", "oklch(55% 0.030 280.0)", "oklch(65% 0.030 280.0)", "oklch(80% 0.030 280.0)", "oklch(95% 0.030 280.0)"] },
+      "claude-light-canvas": { "role": "neutral", "displayName": "Claude Light Canvas", "canonical": "#faf9f5", "tonalRamp": ["oklch(15% 0.005 95.1)", "oklch(25% 0.005 95.1)", "oklch(35% 0.005 95.1)", "oklch(45% 0.005 95.1)", "oklch(55% 0.005 95.1)", "oklch(65% 0.005 95.1)", "oklch(80% 0.005 95.1)", "oklch(95% 0.005 95.1)"] },
+      "claude-light-ink": { "role": "neutral", "displayName": "Claude Light Ink", "canonical": "#2b2a26", "tonalRamp": ["oklch(15% 0.007 95.3)", "oklch(25% 0.007 95.3)", "oklch(35% 0.007 95.3)", "oklch(45% 0.007 95.3)", "oklch(55% 0.007 95.3)", "oklch(65% 0.007 95.3)", "oklch(80% 0.007 95.3)", "oklch(95% 0.007 95.3)"] },
+      "claude-dark-canvas": { "role": "neutral", "displayName": "Claude Dark Canvas", "canonical": "#282725", "tonalRamp": ["oklch(15% 0.004 84.6)", "oklch(25% 0.004 84.6)", "oklch(35% 0.004 84.6)", "oklch(45% 0.004 84.6)", "oklch(55% 0.004 84.6)", "oklch(65% 0.004 84.6)", "oklch(80% 0.004 84.6)", "oklch(95% 0.004 84.6)"] },
+      "claude-dark-ink": { "role": "neutral", "displayName": "Claude Dark Ink", "canonical": "#eae8e1", "tonalRamp": ["oklch(15% 0.010 93.6)", "oklch(25% 0.010 93.6)", "oklch(35% 0.010 93.6)", "oklch(45% 0.010 93.6)", "oklch(55% 0.010 93.6)", "oklch(65% 0.010 93.6)", "oklch(80% 0.010 93.6)", "oklch(95% 0.010 93.6)"] },
+      "destructive-light": { "role": "error", "displayName": "Destructive Light", "canonical": "#c05959", "tonalRamp": ["oklch(15% 0.133 22.0)", "oklch(25% 0.133 22.0)", "oklch(35% 0.133 22.0)", "oklch(45% 0.133 22.0)", "oklch(55% 0.133 22.0)", "oklch(65% 0.133 22.0)", "oklch(80% 0.133 22.0)", "oklch(95% 0.133 22.0)"] },
+      "destructive-dark": { "role": "error", "displayName": "Destructive Dark", "canonical": "#dd3c3c", "tonalRamp": ["oklch(15% 0.198 25.5)", "oklch(25% 0.198 25.5)", "oklch(35% 0.198 25.5)", "oklch(45% 0.198 25.5)", "oklch(55% 0.198 25.5)", "oklch(65% 0.198 25.5)", "oklch(80% 0.198 25.5)", "oklch(95% 0.198 25.5)"] }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Product Title", "purpose": "Active view titles and major panel headings." },
+      "body": { "displayName": "Interface Body", "purpose": "Controls, descriptions, and primary application copy." },
+      "label": { "displayName": "Compact Label", "purpose": "Field labels, metadata, and dense status copy." },
+      "mono": { "displayName": "Prompt Mono", "purpose": "Prompt bodies, source, paths, and structured values." }
+    },
+    "shadows": [
+      { "name": "light-low", "value": "0 1px 2px rgba(0, 0, 0, 0.04)", "purpose": "Limited raised state on light variants." },
+      { "name": "light-overlay", "value": "0 12px 32px rgba(0, 0, 0, 0.08)", "purpose": "Dialogs and popovers on light variants." },
+      { "name": "dark-low", "value": "0 2px 4px rgba(0, 0, 0, 0.4)", "purpose": "Limited raised state on dark variants." },
+      { "name": "dark-overlay", "value": "0 16px 48px rgba(0, 0, 0, 0.6)", "purpose": "Dialogs and popovers on dark variants." }
+    ],
+    "motion": [
+      { "name": "state", "value": "150ms cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Hover, focus, pressed, and selection feedback." },
+      { "name": "structural", "value": "200ms cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Sidebar width and other bounded structural changes." },
+      { "name": "reduced", "value": "0ms", "purpose": "Immediate state application under prefers-reduced-motion." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary-dark",
+      "description": "The decisive action for the current work surface.",
+      "html": "<button class=\"ds-button-primary\">Save prompt</button>",
+      "css": ".ds-button-primary { border: 0; border-radius: 10px; background: hsl(var(--primary)); color: hsl(var(--background)); padding: 8px 16px; font: 500 14px/20px ui-sans-serif, system-ui, sans-serif; transition: filter 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-button-primary:hover { filter: brightness(0.96); } .ds-button-primary:active { filter: brightness(0.9); } .ds-button-primary:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; } @media (prefers-reduced-motion: reduce) { .ds-button-primary { transition: none; } }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary-dark",
+      "description": "A familiar inline command that does not compete with the primary action.",
+      "html": "<button class=\"ds-button-secondary\">Cancel</button>",
+      "css": ".ds-button-secondary { border: 1px solid hsl(var(--input)); border-radius: 10px; background: transparent; color: hsl(var(--foreground)); padding: 8px 12px; font: 400 14px/20px ui-sans-serif, system-ui, sans-serif; transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-button-secondary:hover { background: hsl(var(--accent)); } .ds-button-secondary:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; } @media (prefers-reduced-motion: reduce) { .ds-button-secondary { transition: none; } }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input-dark",
+      "description": "The standard compact editor and settings input.",
+      "html": "<label class=\"ds-field\"><span>Prompt title</span><input value=\"Support triage\" /></label>",
+      "css": ".ds-field { display: grid; gap: 6px; color: hsl(var(--muted-foreground)); font: 500 12px/16px ui-sans-serif, system-ui, sans-serif; } .ds-field input { height: 38px; border: 1px solid hsl(var(--input)); border-radius: 10px; background: hsl(var(--background)); color: hsl(var(--foreground)); padding: 8px 12px; font: 400 14px/20px ui-sans-serif, system-ui, sans-serif; outline: 0; } .ds-field input:focus-visible { box-shadow: 0 0 0 2px hsl(var(--ring)); }"
+    },
+    {
+      "name": "Active Navigation Item",
+      "kind": "nav",
+      "refersTo": "navigation-active-dark",
+      "description": "The current desktop destination with explicit current-page state.",
+      "html": "<button class=\"ds-nav-active\" aria-current=\"page\">Prompts</button>",
+      "css": ".ds-nav-active { width: 100%; border: 0; border-radius: 12px; background: hsl(var(--primary)); color: hsl(var(--background)); padding: 8px 12px; text-align: left; font: 500 14px/20px ui-sans-serif, system-ui, sans-serif; } .ds-nav-active:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }"
+    },
+    {
+      "name": "Metadata Chip",
+      "kind": "chip",
+      "refersTo": "chip-dark",
+      "description": "Compact metadata, never a replacement for ordinary labels.",
+      "html": "<span class=\"ds-chip\">support</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; border-radius: 9999px; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); padding: 2px 8px; font: 500 12px/16px ui-sans-serif, system-ui, sans-serif; }"
+    },
+    {
+      "name": "Framed Tool Panel",
+      "kind": "card",
+      "refersTo": "panel-dark",
+      "description": "A genuinely framed editor, preview, dialog, or repeated item.",
+      "html": "<section class=\"ds-panel\"><strong>Live preview</strong><p>The prompt output appears here.</p></section>",
+      "css": ".ds-panel { border: 1px solid hsl(var(--border)); border-radius: 12px; background: hsl(var(--card)); color: hsl(var(--card-foreground)); padding: 16px; } .ds-panel strong { display: block; margin-bottom: 8px; font: 600 14px/20px ui-sans-serif, system-ui, sans-serif; } .ds-panel p { margin: 0; color: hsl(var(--muted-foreground)); font: 400 14px/20px ui-sans-serif, system-ui, sans-serif; }"
+    },
+    {
+      "name": "Preference Switch",
+      "kind": "custom",
+      "refersTo": "switch-on-dark",
+      "description": "A stable binary preference control with explicit accessible state.",
+      "html": "<button class=\"ds-switch\" role=\"switch\" aria-checked=\"true\"><span></span></button>",
+      "css": ".ds-switch { position: relative; width: 44px; height: 24px; border: 0; border-radius: 9999px; background: hsl(var(--primary)); padding: 2px; } .ds-switch span { display: block; width: 20px; height: 20px; border-radius: 9999px; background: hsl(var(--background)); transform: translateX(20px); transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-switch:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; } @media (prefers-reduced-motion: reduce) { .ds-switch span { transition: none; } }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Prompt Workbench",
+    "overview": "PromptHub is a compact, rigorous, tool-like workspace. It should feel ready for real work immediately: dense enough for repeated editing and comparison, calm enough for long sessions, and precise enough that users trust every saved state. Its visual authority comes from hierarchy, alignment, and predictable feedback.\n\nThe workbench supports two named theme families. Catppuccin retains its official Latte, Frappé, Macchiato, and Mocha character; Claude provides a warmer light and dark alternative. Theme personality changes, but semantic component roles and interaction behavior do not.\n\nPromptHub explicitly rejects the generic SaaS dashboard: no oversized card grids, gradients, badge piles, decorative metrics, or marketing composition in operational screens.",
+    "keyCharacteristics": [
+      "Compact, precise controls with stable dimensions.",
+      "Tonal surface hierarchy before shadow.",
+      "One restrained signal accent for action, selection, and focus.",
+      "Consistent desktop navigation and form vocabulary.",
+      "Fast state transitions with no decorative choreography."
+    ],
+    "rules": [
+      { "name": "The Signal, Not Decoration Rule", "body": "Signal Blue should occupy no more than the interactive emphasis needed on a screen. If inactive surfaces turn blue, the signal has lost its meaning.", "section": "colors" },
+      { "name": "The Family and Mode Rule", "body": "Theme family and light/dark/system mode are independent. An OS mode change may swap a variant; it must never change the stored family, accent, or Catppuccin dark variant.", "section": "colors" },
+      { "name": "The Contrast Pair Rule", "body": "Never assume white is valid on every primary color. Use the paired on-primary token and verify WCAG 2.2 AA contrast.", "section": "colors" },
+      { "name": "The One Working Voice Rule", "body": "Use one interface family across product UI. Never introduce a second display family merely to make a settings heading feel special.", "section": "typography" },
+      { "name": "The Tonal-First Rule", "body": "A resting card or section must not use a wide shadow. If a one-pixel border and a shadow are both decorative, remove the shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use semantic tokens so Catppuccin and Claude remain behaviorally identical even when their palettes differ.",
+      "Do keep primary actions, selection, and focus on Signal Blue and use the correct on-primary contrast partner.",
+      "Do use 10px control radii, 12px panel radii, and the 4/8/12/16/24px spacing rhythm consistently.",
+      "Do constrain long settings and editor copy to readable line lengths while allowing lists and data surfaces to remain dense.",
+      "Do expose hover, focus, active, disabled, loading, error, and selected states, with status never conveyed by color alone.",
+      "Do keep state motion between 150-200ms and provide an immediate reduced-motion path."
+    ],
+    "donts": [
+      "Don't resemble a generic SaaS dashboard: no oversized cards, gradients, badge-heavy layouts, decorative metrics, or marketing composition in the app.",
+      "Don't nest cards or turn full-width page sections into floating cards.",
+      "Don't pair a decorative one-pixel border with a wide shadow; resting surfaces use tone and dividers.",
+      "Don't use display fonts, gradient text, glassmorphism, decorative grids, or giant rounded containers to manufacture personality.",
+      "Don't hide common commands behind modals or unfamiliar controls when a standard inline product pattern exists.",
+      "Don't use white text on dark-theme Signal Blue; use `colors.on-primary-dark` so the control remains readable."
+    ]
+  }
+}

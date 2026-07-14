@@ -21,6 +21,12 @@ pub struct Settings {
     /// Theme flavor name.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub flavor: Option<String>,
+    /// Named theme family: `catppuccin` | `claude`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub theme_family: Option<String>,
+    /// Catppuccin dark variant: `frappe` | `macchiato` | `mocha`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub catppuccin_dark_variant: Option<String>,
     /// Named accent color.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub accent_color: Option<String>,
@@ -30,6 +36,9 @@ pub struct Settings {
     /// Body font family.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub body_font: Option<String>,
+    /// Ordered interface font families. CSS fallback tokens are derived by the Frontend.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub interface_font_stack: Option<Vec<String>>,
     /// Font scale preset.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub font_scale: Option<String>,

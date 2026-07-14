@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSettingsStore } from "./settingsStore";
+import type { PreferenceRuntime } from "./settingsStore";
 import type { SettingsApi } from "./api";
 import type {
   ApplyResult,
@@ -28,11 +29,32 @@ function makeDataStatus(partial: Partial<DataPathStatus> = {}): DataPathStatus {
   return { activePath: "/data", restartRequired: false, ...partial };
 }
 
+function makePreferenceRuntime() {
+  let locale: "en" | "zh" = "en";
+  const runtime: PreferenceRuntime = {
+    currentLocale: () => locale,
+    changeLocale: vi.fn(async (next) => {
+      locale = next as "en" | "zh";
+    }),
+    applyAppearance: vi.fn(),
+  };
+  return runtime;
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((next) => {
+    resolve = next;
+  });
+  return { promise, resolve };
+}
+
 /** A controllable fake SettingsApi. Each method is a vi mock with a default. */
 function makeApi(overrides: Partial<SettingsApi> = {}): SettingsApi {
   return {
     getSettings: vi.fn(async () => makeSettings()),
     updateSettings: vi.fn(async () => makeSettings()),
+    listSystemFonts: vi.fn(async () => ["Inter", "Segoe UI"]),
     securityStatus: vi.fn(async () => makeStatus()),
     setMasterPassword: vi.fn(async () => undefined),
     changeMasterPassword: vi.fn(async () => undefined),
@@ -85,6 +107,11 @@ function resetStore(api: SettingsApi) {
     recoverySources: [],
     recoveryUnavailable: false,
     backups: [],
+    systemFonts: [],
+    systemFontsStatus: "idle",
+    preferenceStatus: {},
+    preferenceErrors: {},
+    pendingPreferences: {},
     restartRequired: false,
     loading: false,
     error: null,
@@ -150,6 +177,126 @@ describe("settings store (Req 3.1, 15, 17, 19)", () => {
 
     expect(useSettingsStore.getState().settings?.theme).toBe("light");
     expect(update).not.toHaveBeenCalled();
+  });
+
+  it("setPreference() previews immediately and reconciles the canonical backend result", async () => {
+    const canonical = makeSettings({
+      language: "zh",
+      themeFamily: "catppuccin",
+      catppuccinDarkVariant: "mocha",
+      interfaceFontStack: ["Inter"],
+    });
+    const update = vi.fn(async () => canonical);
+    const runtime = makePreferenceRuntime();
+    resetStore(makeApi({ updateSettings: update }));
+    useSettingsStore.setState({
+      settings: makeSettings(),
+      preferenceRuntime: runtime,
+    });
+
+    const pending = useSettingsStore.getState().setPreference("language", "zh");
+    expect(useSettingsStore.getState().settings?.language).toBe("zh");
+    expect(useSettingsStore.getState().preferenceStatus.language).toBe("saving");
+
+    await expect(pending).resolves.toBe(true);
+    expect(update).toHaveBeenCalledWith({ language: "zh" });
+    expect(runtime.changeLocale).toHaveBeenCalledWith("zh");
+    expect(useSettingsStore.getState().settings).toEqual(canonical);
+    expect(useSettingsStore.getState().preferenceStatus.language).toBe("saved");
+  });
+
+  it("keeps a failed appearance preview and retries the pending preference", async () => {
+    const canonical = makeSettings({
+      themeFamily: "claude",
+      catppuccinDarkVariant: "mocha",
+      interfaceFontStack: ["System"],
+    });
+    const update = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("disk full"))
+      .mockResolvedValueOnce(canonical);
+    const runtime = makePreferenceRuntime();
+    resetStore(makeApi({ updateSettings: update }));
+    useSettingsStore.setState({
+      settings: makeSettings({ flavor: "Mocha" }),
+      preferenceRuntime: runtime,
+    });
+
+    await expect(
+      useSettingsStore.getState().setPreference("themeFamily", "claude"),
+    ).resolves.toBe(false);
+    expect(useSettingsStore.getState().settings?.themeFamily).toBe("claude");
+    expect(useSettingsStore.getState().preferenceStatus.themeFamily).toBe("unsaved");
+    expect(useSettingsStore.getState().preferenceErrors.themeFamily).toBe(
+      "settingsView.preferences.unsaved",
+    );
+
+    await expect(
+      useSettingsStore.getState().retryPreference("themeFamily"),
+    ).resolves.toBe(true);
+    expect(update).toHaveBeenCalledTimes(2);
+    expect(useSettingsStore.getState().settings).toEqual(canonical);
+    expect(useSettingsStore.getState().preferenceStatus.themeFamily).toBe("saved");
+  });
+
+  it("serializes concurrent preference writes without clobbering the later preview", async () => {
+    const firstWrite = deferred<Settings>();
+    const secondWrite = deferred<Settings>();
+    const update = vi
+      .fn()
+      .mockImplementationOnce(() => firstWrite.promise)
+      .mockImplementationOnce(() => secondWrite.promise);
+    resetStore(makeApi({ updateSettings: update }));
+    useSettingsStore.setState({
+      settings: makeSettings({
+        themeFamily: "catppuccin",
+        catppuccinDarkVariant: "mocha",
+        interfaceFontStack: ["System"],
+      }),
+      preferenceRuntime: makePreferenceRuntime(),
+    });
+
+    const first = useSettingsStore.getState().setPreference("themeFamily", "claude");
+    const second = useSettingsStore.getState().setPreference("accentColor", "Red");
+    await Promise.resolve();
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(useSettingsStore.getState().settings).toMatchObject({
+      themeFamily: "claude",
+      accentColor: "Red",
+    });
+
+    firstWrite.resolve(makeSettings({
+      themeFamily: "claude",
+      catppuccinDarkVariant: "mocha",
+      interfaceFontStack: ["System"],
+    }));
+    await first;
+    expect(useSettingsStore.getState().settings?.accentColor).toBe("Red");
+    await Promise.resolve();
+    expect(update).toHaveBeenCalledTimes(2);
+
+    secondWrite.resolve(makeSettings({
+      themeFamily: "claude",
+      catppuccinDarkVariant: "mocha",
+      interfaceFontStack: ["System"],
+      accentColor: "Red",
+    }));
+    await second;
+    expect(useSettingsStore.getState().settings).toMatchObject({
+      themeFamily: "claude",
+      accentColor: "Red",
+    });
+  });
+
+  it("caches system fonts and exposes an explicit empty state", async () => {
+    const listSystemFonts = vi.fn(async () => [] as string[]);
+    resetStore(makeApi({ listSystemFonts }));
+
+    await useSettingsStore.getState().loadSystemFonts();
+    await useSettingsStore.getState().loadSystemFonts();
+
+    expect(listSystemFonts).toHaveBeenCalledOnce();
+    expect(useSettingsStore.getState().systemFontsStatus).toBe("empty");
   });
 
   it("setMasterPassword() refreshes status on success (Req 15.2)", async () => {

@@ -2,6 +2,12 @@
   "settingsView": {
     "title": "设置",
     "restartRequired": "最近的更改需要重启应用才能生效。",
+    "preferences": {
+      "saving": "正在保存…",
+      "saved": "已保存",
+      "unsaved": "本次会话已应用，但尚未保存。",
+      "retry": "重试"
+    },
     "sections": {
       "appearance": "外观",
       "general": "通用",
@@ -11,6 +17,35 @@
       "system": "系统与更新"
     },
     "appearance": {
+      "themeFamily": "主题家族",
+      "themeFamilyHint": "主题配色与浅色、深色或跟随系统模式分别设置。",
+      "familyOption": {
+        "catppuccin": "Catppuccin",
+        "claude": "Claude"
+      },
+      "familyDescription": {
+        "catppuccin": "官方 Latte、Frappé、Macchiato 与 Mocha 配色",
+        "claude": "温暖、专注的浅色与深色配色"
+      },
+      "colorMode": "明暗模式",
+      "catppuccinDarkVariant": "Catppuccin 深色变体",
+      "darkVariantOption": {
+        "frappe": "Frappé",
+        "macchiato": "Macchiato",
+        "mocha": "Mocha"
+      },
+      "interfaceFonts": "界面字体回退",
+      "interfaceFontsHint": "PromptHub 会按顺序尝试这些字体，并追加语言与系统回退字体。",
+      "primaryFont": "首选字体",
+      "fallbackFont": "回退字体 {{index}}",
+      "addFallback": "添加回退字体",
+      "moveFontUp": "上移字体",
+      "moveFontDown": "下移字体",
+      "removeFont": "移除字体",
+      "systemFontsLoading": "正在加载系统字体",
+      "systemFontsEmpty": "未发现其他系统字体。",
+      "systemFontsError": "无法加载系统字体。",
+      "specimenMultilingual": "简体中文 · 繁體中文 · 日本語 · Aa 0123 → {} []",
       "flavor": "风格",
       "language": "语言",
       "accentColor": "强调色",

@@ -193,7 +193,13 @@ export function normalizeAppearance(
 // ===========================================================================
 
 /** The accent token variables written for the active accent color. */
-export const ACCENT_TOKENS = ["--primary", "--ring", "--accent", "--accent-foreground"] as const;
+export const ACCENT_TOKENS = [
+  "--primary",
+  "--primary-foreground",
+  "--ring",
+  "--accent",
+  "--accent-foreground",
+] as const;
 
 /** Surface/text/border tokens every flavor override set re-points. */
 export const FLAVOR_PALETTE_TOKENS = [
@@ -236,7 +242,7 @@ const FLAVOR_SWATCHES: Record<Flavor, FlavorSwatches> = {
     surface0: "223 16% 83%",
     surface1: "225 14% 77%",
     text: "234 16% 35%",
-    subtext0: "233 10% 47%",
+    subtext0: "233 10% 37%",
   },
   Frappé: {
     base: "229 19% 23%",
@@ -244,7 +250,7 @@ const FLAVOR_SWATCHES: Record<Flavor, FlavorSwatches> = {
     surface0: "230 16% 30%",
     surface1: "227 15% 37%",
     text: "227 70% 87%",
-    subtext0: "228 29% 73%",
+    subtext0: "228 29% 75%",
   },
   Macchiato: {
     base: "232 23% 18%",
@@ -352,19 +358,76 @@ const ACCENT_HSL: Record<AppearanceBase, Record<AccentColor, [number, number, nu
 };
 
 /** Derives the four accent token values for one accent under one base. */
-function buildAccentSet(base: AppearanceBase, [h, s, l]: [number, number, number]): Record<string, string> {
+function relativeLuminance([h, s, l]: [number, number, number]): number {
+  const hue = h / 360;
+  const saturation = s / 100;
+  const lightness = l / 100;
+  const channel = (p: number, q: number, value: number) => {
+    let t = value;
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  const rgb: [number, number, number] = saturation === 0
+    ? [lightness, lightness, lightness]
+    : (() => {
+        const q = lightness < 0.5
+          ? lightness * (1 + saturation)
+          : lightness + saturation - lightness * saturation;
+        const p = 2 * lightness - q;
+        return [
+          channel(p, q, hue + 1 / 3),
+          channel(p, q, hue),
+          channel(p, q, hue - 1 / 3),
+        ];
+      })();
+  const linear = rgb.map((value) =>
+    value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4,
+  );
+  return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+}
+
+function contrastRatio(a: [number, number, number], b: [number, number, number]): number {
+  const [lighter, darker] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function buildAccentSet(base: AppearanceBase, color: [number, number, number]): Record<string, string> {
+  const [h, s, l] = color;
   const primary = `${h} ${s}% ${l}%`;
+  const darkForeground: [number, number, number] = [240, 21, 15];
+  const lightForeground: [number, number, number] = [0, 0, 100];
+  const darkContrast = contrastRatio(color, darkForeground);
+  const lightContrast = contrastRatio(color, lightForeground);
+  let primaryForeground = darkContrast >= lightContrast
+    ? "240 21% 15%"
+    : "0 0% 100%";
+  if (Math.max(darkContrast, lightContrast) < 4.5) {
+    primaryForeground = "240 21% 5%";
+  }
+  const focusSurface: [number, number, number] = base === "light" ? [220, 23, 95] : [229, 19, 23];
+  const ringColor: [number, number, number] = contrastRatio(color, focusSurface) >= 3
+    ? color
+    : base === "light"
+      ? [h, Math.max(s, 40), 30]
+      : [h, s, 75];
+  const ring = `${ringColor[0]} ${ringColor[1]}% ${ringColor[2]}%`;
   if (base === "light") {
     return {
       "--primary": primary,
-      "--ring": primary,
+      "--primary-foreground": primaryForeground,
+      "--ring": ring,
       "--accent": `${h} ${Math.round(s * 0.4)}% 92%`,
       "--accent-foreground": `${h} ${s}% 35%`,
     };
   }
   return {
     "--primary": primary,
-    "--ring": primary,
+    "--primary-foreground": primaryForeground,
+    "--ring": ring,
     "--accent": `${h} ${Math.round(s * 0.3)}% 18%`,
     "--accent-foreground": `${h} ${s}% 85%`,
   };

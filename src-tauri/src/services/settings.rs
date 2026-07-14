@@ -39,6 +39,9 @@ use crate::models::Settings;
 /// Settings-table key under which the full [`Settings`] JSON document is stored.
 const SETTINGS_KEY: &str = "app";
 
+const MAX_INTERFACE_FONT_FAMILIES: usize = 4;
+const MAX_FONT_FAMILY_LENGTH: usize = 128;
+
 /// Default settings returned when nothing has been persisted yet (19.1).
 ///
 /// The dark theme (22.5) and English UI (21.5) match the Frontend's startup
@@ -101,6 +104,7 @@ pub fn update(conn: &Connection, patch: &Value) -> Result<Settings, AppError> {
     // stored data (Req 2.3).
     let result: Settings = serde_json::from_value(merged)
         .map_err(|e| AppError::validation(format!("invalid settings update: {e}")))?;
+    validate(&result)?;
 
     let json = serde_json::to_string(&result)
         .map_err(|e| AppError::internal(format!("failed to encode settings: {e}")))?;
@@ -111,6 +115,31 @@ pub fn update(conn: &Connection, patch: &Value) -> Result<Settings, AppError> {
     .map_err(|e| AppError::internal(format!("failed to persist settings: {e}")))?;
 
     Ok(result)
+}
+
+fn validate(settings: &Settings) -> Result<(), AppError> {
+    let Some(families) = settings.interface_font_stack.as_ref() else {
+        return Ok(());
+    };
+
+    if families.is_empty() || families.len() > MAX_INTERFACE_FONT_FAMILIES {
+        return Err(AppError::validation(format!(
+            "interfaceFontStack must contain 1 to {MAX_INTERFACE_FONT_FAMILIES} families"
+        )));
+    }
+
+    if families.iter().any(|family| {
+        let trimmed = family.trim();
+        trimmed.is_empty()
+            || trimmed.chars().count() > MAX_FONT_FAMILY_LENGTH
+            || trimmed.chars().any(char::is_control)
+    }) {
+        return Err(AppError::validation(
+            "interfaceFontStack contains an invalid font family",
+        ));
+    }
+
+    Ok(())
 }
 
 /// Enumerates the OS-installed font family names, sorted and de-duplicated
@@ -447,5 +476,82 @@ mod tests {
         assert_eq!(err.code_str(), "VALIDATION");
         // The previously stored value is unchanged (no mutation on error).
         assert_eq!(get(&conn).unwrap().flavor.as_deref(), Some("Latte"));
+    }
+
+    #[test]
+    fn appearance_preferences_round_trip_and_preserve_unrelated_fields() {
+        let conn = conn();
+        update(
+            &conn,
+            &json!({
+                "language": "ja",
+                "themeFamily": "catppuccin",
+                "catppuccinDarkVariant": "macchiato",
+                "interfaceFontStack": ["Inter", "Yu Gothic UI"]
+            }),
+        )
+        .unwrap();
+
+        let result = update(&conn, &json!({ "themeFamily": "claude" })).unwrap();
+        assert_eq!(result.language, "ja");
+        assert_eq!(result.theme_family.as_deref(), Some("claude"));
+        assert_eq!(result.catppuccin_dark_variant.as_deref(), Some("macchiato"));
+        assert_eq!(
+            result.interface_font_stack.as_deref(),
+            Some(["Inter".to_string(), "Yu Gothic UI".to_string()].as_slice())
+        );
+        assert_eq!(get(&conn).unwrap(), result);
+    }
+
+    #[test]
+    fn invalid_font_stack_is_rejected_before_write() {
+        let conn = conn();
+        update(&conn, &json!({ "interfaceFontStack": ["Inter"] })).unwrap();
+
+        for invalid in [
+            json!([]),
+            json!(["A", "B", "C", "D", "E"]),
+            json!(["  "]),
+            json!(["bad\nfont"]),
+        ] {
+            let err = update(&conn, &json!({ "interfaceFontStack": invalid })).unwrap_err();
+            assert_eq!(err.code_str(), "VALIDATION");
+            assert_eq!(
+                get(&conn).unwrap().interface_font_stack,
+                Some(vec!["Inter".to_string()])
+            );
+        }
+
+        let err = update(&conn, &json!({ "interfaceFontStack": "Inter" })).unwrap_err();
+        assert_eq!(err.code_str(), "VALIDATION");
+        assert_eq!(
+            get(&conn).unwrap().interface_font_stack,
+            Some(vec!["Inter".to_string()])
+        );
+    }
+
+    #[test]
+    fn legacy_settings_json_remains_readable() {
+        let conn = conn();
+        let legacy = json!({
+            "theme": "dark",
+            "language": "zh",
+            "autoSave": false,
+            "flavor": "Mocha",
+            "displayFont": "Space Grotesk",
+            "bodyFont": "Inter"
+        });
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, ?2)",
+            params![SETTINGS_KEY, legacy.to_string()],
+        )
+        .unwrap();
+
+        let settings = get(&conn).unwrap();
+        assert_eq!(settings.flavor.as_deref(), Some("Mocha"));
+        assert_eq!(settings.body_font.as_deref(), Some("Inter"));
+        assert!(settings.theme_family.is_none());
+        assert!(settings.catppuccin_dark_variant.is_none());
+        assert!(settings.interface_font_stack.is_none());
     }
 }

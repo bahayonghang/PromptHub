@@ -2226,6 +2226,12 @@
   "settingsView": {
     "title": "Settings",
     "restartRequired": "A restart is required for your recent change to take effect.",
+    "preferences": {
+      "saving": "Saving...",
+      "saved": "Saved",
+      "unsaved": "Applied for this session, but not saved.",
+      "retry": "Retry"
+    },
     "sections": {
       "appearance": "Appearance",
       "general": "General",
@@ -2235,6 +2241,35 @@
       "system": "System & Updates"
     },
     "appearance": {
+      "themeFamily": "Theme family",
+      "themeFamilyHint": "Choose a palette family independently from light, dark, or system mode.",
+      "familyOption": {
+        "catppuccin": "Catppuccin",
+        "claude": "Claude"
+      },
+      "familyDescription": {
+        "catppuccin": "Official Latte, Frappé, Macchiato, and Mocha palettes",
+        "claude": "Warm, focused light and dark palettes"
+      },
+      "colorMode": "Color mode",
+      "catppuccinDarkVariant": "Catppuccin dark variant",
+      "darkVariantOption": {
+        "frappe": "Frappé",
+        "macchiato": "Macchiato",
+        "mocha": "Mocha"
+      },
+      "interfaceFonts": "Interface font fallback",
+      "interfaceFontsHint": "PromptHub tries these families in order, then appends language and system fallbacks.",
+      "primaryFont": "Primary font",
+      "fallbackFont": "Fallback {{index}}",
+      "addFallback": "Add fallback",
+      "moveFontUp": "Move font up",
+      "moveFontDown": "Move font down",
+      "removeFont": "Remove font",
+      "systemFontsLoading": "Loading system fonts",
+      "systemFontsEmpty": "No additional system fonts were found.",
+      "systemFontsError": "System fonts could not be loaded.",
+      "specimenMultilingual": "简体中文 · 繁體中文 · 日本語 · Aa 0123 → {} []",
       "flavor": "Flavor",
       "language": "Language",
       "accentColor": "Accent color",

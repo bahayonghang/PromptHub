@@ -2,6 +2,12 @@
   "settingsView": {
     "title": "設定",
     "restartRequired": "最近の変更を反映するには再起動が必要です。",
+    "preferences": {
+      "saving": "保存中…",
+      "saved": "保存済み",
+      "unsaved": "このセッションには適用されましたが、保存されていません。",
+      "retry": "再試行"
+    },
     "sections": {
       "appearance": "外観",
       "general": "一般",
@@ -11,6 +17,35 @@
       "system": "システムと更新"
     },
     "appearance": {
+      "themeFamily": "テーマファミリー",
+      "themeFamilyHint": "配色ファミリーとライト、ダーク、システムモードを個別に設定します。",
+      "familyOption": {
+        "catppuccin": "Catppuccin",
+        "claude": "Claude"
+      },
+      "familyDescription": {
+        "catppuccin": "公式の Latte、Frappé、Macchiato、Mocha パレット",
+        "claude": "温かく集中しやすいライト・ダークパレット"
+      },
+      "colorMode": "カラーモード",
+      "catppuccinDarkVariant": "Catppuccin ダークバリアント",
+      "darkVariantOption": {
+        "frappe": "Frappé",
+        "macchiato": "Macchiato",
+        "mocha": "Mocha"
+      },
+      "interfaceFonts": "インターフェースフォントのフォールバック",
+      "interfaceFontsHint": "指定順に試し、言語別とシステムのフォールバックを追加します。",
+      "primaryFont": "優先フォント",
+      "fallbackFont": "フォールバック {{index}}",
+      "addFallback": "フォールバックを追加",
+      "moveFontUp": "フォントを上へ",
+      "moveFontDown": "フォントを下へ",
+      "removeFont": "フォントを削除",
+      "systemFontsLoading": "システムフォントを読み込み中",
+      "systemFontsEmpty": "追加のシステムフォントは見つかりませんでした。",
+      "systemFontsError": "システムフォントを読み込めませんでした。",
+      "specimenMultilingual": "简体中文 · 繁體中文 · 日本語 · Aa 0123 → {} []",
       "flavor": "フレーバー",
       "language": "言語",
       "accentColor": "アクセントカラー",

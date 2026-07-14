@@ -55,12 +55,18 @@ export interface Settings {
   security?: SecuritySettingsSummary | null;
   /** Theme flavor: Latte | Frappé | Macchiato | Mocha | Claude Light | Claude Dark. */
   flavor?: string | null;
+  /** Theme family, independent from the light/dark/system color mode. */
+  themeFamily?: string | null;
+  /** Catppuccin variant used whenever the effective color mode is dark. */
+  catppuccinDarkVariant?: string | null;
   /** Named accent color (one of the 14 Accent_Color names). */
   accentColor?: string | null;
   /** Display font family from the Font_Catalog. */
   displayFont?: string | null;
   /** Body font family from the Font_Catalog. */
   bodyFont?: string | null;
+  /** Ordered interface font family names; the runtime appends safe fallbacks. */
+  interfaceFontStack?: string[] | null;
   /** Font scale preset: Small | Default | Large | Extra Large. */
   fontScale?: string | null;
   /** Density preset: Compact | Default | Comfortable. */

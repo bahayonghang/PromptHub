@@ -2,6 +2,12 @@
   "settingsView": {
     "title": "Ajustes",
     "restartRequired": "Es necesario reiniciar para que tu cambio reciente surta efecto.",
+    "preferences": {
+      "saving": "Guardando…",
+      "saved": "Guardado",
+      "unsaved": "Aplicado en esta sesión, pero no guardado.",
+      "retry": "Reintentar"
+    },
     "sections": {
       "appearance": "Apariencia",
       "general": "General",
@@ -11,6 +17,35 @@
       "system": "Sistema y actualizaciones"
     },
     "appearance": {
+      "themeFamily": "Familia de tema",
+      "themeFamilyHint": "Elige la paleta independientemente del modo claro, oscuro o del sistema.",
+      "familyOption": {
+        "catppuccin": "Catppuccin",
+        "claude": "Claude"
+      },
+      "familyDescription": {
+        "catppuccin": "Paletas oficiales Latte, Frappé, Macchiato y Mocha",
+        "claude": "Paletas claras y oscuras cálidas y enfocadas"
+      },
+      "colorMode": "Modo de color",
+      "catppuccinDarkVariant": "Variante oscura de Catppuccin",
+      "darkVariantOption": {
+        "frappe": "Frappé",
+        "macchiato": "Macchiato",
+        "mocha": "Mocha"
+      },
+      "interfaceFonts": "Fuentes de respaldo de la interfaz",
+      "interfaceFontsHint": "PromptHub prueba estas fuentes en orden y añade respaldos de idioma y del sistema.",
+      "primaryFont": "Fuente principal",
+      "fallbackFont": "Respaldo {{index}}",
+      "addFallback": "Añadir respaldo",
+      "moveFontUp": "Subir fuente",
+      "moveFontDown": "Bajar fuente",
+      "removeFont": "Eliminar fuente",
+      "systemFontsLoading": "Cargando fuentes del sistema",
+      "systemFontsEmpty": "No se encontraron más fuentes del sistema.",
+      "systemFontsError": "No se pudieron cargar las fuentes del sistema.",
+      "specimenMultilingual": "简体中文 · 繁體中文 · 日本語 · Aa 0123 → {} []",
       "flavor": "Estilo",
       "language": "Idioma",
       "accentColor": "Color de acento",

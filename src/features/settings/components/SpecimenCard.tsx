@@ -1,12 +1,5 @@
-import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { SparklesIcon } from "lucide-react";
-import { createAppearanceController, type Appearance } from "../../../appearance";
-
-export interface SpecimenCardProps {
-  /** The appearance to preview; applied to this card's own container. */
-  appearance: Appearance;
-}
 
 /**
  * Live preview specimen (Req 8). Renders a display-level text sample (using
@@ -15,27 +8,22 @@ export interface SpecimenCardProps {
  * are scoped to this card's own container via a dedicated controller, so the
  * preview is correct even if mounted outside the document root.
  */
-export function SpecimenCard({ appearance }: SpecimenCardProps) {
+export function SpecimenCard() {
   const { t } = useTranslation();
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const root = ref.current;
-    if (!root) return;
-    createAppearanceController({ root }).apply(appearance);
-  }, [appearance]);
 
   return (
     <div
-      ref={ref}
       data-testid="specimen-card"
-      className="density-gap flex flex-col rounded-lg border border-border bg-card density-p text-card-foreground"
+      className="density-gap flex flex-col rounded-md border border-border bg-card density-p text-card-foreground"
     >
-      <p data-testid="specimen-display" className="font-display text-2xl font-semibold text-foreground">
+      <p data-testid="specimen-display" className="text-lg font-semibold text-foreground">
         {t("settingsView.appearance.specimenDisplay")}
       </p>
-      <p data-testid="specimen-body" className="font-body text-sm text-muted-foreground">
+      <p data-testid="specimen-body" className="text-sm text-muted-foreground">
         {t("settingsView.appearance.specimenBody")}
+      </p>
+      <p className="text-sm text-muted-foreground">
+        {t("settingsView.appearance.specimenMultilingual")}
       </p>
       <button
         type="button"
