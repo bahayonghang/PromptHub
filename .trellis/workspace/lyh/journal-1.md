@@ -72,3 +72,37 @@ Committed a skill property-test generator constraint fix, initialized Trellis wo
 ### Next Steps
 
 - None - task complete
+
+
+## Session 3: 移除应用内 Skill 管理
+
+**Date**: 2026-07-14
+**Task**: 移除应用内 Skill 管理
+**Branch**: `main`
+
+### Summary
+
+完成 Prompt 管理优化任务树规划，移除前后端 Skill 管理域与相关文案，保留旧表和旧目录数据，并通过完整 just ci。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b0f4709` | (see git log) |
+| `523f04b` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

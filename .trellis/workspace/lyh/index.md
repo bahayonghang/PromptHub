@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 2
+- **Total Sessions**: 3
 - **Last Active**: 2026-07-14
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~74 | Active |
+| `journal-1.md` | ~108 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 3 | 2026-07-14 | 移除应用内 Skill 管理 | `b0f4709`, `523f04b` | `main` |
 | 2 | 2026-07-14 | 完善设置外观与本地化系统 | `60c685aa017c361b31af5e07ec3b557e5757078d` | `main` |
 | 1 | 2026-07-06 | Bootstrap Trellis frontend guidelines | `fba66c0`, `d6b5121` | `main` |
 <!-- @@@/auto:session-history -->
