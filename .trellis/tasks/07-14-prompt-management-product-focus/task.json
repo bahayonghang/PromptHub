@@ -1,0 +1,30 @@
+{
+  "id": "prompt-management-product-focus",
+  "name": "prompt-management-product-focus",
+  "title": "Remove skill management and optimize prompt workflows",
+  "description": "Remove app skill-management capabilities and plan evidence-based prompt-management improvements.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "lyh",
+  "assignee": "lyh",
+  "createdAt": "2026-07-14",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "07-14-retire-skill-management",
+    "07-14-prompt-library-foundations",
+    "07-14-prompt-evaluation-loop"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
