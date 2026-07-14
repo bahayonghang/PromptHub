@@ -86,7 +86,6 @@ const KEYS = [
   "systemView.paths.data",
   "systemView.paths.database",
   "systemView.paths.media",
-  "systemView.paths.skill",
   "systemView.paths.rule",
   "systemView.paths.backup",
   "systemView.paths.log",

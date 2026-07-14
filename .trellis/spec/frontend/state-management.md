@@ -17,8 +17,6 @@ Existing stores:
   selection, versions
 - `src/features/settings/settingsStore.ts` - settings, security, data path,
   recovery, sync, backups
-- `src/features/skills/skillStore.ts` - skills, versions, platform integration,
-  safety scan state
 - `src/features/system/systemStore.ts` - window state, updater, shortcuts,
   runtime paths, events
 

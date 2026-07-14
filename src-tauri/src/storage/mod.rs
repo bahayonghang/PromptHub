@@ -209,41 +209,6 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS skills (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  description TEXT,
-  content TEXT,
-  protocol_type TEXT NOT NULL DEFAULT 'skill',
-  version TEXT,
-  author TEXT,
-  tags TEXT NOT NULL DEFAULT '[]',
-  is_favorite INTEGER NOT NULL DEFAULT 0,
-  source_url TEXT, source_id TEXT, source_label TEXT, source_branch TEXT,
-  source_directory TEXT, canonical_skill_path TEXT, local_repo_path TEXT,
-  directory_fingerprint TEXT,
-  icon_url TEXT, icon_emoji TEXT, icon_background TEXT,
-  category TEXT NOT NULL DEFAULT 'general',
-  is_builtin INTEGER NOT NULL DEFAULT 0,
-  registry_slug TEXT, content_url TEXT,
-  safety_level TEXT, safety_score INTEGER, safety_report TEXT, safety_scanned_at INTEGER,
-  current_version INTEGER NOT NULL DEFAULT 0,
-  version_tracking_enabled INTEGER NOT NULL DEFAULT 0,
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS skill_versions (
-  id TEXT PRIMARY KEY,
-  skill_id TEXT NOT NULL REFERENCES skills(id) ON DELETE CASCADE,
-  version INTEGER NOT NULL,
-  content TEXT,
-  files_snapshot TEXT,
-  note TEXT,
-  created_at INTEGER NOT NULL,
-  UNIQUE(skill_id, version)
-);
-
 CREATE TABLE IF NOT EXISTS rules (
   id TEXT PRIMARY KEY,
   scope TEXT NOT NULL CHECK(scope IN ('global','project')),
@@ -282,8 +247,6 @@ CREATE INDEX IF NOT EXISTS idx_prompts_usage    ON prompts(usage_count);
 CREATE INDEX IF NOT EXISTS idx_versions_prompt  ON prompt_versions(prompt_id);
 CREATE INDEX IF NOT EXISTS idx_folders_parent   ON folders(parent_id);
 CREATE INDEX IF NOT EXISTS idx_folders_sort     ON folders(sort_order);
-CREATE INDEX IF NOT EXISTS idx_skills_updated   ON skills(updated_at);
-CREATE INDEX IF NOT EXISTS idx_skill_versions_skill ON skill_versions(skill_id);
 CREATE INDEX IF NOT EXISTS idx_rules_scope      ON rules(scope);
 CREATE INDEX IF NOT EXISTS idx_rules_platform   ON rules(platform_id);
 CREATE INDEX IF NOT EXISTS idx_rule_versions_rule ON rule_versions(rule_id);
@@ -301,8 +264,6 @@ mod tests {
         "prompts",
         "prompt_versions",
         "settings",
-        "skills",
-        "skill_versions",
         "rules",
         "rule_versions",
     ];
@@ -318,8 +279,6 @@ mod tests {
         "idx_versions_prompt",
         "idx_folders_parent",
         "idx_folders_sort",
-        "idx_skills_updated",
-        "idx_skill_versions_skill",
         "idx_rules_scope",
         "idx_rules_platform",
         "idx_rule_versions_rule",
@@ -364,6 +323,96 @@ mod tests {
                 "expected index `{expected}` to exist; found: {indexes:?}"
             );
         }
+    }
+
+    #[test]
+    fn fresh_schema_does_not_create_retired_skill_tables_or_indexes() {
+        let pool = create_memory_pool().unwrap();
+        let conn = pool.get().unwrap();
+        init_schema(&conn).unwrap();
+
+        let tables = names_of_type(&conn, "table");
+        assert!(!tables.iter().any(|name| name == "skills"));
+        assert!(!tables.iter().any(|name| name == "skill_versions"));
+
+        let indexes = names_of_type(&conn, "index");
+        assert!(!indexes.iter().any(|name| name == "idx_skills_updated"));
+        assert!(!indexes
+            .iter()
+            .any(|name| name == "idx_skill_versions_skill"));
+    }
+
+    #[test]
+    fn init_schema_preserves_legacy_skill_rows() {
+        let pool = create_memory_pool().unwrap();
+        let conn = pool.get().unwrap();
+        conn.execute_batch(
+            r#"
+            CREATE TABLE skills (id TEXT PRIMARY KEY, name TEXT NOT NULL);
+            CREATE TABLE skill_versions (
+              id TEXT PRIMARY KEY,
+              skill_id TEXT NOT NULL REFERENCES skills(id) ON DELETE CASCADE,
+              content TEXT
+            );
+            INSERT INTO skills (id, name) VALUES ('legacy-skill', 'Legacy');
+            INSERT INTO skill_versions (id, skill_id, content)
+              VALUES ('legacy-version', 'legacy-skill', '# Legacy');
+            "#,
+        )
+        .unwrap();
+
+        let skill_before: (String, String) = conn
+            .query_row(
+                "SELECT id, name FROM skills WHERE id = 'legacy-skill'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        let version_before: (String, String, String) = conn
+            .query_row(
+                r#"
+                SELECT id, skill_id, content
+                FROM skill_versions
+                WHERE id = 'legacy-version'
+                "#,
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+
+        init_schema(&conn).unwrap();
+        crate::services::prompt::create(
+            &conn,
+            crate::services::prompt::PromptCreate {
+                title: "New prompt".into(),
+                user_prompt: "Prompt content".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        let skill_after: (String, String) = conn
+            .query_row(
+                "SELECT id, name FROM skills WHERE id = 'legacy-skill'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+
+        let version_after: (String, String, String) = conn
+            .query_row(
+                r#"
+                SELECT id, skill_id, content
+                FROM skill_versions
+                WHERE id = 'legacy-version'
+                "#,
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+
+        assert_eq!(skill_after, skill_before);
+        assert_eq!(version_after, version_before);
     }
 
     #[test]

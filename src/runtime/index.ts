@@ -17,11 +17,6 @@ export interface RuntimeCapabilities {
   appUpdate: boolean;
   dataRecovery: boolean;
   desktopWindowControls: boolean;
-  skillDistribution: boolean;
-  skillFileEditing: boolean;
-  skillLocalScan: boolean;
-  skillPlatformIntegration: boolean;
-  skillStore: boolean;
 }
 
 /** Detaches an event subscription created with {@link RuntimeBridge.on} (Req 3.6). */
@@ -68,11 +63,6 @@ const DESKTOP_CAPABILITIES: RuntimeCapabilities = {
   appUpdate: true,
   dataRecovery: true,
   desktopWindowControls: true,
-  skillDistribution: true,
-  skillFileEditing: true,
-  skillLocalScan: true,
-  skillPlatformIntegration: true,
-  skillStore: true,
 };
 
 /**
@@ -87,21 +77,6 @@ const CAPABILITY_GATES: ReadonlyArray<{
   { capability: "appUpdate", prefixes: ["updater."] },
   { capability: "dataRecovery", prefixes: ["data.recovery"] },
   { capability: "desktopWindowControls", prefixes: ["window."] },
-  { capability: "skillLocalScan", prefixes: ["skill.local.scan", "skill.local.tree"] },
-  {
-    capability: "skillFileEditing",
-    prefixes: [
-      "skill.local.read",
-      "skill.local.write",
-      "skill.local.mkdir",
-      "skill.local.rename",
-      "skill.local.delete",
-      "skill.local.sync",
-    ],
-  },
-  { capability: "skillPlatformIntegration", prefixes: ["skill.platform."] },
-  { capability: "skillStore", prefixes: ["skill.remote."] },
-  { capability: "skillDistribution", prefixes: ["skill.import"] },
 ];
 
 /** Returns the capability guarding `command`, or `undefined` if it is ungated. */

@@ -23,7 +23,7 @@
 //! - **Close-action decision** ([`CloseAction`] / [`CloseDecision`]): `ask` emits
 //!   a close-requested event, `minimize` hides, `exit` terminates (Req 20.4).
 //! - **Runtime-paths report** ([`get_runtime_paths`]): the resolved data, database,
-//!   media, skill, rule, backup, and log paths (Req 20.9).
+//!   media, rule, backup, and log paths (Req 20.9).
 //! - **Cache size / clear** ([`get_cache_size`], [`clear_cache`]) over a directory
 //!   (Req 20.8).
 //! - **Path-existence checks** ([`ensure_path_exists`]) for open/reveal, returning
@@ -381,8 +381,6 @@ pub struct RuntimePathsReport {
     pub database: String,
     /// The media directory.
     pub media: String,
-    /// The skill repositories directory.
-    pub skill: String,
     /// The rule files directory.
     pub rule: String,
     /// The backup archives directory.
@@ -405,7 +403,6 @@ pub fn get_runtime_paths(paths: &RuntimePaths) -> RuntimePathsReport {
         data: path_string(&paths.data),
         database: path_string(&database_path(paths)),
         media: path_string(&paths.media),
-        skill: path_string(&paths.skill),
         rule: path_string(&paths.rule),
         backup: path_string(&paths.backup),
         log: path_string(&paths.log),
@@ -898,7 +895,6 @@ mod tests {
         RuntimePaths {
             data: base.join("data"),
             media: base.join("media"),
-            skill: base.join("skill"),
             rule: base.join("rule"),
             backup: base.join("backup"),
             log: base.join("log"),
@@ -912,7 +908,6 @@ mod tests {
         let report = get_runtime_paths(&paths);
         assert_eq!(report.data, path_string(&paths.data));
         assert_eq!(report.media, path_string(&paths.media));
-        assert_eq!(report.skill, path_string(&paths.skill));
         assert_eq!(report.rule, path_string(&paths.rule));
         assert_eq!(report.backup, path_string(&paths.backup));
         assert_eq!(report.log, path_string(&paths.log));
@@ -926,9 +921,7 @@ mod tests {
     fn runtime_paths_report_serializes_camel_case() {
         let report = get_runtime_paths(&sample_paths(Path::new("/app")));
         let value = serde_json::to_value(&report).unwrap();
-        for key in [
-            "data", "database", "media", "skill", "rule", "backup", "log",
-        ] {
+        for key in ["data", "database", "media", "rule", "backup", "log"] {
             assert!(value.get(key).is_some(), "missing key {key}");
         }
     }

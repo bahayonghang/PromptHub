@@ -8,8 +8,8 @@
 
 The codebase currently has no dedicated `hooks/` directory and no custom hook
 files. Stateful shared behavior is represented by Zustand store hooks such as
-`usePromptStore`, `useSettingsStore`, `useSkillStore`, `useSystemStore`, and
-`useAppStore`. Component-local React hooks are used for effects, memoized
+`usePromptStore`, `useSettingsStore`, `useSystemStore`, and `useAppStore`.
+Component-local React hooks are used for effects, memoized
 derived values, refs, and temporary UI drafts.
 
 Document reality: do not introduce a custom-hook layer unless it removes real

@@ -580,8 +580,6 @@ pub struct ExportScope {
     pub data: bool,
     /// Saved image/video media.
     pub media: bool,
-    /// Skill local repositories.
-    pub skill: bool,
     /// Platform rule files.
     pub rule: bool,
 }
@@ -613,9 +611,6 @@ pub fn selected_categories<'a>(
     }
     if scope.media {
         categories.push(("media", paths.media.as_path()));
-    }
-    if scope.skill {
-        categories.push(("skill", paths.skill.as_path()));
     }
     if scope.rule {
         categories.push(("rule", paths.rule.as_path()));
@@ -1058,12 +1053,11 @@ mod tests {
         let paths = RuntimePaths {
             data: base.join("data"),
             media: base.join("media"),
-            skill: base.join("skill"),
             rule: base.join("rule"),
             backup: base.join("backup"),
             log: base.join("log"),
         };
-        for dir in [&paths.data, &paths.media, &paths.skill, &paths.rule] {
+        for dir in [&paths.data, &paths.media, &paths.rule] {
             fs::create_dir_all(dir).unwrap();
             fs::write(dir.join("marker.txt"), "x").unwrap();
         }
@@ -1077,12 +1071,11 @@ mod tests {
         let scope = ExportScope {
             data: true,
             media: false,
-            skill: true,
             rule: false,
         };
         let categories = selected_categories(&scope, &paths);
         let prefixes: Vec<&str> = categories.iter().map(|(p, _)| *p).collect();
-        assert_eq!(prefixes, vec!["data", "skill"]);
+        assert_eq!(prefixes, vec!["data"]);
     }
 
     /// Reads the top-level category prefixes present in a produced archive.
@@ -1108,7 +1101,6 @@ mod tests {
         let scope = ExportScope {
             data: true,
             media: true,
-            skill: false,
             rule: false,
         };
         let cancel = AtomicBool::new(false);
@@ -1144,7 +1136,6 @@ mod tests {
         let scope = ExportScope {
             data: true,
             media: true,
-            skill: true,
             rule: true,
         };
         // Pre-cancelled: the export must stop and produce nothing (17.11).

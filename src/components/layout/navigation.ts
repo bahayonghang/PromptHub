@@ -1,4 +1,4 @@
-import { BookOpenIcon, CommandIcon, SettingsIcon, type LucideIcon } from "lucide-react";
+import { CommandIcon, SettingsIcon, type LucideIcon } from "lucide-react";
 import { APP_VIEWS, type AppView } from "../../store/appStore";
 
 /**
@@ -21,7 +21,6 @@ export interface NavEntry {
  */
 export const NAV_ENTRIES: readonly NavEntry[] = [
   { view: "prompts", labelKey: "common.prompts", icon: CommandIcon },
-  { view: "skills", labelKey: "common.skills", icon: BookOpenIcon },
   { view: "settings", labelKey: "settings.title", icon: SettingsIcon },
 ];
 

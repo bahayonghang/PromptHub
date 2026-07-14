@@ -2,7 +2,7 @@
 
 # PromptHub
 
-**A local-first desktop app for managing AI prompts, skills, and rules**
+**A local-first desktop app for managing AI prompts and rules**
 
 Rewritten on Tauri 2 + React 18 + Rust
 
@@ -22,7 +22,7 @@ Rewritten on Tauri 2 + React 18 + Rust
 
 ---
 
-PromptHub brings your prompts, prompt versions, reusable skills (SKILL.md), and platform rules into a single local workspace, with full-text search, encryption, multi-provider AI testing, and backup/sync.
+PromptHub brings your prompts, prompt versions, and platform rules into a single local workspace, with full-text search, encryption, multi-provider AI testing, and backup/sync.
 
 Your data stays on your own machine by default.
 
@@ -50,13 +50,6 @@ Your data stays on your own machine by default.
 ### 🕒 Version Control
 - Every save records a history version automatically
 - Version diff, comparison, and one-click rollback
-
-### 🧩 Skill Management & Distribution
-- Manage SKILL.md (YAML frontmatter + Markdown body)
-- One-click install to Claude Code, Cursor, Codex, Windsurf, and more
-- Scan existing local SKILL.md files; symlink / copy modes
-- AI safety scan before install; import from remote repos (GitHub / Gitea, etc.)
-- Skill version history and rollback
 
 ### 📐 Rules (AI Coding Rules)
 - Centrally manage rule files like `.cursor/rules`, `.claude/CLAUDE.md`, `AGENTS.md`
@@ -144,7 +137,7 @@ Artifacts are written to `src-tauri/target/release/bundle/`, producing installer
 PromptHub/
 ├── src/                    # React frontend
 │   ├── components/         # Layout and view components
-│   ├── features/           # Domain modules (prompts / skills / settings / system)
+│   ├── features/           # Domain modules (prompts / settings / system)
 │   ├── locales/            # i18n resources for 7 languages
 │   ├── runtime/            # Runtime Bridge — the only entry to the backend
 │   ├── store/              # Zustand state
@@ -152,7 +145,7 @@ PromptHub/
 ├── src-tauri/              # Rust backend (Tauri)
 │   ├── src/
 │   │   ├── commands/       # Tauri command layer (replaces Electron IPC)
-│   │   ├── services/       # Business logic (prompt / skill / rules / ai / sync …)
+│   │   ├── services/       # Business logic (prompt / rules / ai / sync …)
 │   │   ├── models/         # Domain models
 │   │   └── storage/        # SQLite storage engine + FTS
 │   ├── Cargo.toml

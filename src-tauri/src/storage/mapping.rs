@@ -6,10 +6,9 @@
 //!
 //! - converts integer epoch-millisecond timestamp columns into ISO_8601 strings
 //!   via [`crate::storage::time::millis_to_iso8601`] (Requirement 4.9);
-//! - parses JSON TEXT columns (`variables`, `tags`, `images`, `videos`,
-//!   `files_snapshot`, `safety_report`) into the domain `Vec`/`Value` types,
-//!   treating NULL/empty as an empty collection or `None`;
-//! - decodes enum TEXT columns (`prompt_type`, `safety_level`) through serde so
+//! - parses JSON TEXT columns (`variables`, `tags`, `images`, `videos`) into
+//!   domain collections, treating NULL/empty as an empty collection;
+//! - decodes enum TEXT columns (`prompt_type`) through serde so
 //!   the wire spellings stay authoritative;
 //! - maps integer `0`/`1` columns to `bool`.
 //!
@@ -25,7 +24,7 @@ use rusqlite::types::Type;
 use rusqlite::{Error as SqlError, Row};
 use serde::de::DeserializeOwned;
 
-use crate::models::{Folder, Prompt, PromptVersion, Skill, SkillFileSnapshot, SkillVersion};
+use crate::models::{Folder, Prompt, PromptVersion};
 use crate::storage::time::millis_to_iso8601;
 
 /// Wraps a JSON/enum decode failure as a rusqlite column-conversion error.
@@ -42,15 +41,6 @@ fn parse_json_array<T: DeserializeOwned>(raw: Option<&str>) -> Result<Vec<T>, se
     }
 }
 
-/// Parses an optional JSON TEXT column, treating NULL/empty as `None`.
-fn parse_json_opt<T: DeserializeOwned>(raw: Option<&str>) -> Result<Option<T>, serde_json::Error> {
-    match raw {
-        None => Ok(None),
-        Some(s) if s.trim().is_empty() => Ok(None),
-        Some(s) => serde_json::from_str(s).map(Some),
-    }
-}
-
 /// Decodes an enum value stored as its wire-spelling TEXT.
 fn parse_enum<T: DeserializeOwned>(s: &str) -> Result<T, serde_json::Error> {
     serde_json::from_value(serde_json::Value::String(s.to_owned()))
@@ -62,25 +52,10 @@ fn get_json_array<T: DeserializeOwned>(row: &Row<'_>, col: &str) -> rusqlite::Re
     parse_json_array(raw.as_deref()).map_err(conversion_err)
 }
 
-/// Reads an optional JSON TEXT column into `Option<T>` (NULL/empty -> `None`).
-fn get_json_opt<T: DeserializeOwned>(row: &Row<'_>, col: &str) -> rusqlite::Result<Option<T>> {
-    let raw: Option<String> = row.get(col)?;
-    parse_json_opt(raw.as_deref()).map_err(conversion_err)
-}
-
 /// Reads an enum TEXT column.
 fn get_enum<T: DeserializeOwned>(row: &Row<'_>, col: &str) -> rusqlite::Result<T> {
     let s: String = row.get(col)?;
     parse_enum(&s).map_err(conversion_err)
-}
-
-/// Reads an optional enum TEXT column (NULL -> `None`).
-fn get_enum_opt<T: DeserializeOwned>(row: &Row<'_>, col: &str) -> rusqlite::Result<Option<T>> {
-    let s: Option<String> = row.get(col)?;
-    match s {
-        None => Ok(None),
-        Some(s) => parse_enum(&s).map(Some).map_err(conversion_err),
-    }
 }
 
 /// Reads an epoch-millisecond timestamp column as an ISO_8601 string.
@@ -149,61 +124,10 @@ pub fn folder_from_row(row: &Row<'_>) -> rusqlite::Result<Folder> {
     })
 }
 
-/// Maps a `skills` row into a [`Skill`].
-pub fn skill_from_row(row: &Row<'_>) -> rusqlite::Result<Skill> {
-    Ok(Skill {
-        id: row.get("id")?,
-        name: row.get("name")?,
-        description: row.get("description")?,
-        content: row.get("content")?,
-        protocol_type: row.get("protocol_type")?,
-        version: row.get("version")?,
-        author: row.get("author")?,
-        tags: get_json_array(row, "tags")?,
-        is_favorite: row.get("is_favorite")?,
-        source_url: row.get("source_url")?,
-        source_id: row.get("source_id")?,
-        source_label: row.get("source_label")?,
-        source_branch: row.get("source_branch")?,
-        source_directory: row.get("source_directory")?,
-        canonical_skill_path: row.get("canonical_skill_path")?,
-        local_repo_path: row.get("local_repo_path")?,
-        directory_fingerprint: row.get("directory_fingerprint")?,
-        icon_url: row.get("icon_url")?,
-        icon_emoji: row.get("icon_emoji")?,
-        icon_background: row.get("icon_background")?,
-        category: row.get("category")?,
-        is_builtin: row.get("is_builtin")?,
-        registry_slug: row.get("registry_slug")?,
-        content_url: row.get("content_url")?,
-        safety_level: get_enum_opt(row, "safety_level")?,
-        safety_score: row.get("safety_score")?,
-        safety_report: get_json_opt(row, "safety_report")?,
-        safety_scanned_at: get_iso_opt(row, "safety_scanned_at")?,
-        current_version: row.get("current_version")?,
-        version_tracking_enabled: row.get("version_tracking_enabled")?,
-        created_at: get_iso(row, "created_at")?,
-        updated_at: get_iso(row, "updated_at")?,
-    })
-}
-
-/// Maps a `skill_versions` row into a [`SkillVersion`].
-pub fn skill_version_from_row(row: &Row<'_>) -> rusqlite::Result<SkillVersion> {
-    Ok(SkillVersion {
-        id: row.get("id")?,
-        skill_id: row.get("skill_id")?,
-        version: row.get("version")?,
-        content: row.get("content")?,
-        files_snapshot: get_json_opt::<Vec<SkillFileSnapshot>>(row, "files_snapshot")?,
-        note: row.get("note")?,
-        created_at: get_iso(row, "created_at")?,
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{PromptType, SafetyLevel, Variable};
+    use crate::models::{PromptType, Variable};
     use crate::storage::{create_memory_pool, init_schema, DbPool};
     use rusqlite::params;
     /// Builds an in-memory pool with the schema initialized.
@@ -403,164 +327,5 @@ mod tests {
             child.updated_at.as_deref(),
             Some("2023-11-14T22:13:20.000Z")
         );
-    }
-
-    #[test]
-    fn skill_row_maps_enum_json_report_and_timestamps() {
-        let pool = schema_pool();
-        let conn = pool.get().unwrap();
-
-        conn.execute(
-            "INSERT INTO skills \
-             (id,name,description,content,tags,is_favorite,category,is_builtin,\
-              safety_level,safety_score,safety_report,safety_scanned_at,\
-              current_version,version_tracking_enabled,created_at,updated_at) \
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16)",
-            params![
-                "s1",
-                "My Skill",
-                "does things",
-                "# Body",
-                r#"["util","fun"]"#,
-                1_i64,
-                "general",
-                0_i64,
-                "high-risk",
-                42_i64,
-                r#"{"findings":[{"severity":"high"}]}"#,
-                1_700_000_000_000_i64,
-                1_i64,
-                1_i64,
-                1_700_000_000_000_i64,
-                1_700_000_000_123_i64,
-            ],
-        )
-        .unwrap();
-
-        let skill = conn
-            .query_row("SELECT * FROM skills WHERE id = ?1", ["s1"], |row| {
-                skill_from_row(row)
-            })
-            .unwrap();
-
-        assert_eq!(skill.name, "My Skill");
-        assert_eq!(skill.content.as_deref(), Some("# Body"));
-        assert_eq!(skill.tags, vec!["util".to_string(), "fun".to_string()]);
-        assert!(skill.is_favorite);
-        // schema defaults for the unspecified protocol_type column.
-        assert_eq!(skill.protocol_type, "skill");
-        assert_eq!(skill.safety_level, Some(SafetyLevel::HighRisk));
-        assert_eq!(skill.safety_score, Some(42));
-        assert_eq!(
-            skill.safety_report,
-            Some(serde_json::json!({ "findings": [{ "severity": "high" }] }))
-        );
-        assert_eq!(
-            skill.safety_scanned_at.as_deref(),
-            Some("2023-11-14T22:13:20.000Z")
-        );
-        assert!(skill.version_tracking_enabled);
-        assert_eq!(skill.created_at, "2023-11-14T22:13:20.000Z");
-        assert_eq!(skill.updated_at, "2023-11-14T22:13:20.123Z");
-    }
-
-    #[test]
-    fn skill_row_treats_missing_safety_fields_as_none() {
-        let pool = schema_pool();
-        let conn = pool.get().unwrap();
-
-        conn.execute(
-            "INSERT INTO skills (id,name,created_at,updated_at) \
-             VALUES ('s2','Bare',0,0)",
-            [],
-        )
-        .unwrap();
-
-        let skill = conn
-            .query_row("SELECT * FROM skills WHERE id = ?1", ["s2"], |row| {
-                skill_from_row(row)
-            })
-            .unwrap();
-
-        assert_eq!(skill.safety_level, None);
-        assert_eq!(skill.safety_report, None);
-        assert_eq!(skill.safety_scanned_at, None);
-        assert!(skill.tags.is_empty());
-        assert_eq!(skill.category, "general");
-    }
-
-    #[test]
-    fn skill_version_row_maps_files_snapshot() {
-        let pool = schema_pool();
-        let conn = pool.get().unwrap();
-
-        conn.execute(
-            "INSERT INTO skills (id,name,created_at,updated_at) VALUES ('s1','S',0,0)",
-            [],
-        )
-        .unwrap();
-
-        let files = vec![SkillFileSnapshot {
-            relative_path: "SKILL.md".into(),
-            content: "# Body".into(),
-        }];
-        let files_json = serde_json::to_string(&files).unwrap();
-
-        conn.execute(
-            "INSERT INTO skill_versions (id,skill_id,version,content,files_snapshot,note,created_at) \
-             VALUES (?1,?2,?3,?4,?5,?6,?7)",
-            params![
-                "sv1",
-                "s1",
-                1_i64,
-                "# Body",
-                files_json,
-                None::<String>,
-                1_700_000_000_000_i64,
-            ],
-        )
-        .unwrap();
-
-        let version = conn
-            .query_row(
-                "SELECT * FROM skill_versions WHERE id = ?1",
-                ["sv1"],
-                skill_version_from_row,
-            )
-            .unwrap();
-
-        assert_eq!(version.skill_id, "s1");
-        assert_eq!(version.version, 1);
-        assert_eq!(version.files_snapshot, Some(files));
-        assert_eq!(version.note, None);
-        assert_eq!(version.created_at, "2023-11-14T22:13:20.000Z");
-    }
-
-    #[test]
-    fn skill_version_row_treats_null_files_snapshot_as_none() {
-        let pool = schema_pool();
-        let conn = pool.get().unwrap();
-
-        conn.execute(
-            "INSERT INTO skills (id,name,created_at,updated_at) VALUES ('s1','S',0,0)",
-            [],
-        )
-        .unwrap();
-        conn.execute(
-            "INSERT INTO skill_versions (id,skill_id,version,content,created_at) \
-             VALUES ('sv1','s1',1,'c',0)",
-            [],
-        )
-        .unwrap();
-
-        let version = conn
-            .query_row(
-                "SELECT * FROM skill_versions WHERE id = ?1",
-                ["sv1"],
-                skill_version_from_row,
-            )
-            .unwrap();
-
-        assert_eq!(version.files_snapshot, None);
     }
 }

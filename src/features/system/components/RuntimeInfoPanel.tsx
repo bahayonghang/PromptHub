@@ -21,7 +21,6 @@ const PATH_ROWS: ReadonlyArray<{ key: keyof RuntimePathsReport; labelKey: string
   { key: "data", labelKey: "systemView.paths.data" },
   { key: "database", labelKey: "systemView.paths.database" },
   { key: "media", labelKey: "systemView.paths.media" },
-  { key: "skill", labelKey: "systemView.paths.skill" },
   { key: "rule", labelKey: "systemView.paths.rule" },
   { key: "backup", labelKey: "systemView.paths.backup" },
   { key: "log", labelKey: "systemView.paths.log" },
@@ -29,7 +28,7 @@ const PATH_ROWS: ReadonlyArray<{ key: keyof RuntimePathsReport; labelKey: string
 
 /**
  * Runtime paths + cache (Req 20.8, 20.9, 20.10). Lists the resolved data,
- * database, media, skill, rule, backup, and log paths with an open-in-shell
+ * database, media, rule, backup, and log paths with an open-in-shell
  * action, and shows the cache size with a clear-cache action. Everything routes
  * through the system store to the Window_Manager via the Runtime_Bridge
  * (Req 3.1). When window controls are unavailable in the runtime (Req 3.7) the

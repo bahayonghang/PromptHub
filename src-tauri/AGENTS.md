@@ -48,7 +48,7 @@ Run from `src-tauri/`:
 - The schema (`SCHEMA_SQL` in `storage/mod.rs`) is created idempotently with
   `IF NOT EXISTS`. There is no migration system and no Electron-data migration;
   treat schema edits as a deliberate, reviewed change.
-- Outbound HTTP (AI client, remote skill fetch, media download, sync) uses
+- Outbound HTTP (AI client, media download, sync) uses
   reqwest + rustls and must enforce the SSRF policy (`SSRF_BLOCKED`); redirects
   are re-checked per hop. Do not weaken these checks.
 - Crypto (`services/security.rs`): scrypt-derived key + AES-256-GCM. Never log or

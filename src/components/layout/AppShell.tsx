@@ -3,7 +3,6 @@ import { useAppStore, type AppView } from "../../store/appStore";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { PromptsView } from "../views/PromptsView";
-import { SkillsView } from "../views/SkillsView";
 import { SettingsView } from "../views/SettingsView";
 import { TitleBar } from "../../features/system/components/TitleBar";
 import { CloseDialog } from "../../features/system/components/CloseDialog";
@@ -11,7 +10,6 @@ import { CloseDialog } from "../../features/system/components/CloseDialog";
 /** Maps each major view to the component rendered in the content region. */
 const VIEW_COMPONENTS: Record<AppView, () => ReactElement> = {
   prompts: PromptsView,
-  skills: SkillsView,
   settings: SettingsView,
 };
 

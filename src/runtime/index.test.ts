@@ -11,11 +11,6 @@ const ALL_TRUE: RuntimeCapabilities = {
   appUpdate: true,
   dataRecovery: true,
   desktopWindowControls: true,
-  skillDistribution: true,
-  skillFileEditing: true,
-  skillLocalScan: true,
-  skillPlatformIntegration: true,
-  skillStore: true,
 };
 
 /** Builds a bridge whose injected primitives are vi mocks, with sensible defaults. */
@@ -119,11 +114,6 @@ describe("capability gate (Req 3.7)", () => {
         appUpdate: false,
         dataRecovery: false,
         desktopWindowControls: false,
-        skillDistribution: false,
-        skillFileEditing: false,
-        skillLocalScan: false,
-        skillPlatformIntegration: false,
-        skillStore: false,
       },
       invoke: invoke as RuntimeBridgeDeps["invoke"],
     });

@@ -2,7 +2,7 @@
 
 # PromptHub
 
-**本地优先的 AI Prompt、Skill 与规则管理桌面应用**
+**本地优先的 AI Prompt 与规则管理桌面应用**
 
 基于 Tauri 2 + React 18 + Rust 重写
 
@@ -22,7 +22,7 @@
 
 ---
 
-PromptHub 把你的 Prompt、Prompt 版本、可复用技能（SKILL.md）和平台规则集中放进一个本地工作区，提供全文搜索、加密保护、多服务商 AI 测试以及备份同步能力。
+PromptHub 把你的 Prompt、Prompt 版本和平台规则集中放进一个本地工作区，提供全文搜索、加密保护、多服务商 AI 测试以及备份同步能力。
 
 数据默认存在你自己的电脑上。
 
@@ -50,13 +50,6 @@ PromptHub 把你的 Prompt、Prompt 版本、可复用技能（SKILL.md）和平
 ### 🕒 版本控制
 - 每次保存自动写入历史版本
 - 版本对比、差异查看、一键回滚
-
-### 🧩 Skill 管理与分发
-- 管理 SKILL.md（YAML frontmatter + Markdown 正文）
-- 一键安装到 Claude Code、Cursor、Codex、Windsurf 等多个平台
-- 本地扫描已有 SKILL.md，支持 symlink / copy 双模式
-- 安装前 AI 安全扫描，远程仓库（GitHub / Gitea 等）导入
-- Skill 版本历史与回滚
 
 ### 📐 Rules（AI 编程规则）
 - 集中管理 `.cursor/rules`、`.claude/CLAUDE.md`、`AGENTS.md` 等规则文件
@@ -144,7 +137,7 @@ npm run tauri build
 PromptHub/
 ├── src/                    # React 前端
 │   ├── components/         # 布局与视图组件
-│   ├── features/           # 业务模块（prompts / skills / settings / system）
+│   ├── features/           # 业务模块（prompts / settings / system）
 │   ├── locales/            # 7 种语言的国际化资源
 │   ├── runtime/            # Runtime Bridge —— 前端访问后端的唯一入口
 │   ├── store/              # Zustand 状态
@@ -152,7 +145,7 @@ PromptHub/
 ├── src-tauri/              # Rust 后端（Tauri）
 │   ├── src/
 │   │   ├── commands/       # Tauri 命令层（替代 Electron IPC）
-│   │   ├── services/       # 业务逻辑（prompt / skill / rules / ai / sync …）
+│   │   ├── services/       # 业务逻辑（prompt / rules / ai / sync …）
 │   │   ├── models/         # 领域模型
 │   │   └── storage/        # SQLite 存储引擎 + FTS
 │   ├── Cargo.toml

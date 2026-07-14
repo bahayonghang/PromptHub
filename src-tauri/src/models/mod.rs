@@ -15,17 +15,13 @@ mod prompt;
 mod rules;
 mod security;
 mod settings;
-mod skill;
-mod skill_md;
 
-pub use enums::{PromptType, SafetyLevel, Severity, SortField, SortOrder, SyncStatus};
+pub use enums::{PromptType, SortField, SortOrder, SyncStatus};
 pub use folder::Folder;
 pub use prompt::{Prompt, PromptVersion, SearchQuery, Variable};
 pub use rules::{RuleFileContent, RuleVersionSnapshot};
 pub use security::StoredMasterPassword;
 pub use settings::{SecuritySettings, Settings, SyncSettings};
-pub use skill::{Skill, SkillFileSnapshot, SkillVersion};
-pub use skill_md::ParsedSkillMd;
 
 #[cfg(test)]
 mod tests {
@@ -86,27 +82,6 @@ mod tests {
             serde_json::to_value(SyncStatus::SyncError).unwrap(),
             json!("sync-error")
         );
-
-        assert_eq!(
-            serde_json::to_value(SafetyLevel::Safe).unwrap(),
-            json!("safe")
-        );
-        assert_eq!(
-            serde_json::to_value(SafetyLevel::Warn).unwrap(),
-            json!("warn")
-        );
-        assert_eq!(
-            serde_json::to_value(SafetyLevel::HighRisk).unwrap(),
-            json!("high-risk")
-        );
-        assert_eq!(
-            serde_json::to_value(SafetyLevel::Blocked).unwrap(),
-            json!("blocked")
-        );
-
-        assert_eq!(serde_json::to_value(Severity::Info).unwrap(), json!("info"));
-        assert_eq!(serde_json::to_value(Severity::Warn).unwrap(), json!("warn"));
-        assert_eq!(serde_json::to_value(Severity::High).unwrap(), json!("high"));
     }
 
     #[test]

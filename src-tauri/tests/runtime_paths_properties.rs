@@ -12,8 +12,8 @@
 //! Property implemented (design "Testing Strategy"):
 //!   - Property 46: Runtime directory resolution
 //!
-//! *For any* supported platform, resolving the runtime paths SHALL yield six
-//! directories (data, media, skill, rule, backup, log) that are pairwise
+//! *For any* supported platform, resolving the runtime paths SHALL yield five
+//! directories (data, media, rule, backup, log) that are pairwise
 //! distinct, absolute, located under the platform's per-user application-data
 //! root, and present on disk after initialization. The resolved set matches what
 //! `ensure_directories` creates and what the Window_Manager's `get_runtime_paths`
@@ -49,21 +49,21 @@ fn base_suffix() -> impl Strategy<Value = Vec<String>> {
 // ---------------------------------------------------------------------------
 
 proptest! {
-    // Each case performs filesystem IO (creates the six directories and probes
+    // Each case performs filesystem IO (creates the five directories and probes
     // each for writability), so the case count is kept modest.
     #![proptest_config(ProptestConfig::with_cases(64))]
 
     /// **Property 46: Runtime directory resolution.**
     ///
     /// For *any* application-data root, `resolve_runtime_paths`:
-    ///   1. yields six directories (data, media, skill, rule, backup, log) that
+    ///   1. yields five directories (data, media, rule, backup, log) that
     ///      are pairwise distinct;
     ///   2. each of which is absolute and located directly under the given root
     ///      (its parent is the root);
     ///   3. with the SQLite database located under the resolved data directory;
     ///   4. such that the Window_Manager's `get_runtime_paths` report exposes
-    ///      exactly that resolved set (the six directories plus the database);
-    ///   5. and after `ensure_directories` runs, every one of the six exists on
+    ///      exactly that resolved set (the five directories plus the database);
+    ///   5. and after `ensure_directories` runs, every one of the five exists on
     ///      disk, is writable, and the root's immediate children are exactly
     ///      those six directories — nothing more, nothing less.
     ///
@@ -81,13 +81,12 @@ proptest! {
         let dirs = [
             ("data", &paths.data),
             ("media", &paths.media),
-            ("skill", &paths.skill),
             ("rule", &paths.rule),
             ("backup", &paths.backup),
             ("log", &paths.log),
         ];
 
-        // (1) The six directories are pairwise distinct.
+        // (1) The five directories are pairwise distinct.
         for (i, (label_a, a)) in dirs.iter().enumerate() {
             for (label_b, b) in &dirs[i + 1..] {
                 prop_assert_ne!(a, b, "{} and {} must be distinct", label_a, label_b);
@@ -121,14 +120,13 @@ proptest! {
         let report = get_runtime_paths(&paths);
         prop_assert_eq!(&report.data, &paths.data.to_string_lossy().to_string());
         prop_assert_eq!(&report.media, &paths.media.to_string_lossy().to_string());
-        prop_assert_eq!(&report.skill, &paths.skill.to_string_lossy().to_string());
         prop_assert_eq!(&report.rule, &paths.rule.to_string_lossy().to_string());
         prop_assert_eq!(&report.backup, &paths.backup.to_string_lossy().to_string());
         prop_assert_eq!(&report.log, &paths.log.to_string_lossy().to_string());
         prop_assert_eq!(&report.database, &db.to_string_lossy().to_string());
 
         // (5) After initialization every directory exists, is writable, and the
-        // root holds exactly the six runtime directories.
+        // root holds exactly the five runtime directories.
         let ensured = ensure_directories(&paths);
         prop_assert!(
             ensured.is_ok(),
@@ -155,14 +153,14 @@ proptest! {
             .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
             .collect();
         children.sort();
-        let expected: Vec<String> = ["backup", "data", "log", "media", "rule", "skill"]
+        let expected: Vec<String> = ["backup", "data", "log", "media", "rule"]
             .iter()
             .map(|s| s.to_string())
             .collect();
         prop_assert_eq!(
             children,
             expected,
-            "the root's children must be exactly the six runtime directories"
+            "the root's children must be exactly the five runtime directories"
         );
     }
 }

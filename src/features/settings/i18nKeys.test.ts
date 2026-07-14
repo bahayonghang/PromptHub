@@ -208,7 +208,6 @@ const KEYS = [
   "settingsView.sync.export.hint",
   "settingsView.sync.export.data",
   "settingsView.sync.export.media",
-  "settingsView.sync.export.skill",
   "settingsView.sync.export.rule",
   "settingsView.sync.export.button",
   "settingsView.sync.export.exporting",

@@ -1,7 +1,7 @@
 //! Property 1: Persistence / serialization round-trip (proptest).
 //!
-//! *For any* valid domain object (Prompt, Folder, Skill, SkillVersion,
-//! PromptVersion, Settings), persisting it and then reading it back SHALL return
+//! *For any* valid domain object (Prompt, Folder, PromptVersion, Settings),
+//! persisting it and then reading it back SHALL return
 //! an object whose fields are each equal to the stored object, with all
 //! collection fields preserved and `createdAt`/`updatedAt` timestamps returned as
 //! valid ISO_8601 strings that re-parse to the persisted UTC instant.
@@ -23,8 +23,7 @@ use rusqlite::{params, Connection};
 use serde::Serialize;
 
 use crate::models::{
-    Folder, Prompt, PromptType, PromptVersion, SafetyLevel, SecuritySettings, Settings, Skill,
-    SkillFileSnapshot, SkillVersion, SyncSettings, Variable,
+    Folder, Prompt, PromptType, PromptVersion, SecuritySettings, Settings, SyncSettings, Variable,
 };
 use crate::storage::mapping;
 use crate::storage::time::{iso8601_to_millis, millis_to_iso8601};
@@ -76,7 +75,7 @@ fn opt_text() -> impl Strategy<Value = Option<String>> {
     proptest::option::of(text())
 }
 
-/// A relative file reference (image/video/skill file path component).
+/// A relative media file path component.
 fn file_ref() -> impl Strategy<Value = String> {
     proptest::string::string_regex("[a-zA-Z0-9_./-]{1,12}").expect("valid regex")
 }
@@ -254,151 +253,6 @@ fn folder_strategy() -> impl Strategy<Value = Folder> {
         )
 }
 
-/// Strategy producing an arbitrary [`SkillFileSnapshot`].
-fn file_snapshot() -> impl Strategy<Value = SkillFileSnapshot> {
-    (file_ref(), text()).prop_map(|(relative_path, content)| SkillFileSnapshot {
-        relative_path,
-        content,
-    })
-}
-
-/// Strategy producing an arbitrary valid [`SkillVersion`].
-fn skill_version_strategy() -> impl Strategy<Value = SkillVersion> {
-    (
-        id(),
-        id(),
-        1i64..10_000,
-        opt_text(),
-        proptest::option::of(prop::collection::vec(file_snapshot(), 0..4)),
-        opt_text(),
-        iso(),
-    )
-        .prop_map(
-            |(id, skill_id, version, content, files_snapshot, note, created_at)| SkillVersion {
-                id,
-                skill_id,
-                version,
-                content,
-                files_snapshot,
-                note,
-                created_at,
-            },
-        )
-}
-
-/// Strategy producing an arbitrary valid [`Skill`] exercising every mapped column.
-fn skill_strategy() -> impl Strategy<Value = Skill> {
-    let core = (
-        id(),
-        nonempty_text(),
-        prop_oneof![Just("skill".to_string()), nonempty_text()],
-        prop_oneof![Just("general".to_string()), nonempty_text()],
-    );
-    let opt_a = (
-        opt_text(),
-        opt_text(),
-        opt_text(),
-        opt_text(),
-        opt_text(),
-        opt_text(),
-        opt_text(),
-        opt_text(),
-        opt_text(),
-        opt_text(),
-    );
-    let opt_b = (
-        opt_text(),
-        opt_text(),
-        opt_text(),
-        opt_text(),
-        opt_text(),
-        opt_text(),
-        opt_text(),
-    );
-    let flags = (
-        tags(),
-        any::<bool>(),
-        any::<bool>(),
-        any::<bool>(),
-        0i64..10_000,
-    );
-    let safety = (
-        proptest::option::of(prop_oneof![
-            Just(SafetyLevel::Safe),
-            Just(SafetyLevel::Warn),
-            Just(SafetyLevel::HighRisk),
-            Just(SafetyLevel::Blocked),
-        ]),
-        proptest::option::of(0i64..=100i64),
-        proptest::option::of(any::<i64>().prop_map(|n| serde_json::json!({ "score": n }))),
-        proptest::option::of(iso()),
-    );
-    let ts = (iso(), iso());
-
-    (core, opt_a, opt_b, flags, safety, ts).prop_map(
-        |(
-            (id, name, protocol_type, category),
-            (
-                description,
-                content,
-                version,
-                author,
-                source_url,
-                source_id,
-                source_label,
-                source_branch,
-                source_directory,
-                canonical_skill_path,
-            ),
-            (
-                local_repo_path,
-                directory_fingerprint,
-                icon_url,
-                icon_emoji,
-                icon_background,
-                registry_slug,
-                content_url,
-            ),
-            (tags, is_favorite, is_builtin, version_tracking_enabled, current_version),
-            (safety_level, safety_score, safety_report, safety_scanned_at),
-            (created_at, updated_at),
-        )| Skill {
-            id,
-            name,
-            description,
-            content,
-            protocol_type,
-            version,
-            author,
-            tags,
-            is_favorite,
-            source_url,
-            source_id,
-            source_label,
-            source_branch,
-            source_directory,
-            canonical_skill_path,
-            local_repo_path,
-            directory_fingerprint,
-            icon_url,
-            icon_emoji,
-            icon_background,
-            category,
-            is_builtin,
-            registry_slug,
-            content_url,
-            safety_level,
-            safety_score,
-            safety_report,
-            safety_scanned_at,
-            current_version,
-            version_tracking_enabled,
-            created_at,
-            updated_at,
-        },
-    )
-}
-
 /// Strategy producing arbitrary [`SyncSettings`].
 fn sync_settings() -> impl Strategy<Value = SyncSettings> {
     (
@@ -555,15 +409,6 @@ fn insert_min_prompt(conn: &Connection, pid: &str) {
     .expect("insert minimal prompt");
 }
 
-/// Inserts a minimal skill row so a foreign-key reference resolves.
-fn insert_min_skill(conn: &Connection, sid: &str) {
-    conn.execute(
-        "INSERT OR IGNORE INTO skills (id,name,created_at,updated_at) VALUES (?1,'S',0,0)",
-        params![sid],
-    )
-    .expect("insert minimal skill");
-}
-
 fn insert_prompt(conn: &Connection, p: &Prompt) {
     if let Some(fid) = &p.folder_id {
         insert_min_folder(conn, fid);
@@ -641,76 +486,6 @@ fn insert_folder(conn: &Connection, f: &Folder) {
     .expect("insert folder");
 }
 
-fn insert_skill(conn: &Connection, s: &Skill) {
-    conn.execute(
-        "INSERT INTO skills \
-         (id,name,description,content,protocol_type,version,author,tags,is_favorite,\
-          source_url,source_id,source_label,source_branch,source_directory,canonical_skill_path,\
-          local_repo_path,directory_fingerprint,icon_url,icon_emoji,icon_background,category,\
-          is_builtin,registry_slug,content_url,safety_level,safety_score,safety_report,\
-          safety_scanned_at,current_version,version_tracking_enabled,created_at,updated_at) \
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,\
-                 ?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32)",
-        params![
-            s.id,
-            s.name,
-            s.description,
-            s.content,
-            s.protocol_type,
-            s.version,
-            s.author,
-            serde_json::to_string(&s.tags).unwrap(),
-            s.is_favorite,
-            s.source_url,
-            s.source_id,
-            s.source_label,
-            s.source_branch,
-            s.source_directory,
-            s.canonical_skill_path,
-            s.local_repo_path,
-            s.directory_fingerprint,
-            s.icon_url,
-            s.icon_emoji,
-            s.icon_background,
-            s.category,
-            s.is_builtin,
-            s.registry_slug,
-            s.content_url,
-            s.safety_level.as_ref().map(enum_wire),
-            s.safety_score,
-            s.safety_report
-                .as_ref()
-                .map(|v| serde_json::to_string(v).unwrap()),
-            s.safety_scanned_at.as_deref().map(to_millis),
-            s.current_version,
-            s.version_tracking_enabled,
-            to_millis(&s.created_at),
-            to_millis(&s.updated_at),
-        ],
-    )
-    .expect("insert skill");
-}
-
-fn insert_skill_version(conn: &Connection, v: &SkillVersion) {
-    insert_min_skill(conn, &v.skill_id);
-    conn.execute(
-        "INSERT INTO skill_versions (id,skill_id,version,content,files_snapshot,note,created_at) \
-         VALUES (?1,?2,?3,?4,?5,?6,?7)",
-        params![
-            v.id,
-            v.skill_id,
-            v.version,
-            v.content,
-            v.files_snapshot
-                .as_ref()
-                .map(|f| serde_json::to_string(f).unwrap()),
-            v.note,
-            to_millis(&v.created_at),
-        ],
-    )
-    .expect("insert skill version");
-}
-
 /// Asserts the timestamp strings produced by the mapping are valid ISO_8601 that
 /// re-parse to the same UTC instant they encode (Property 1 timestamp clause).
 fn assert_iso_roundtrips(iso: &str) {
@@ -784,43 +559,6 @@ proptest! {
         if let Some(updated) = &read.updated_at {
             assert_iso_roundtrips(updated);
         }
-    }
-
-    /// **Validates: Requirements 2.5, 4.9, 9.2, 9.3**
-    #[test]
-    fn skill_persistence_round_trip(skill in skill_strategy()) {
-        let pool = schema_pool();
-        let conn = pool.get().unwrap();
-        insert_skill(&conn, &skill);
-
-        let read = conn
-            .query_row("SELECT * FROM skills WHERE id = ?1", [&skill.id], |row| {
-                mapping::skill_from_row(row)
-            })
-            .unwrap();
-
-        prop_assert_eq!(&read, &skill);
-        assert_iso_roundtrips(&read.created_at);
-        assert_iso_roundtrips(&read.updated_at);
-    }
-
-    /// **Validates: Requirements 2.5, 4.9, 9.2, 9.3**
-    #[test]
-    fn skill_version_persistence_round_trip(version in skill_version_strategy()) {
-        let pool = schema_pool();
-        let conn = pool.get().unwrap();
-        insert_skill_version(&conn, &version);
-
-        let read = conn
-            .query_row(
-                "SELECT * FROM skill_versions WHERE id = ?1",
-                [&version.id],
-                mapping::skill_version_from_row,
-            )
-            .unwrap();
-
-        prop_assert_eq!(&read, &version);
-        assert_iso_roundtrips(&read.created_at);
     }
 
     /// Settings persist as a single JSON value in the key/value `settings` table;

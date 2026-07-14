@@ -11,11 +11,6 @@ function makeBridge(returnValue: unknown = null) {
       appUpdate: true,
       dataRecovery: true,
       desktopWindowControls: true,
-      skillDistribution: true,
-      skillFileEditing: true,
-      skillLocalScan: true,
-      skillPlatformIntegration: true,
-      skillStore: true,
     }),
     invoke: invoke as RuntimeBridge["invoke"],
     on: vi.fn(() => () => {}),
@@ -101,7 +96,7 @@ describe("createSettingsApi command contract (Req 3.1)", () => {
       accessKeyId: "ak",
       secretAccessKey: "sk",
     };
-    const scope: ExportScope = { data: true, media: false, skill: false, rule: false };
+    const scope: ExportScope = { data: true, media: false, rule: false };
 
     await api.testWebdav(webdav);
     await api.testS3(s3);

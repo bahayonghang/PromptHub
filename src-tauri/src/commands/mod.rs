@@ -9,7 +9,6 @@ pub mod prompt;
 pub mod rules;
 pub mod security;
 pub mod settings;
-pub mod skill;
 pub mod startup;
 pub mod sync;
 pub mod updater;

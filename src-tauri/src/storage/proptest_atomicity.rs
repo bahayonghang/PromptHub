@@ -46,8 +46,6 @@ const SNAPSHOT_TABLES: &[(&str, &str)] = &[
     ("prompts", "id"),
     ("prompt_versions", "id"),
     ("settings", "key"),
-    ("skills", "id"),
-    ("skill_versions", "id"),
     ("rules", "id"),
     ("rule_versions", "id"),
 ];

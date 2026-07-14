@@ -61,31 +61,3 @@ pub enum SyncStatus {
     /// Sync could not be evaluated due to an error.
     SyncError,
 }
-
-/// Overall safety classification of a skill scan.
-/// Wire values: `safe` | `warn` | `high-risk` | `blocked` (Requirement 13).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum SafetyLevel {
-    /// No concerns found.
-    Safe,
-    /// Minor concerns that warrant review.
-    Warn,
-    /// Serious concerns; use with caution.
-    HighRisk,
-    /// Disallowed content; installation should be blocked.
-    Blocked,
-}
-
-/// Severity of an individual safety finding.
-/// Wire values: `info` | `warn` | `high` (Requirement 13).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Severity {
-    /// Informational finding.
-    Info,
-    /// Warning-level finding.
-    Warn,
-    /// High-severity finding.
-    High,
-}

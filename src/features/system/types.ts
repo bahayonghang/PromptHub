@@ -63,7 +63,6 @@ export interface RuntimePathsReport {
   data: string;
   database: string;
   media: string;
-  skill: string;
   rule: string;
   backup: string;
   log: string;

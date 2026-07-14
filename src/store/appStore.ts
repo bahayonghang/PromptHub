@@ -6,10 +6,10 @@ import { runtime, type RuntimeBridge } from "../runtime";
  * sidebar navigation entry and a content region. The concrete view bodies are
  * implemented by tasks 22.2–22.5; this shell renders placeholders for them.
  */
-export type AppView = "prompts" | "skills" | "settings";
+export type AppView = "prompts" | "settings";
 
 /** All views in display order, used by the navigation and for validation. */
-export const APP_VIEWS: readonly AppView[] = ["prompts", "skills", "settings"];
+export const APP_VIEWS: readonly AppView[] = ["prompts", "settings"];
 
 /** The view shown when the application first opens. */
 export const DEFAULT_VIEW: AppView = "prompts";

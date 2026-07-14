@@ -11,8 +11,8 @@
 //! Responsibilities:
 //!
 //! - [`resolve_runtime_paths`] / [`database_path`] / [`ensure_directories`]: the
-//!   single source of truth for the six per-user runtime subdirectories (data,
-//!   media, skill, rule, backup, log) under the platform's application-data root
+//!   single source of truth for the five per-user runtime subdirectories (data,
+//!   media, rule, backup, log) under the platform's application-data root
 //!   and the SQLite database path within the data directory, plus the
 //!   create-and-verify-writable startup contract (23.2, 23.3, 20.9). The startup
 //!   sequence and the Window_Manager's runtime-paths report reuse these so the
@@ -71,17 +71,16 @@ use crate::storage::time::{millis_to_iso8601, now_millis};
 /// File name of the SQLite database within the data directory.
 pub const DATABASE_FILE_NAME: &str = "prompthub.db";
 
-/// Resolves the six per-user runtime directories beneath the application-data
+/// Resolves the five per-user runtime directories beneath the application-data
 /// root `base` (Req 23.2).
 ///
 /// Each directory is a distinct child of `base`, mirroring the [`RuntimePaths`]
-/// fields: `data`, `media`, `skill`, `rule`, `backup`, `log`. The SQLite database
+/// fields: `data`, `media`, `rule`, `backup`, `log`. The SQLite database
 /// lives at `<data>/prompthub.db` (see [`database_path`]).
 pub fn resolve_runtime_paths(base: &Path) -> RuntimePaths {
     RuntimePaths {
         data: base.join("data"),
         media: base.join("media"),
-        skill: base.join("skill"),
         rule: base.join("rule"),
         backup: base.join("backup"),
         log: base.join("log"),
@@ -95,11 +94,10 @@ pub fn database_path(paths: &RuntimePaths) -> PathBuf {
 
 /// The labelled runtime directories, in a stable order for deterministic error
 /// reporting.
-fn directory_entries(paths: &RuntimePaths) -> [(&'static str, &Path); 6] {
+fn directory_entries(paths: &RuntimePaths) -> [(&'static str, &Path); 5] {
     [
         ("data", paths.data.as_path()),
         ("media", paths.media.as_path()),
-        ("skill", paths.skill.as_path()),
         ("rule", paths.rule.as_path()),
         ("backup", paths.backup.as_path()),
         ("log", paths.log.as_path()),
@@ -153,7 +151,6 @@ const DATA_MARKERS: &[&str] = &[
     "logs",
     "images",
     "videos",
-    "skills",
     "rules",
     "shortcuts.json",
     "shortcut-mode.json",
@@ -641,14 +638,12 @@ mod tests {
         let paths = resolve_runtime_paths(base);
         assert_eq!(paths.data, base.join("data"));
         assert_eq!(paths.media, base.join("media"));
-        assert_eq!(paths.skill, base.join("skill"));
         assert_eq!(paths.rule, base.join("rule"));
         assert_eq!(paths.backup, base.join("backup"));
         assert_eq!(paths.log, base.join("log"));
         let all = [
             &paths.data,
             &paths.media,
-            &paths.skill,
             &paths.rule,
             &paths.backup,
             &paths.log,
@@ -667,13 +662,25 @@ mod tests {
     }
 
     #[test]
-    fn ensure_directories_creates_all_six() {
+    fn ensure_directories_creates_all_managed_directories() {
         let tmp = TempDir::new().unwrap();
         let paths = resolve_runtime_paths(tmp.path());
         ensure_directories(&paths).unwrap();
         for (_, dir) in directory_entries(&paths) {
             assert!(dir.is_dir(), "expected `{}` to be created", dir.display());
         }
+    }
+
+    #[test]
+    fn ensure_directories_preserves_unmanaged_legacy_skill_directory() {
+        let tmp = TempDir::new().unwrap();
+        let legacy_file = tmp.path().join("skill").join("legacy.txt");
+        fs::create_dir_all(legacy_file.parent().unwrap()).unwrap();
+        fs::write(&legacy_file, b"legacy skill bytes").unwrap();
+
+        ensure_directories(&resolve_runtime_paths(tmp.path())).unwrap();
+
+        assert_eq!(fs::read(legacy_file).unwrap(), b"legacy skill bytes");
     }
 
     #[test]

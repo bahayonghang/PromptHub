@@ -19,7 +19,7 @@ maintain, and reuse over time.
 
 PromptHub helps users write, debug, and compare prompts, then preserve the useful
 results as an organized local knowledge base. Version history, model comparison,
-skills, and rules support that core workflow. Success means the user finishes
+and rules support that core workflow. Success means the user finishes
 with a clear, maintainable prompt library rather than another collection of
 scattered text files and chat fragments.
 

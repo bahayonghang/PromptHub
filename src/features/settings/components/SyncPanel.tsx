@@ -37,7 +37,6 @@ const labelClass = "text-xs font-medium text-muted-foreground";
 const EXPORT_CATEGORIES: ReadonlyArray<{ key: keyof ExportScope; labelKey: string }> = [
   { key: "data", labelKey: "settingsView.sync.export.data" },
   { key: "media", labelKey: "settingsView.sync.export.media" },
-  { key: "skill", labelKey: "settingsView.sync.export.skill" },
   { key: "rule", labelKey: "settingsView.sync.export.rule" },
 ];
 
@@ -106,7 +105,6 @@ export function SyncPanel({
   const [scope, setScope] = useState<ExportScope>({
     data: true,
     media: true,
-    skill: true,
     rule: true,
   });
   const [exportPath, setExportPath] = useState<string | null>(null);

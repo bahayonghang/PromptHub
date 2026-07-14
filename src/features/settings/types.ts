@@ -172,7 +172,6 @@ export interface ConnectionTestResult {
 export interface ExportScope {
   data: boolean;
   media: boolean;
-  skill: boolean;
   rule: boolean;
 }
 

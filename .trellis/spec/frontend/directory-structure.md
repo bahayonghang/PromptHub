@@ -42,7 +42,6 @@ src/
       *.test.ts
       i18nKeys.test.ts
     settings/
-    skills/
     system/
 ```
 
@@ -60,8 +59,6 @@ Use feature modules for business behavior. Existing examples:
   history, prompt editor UI, and prompt i18n key coverage.
 - `src/features/settings/` owns settings bridge calls, settings store, validation
   helpers, settings panels, appearance-panel tests, and settings i18n keys.
-- `src/features/skills/` owns reusable skill (`SKILL.md`) editing, parsing,
-  platform integration, and safety scanning.
 - `src/features/system/` owns window controls, updater state, shortcuts,
   notifications, runtime-path panels, and system event subscriptions.
 

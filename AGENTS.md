@@ -34,7 +34,7 @@ anchors to jump to targeted files.
 ## What This Repo Is
 
 PromptHub Desktop: a local-first Tauri 2 app for managing AI prompts, prompt
-versions, reusable skills (`SKILL.md`), and platform rules. The Rust backend
+versions, and platform rules. The Rust backend
 (`src-tauri/`) reimplements the original Electron main process; the React
 frontend (`src/`) reaches the backend only through the Runtime Bridge
 (`src/runtime`). The original Electron app is kept read-only under `ref/PromptHub`.
@@ -85,7 +85,7 @@ when a narrower command is needed while iterating.
   for task lifecycle changes instead of manual edits.
 - Updater signing keys (`*.key`, `*.pem`) are secrets and are gitignored; never
   commit them. The `pubkey` in `src-tauri/tauri.conf.json` is a placeholder.
-- Outbound requests (AI calls, remote skill fetch, media download, sync) must
+- Outbound requests (AI calls, media download, sync) must
   pass the backend SSRF policy (`SSRF_BLOCKED`); do not bypass it.
 - Ask before destructive or external-production operations: sync/backup deletes,
   data-path changes, schema changes, updater signing, or anything touching real

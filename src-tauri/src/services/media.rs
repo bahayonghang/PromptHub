@@ -21,12 +21,12 @@
 //!
 //! ## Download SSRF policy (Req 18.4, 18.5)
 //!
-//! [`download_image`] accepts HTTP and HTTPS URLs (unlike the HTTPS-only skill
-//! fetch), follows at most [`MAX_REDIRECTS`] redirects within a
+//! [`download_image`] accepts HTTP and HTTPS URLs, follows at most
+//! [`MAX_REDIRECTS`] redirects within a
 //! [`DOWNLOAD_TIMEOUT`], requires an image content-type, and caps the body at
 //! [`MAX_DOWNLOAD_BYTES`]. The security-critical address classification reuses
-//! [`crate::services::skill_safety::is_public_ip`] and
-//! [`crate::services::skill_safety::is_blocked_hostname`] rather than duplicating
+//! [`crate::services::network_safety::is_public_ip`] and
+//! [`crate::services::network_safety::is_blocked_hostname`] rather than duplicating
 //! the SSRF ranges: a non-HTTP(S) scheme, a localhost/loopback name, or a host
 //! that resolves to any non-public address is rejected with `SSRF_BLOCKED`
 //! *before* any outbound request, and the policy is re-checked on every redirect
@@ -53,7 +53,7 @@ use futures_util::StreamExt;
 use uuid::Uuid;
 
 use crate::error::AppError;
-use crate::services::skill_safety::{is_blocked_hostname, is_public_ip};
+use crate::services::network_safety::{is_blocked_hostname, is_public_ip};
 
 // ===========================================================================
 // Constants
@@ -463,8 +463,8 @@ enum HostCheck {
 /// Synchronously validates a URL's scheme and host against the SSRF policy
 /// without performing DNS (Req 18.5).
 ///
-/// Unlike the HTTPS-only skill fetch, image download permits **HTTP and HTTPS**
-/// (Req 18.5). Rejects with `SSRF_BLOCKED` when the scheme is neither HTTP nor
+/// Image download permits **HTTP and HTTPS** (Req 18.5). Rejects with
+/// `SSRF_BLOCKED` when the scheme is neither HTTP nor
 /// HTTPS, when the host names the local machine, or when the host is an IP literal
 /// in a non-public range — reusing [`is_public_ip`]/[`is_blocked_hostname`] so the
 /// SSRF ranges are defined in exactly one place.

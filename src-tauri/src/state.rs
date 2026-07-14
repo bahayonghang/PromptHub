@@ -29,9 +29,9 @@ pub type RequestHandle = CancellationToken;
 
 /// The set of per-user runtime directories resolved at startup.
 ///
-/// These mirror the six directories the Data_Path_Manager resolves under the
-/// platform's per-user application-data root (data, media, skill, rule, backup,
-/// log). Defined minimally here; task 23.1 wires up the real resolution and
+/// These mirror the five directories the Data_Path_Manager resolves under the
+/// platform's per-user application-data root (data, media, rule, backup, log).
+/// Defined minimally here; task 23.1 wires up the real resolution and
 /// writability checks.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RuntimePaths {
@@ -39,8 +39,6 @@ pub struct RuntimePaths {
     pub data: PathBuf,
     /// Saved image/video media directory.
     pub media: PathBuf,
-    /// Skill local repositories directory.
-    pub skill: PathBuf,
     /// Platform rule files directory.
     pub rule: PathBuf,
     /// Backup archives directory.
@@ -272,11 +270,10 @@ mod tests {
     }
 
     #[test]
-    fn runtime_paths_hold_six_distinct_fields() {
+    fn runtime_paths_hold_five_distinct_fields() {
         let paths = RuntimePaths {
             data: PathBuf::from("/app/data"),
             media: PathBuf::from("/app/media"),
-            skill: PathBuf::from("/app/skill"),
             rule: PathBuf::from("/app/rule"),
             backup: PathBuf::from("/app/backup"),
             log: PathBuf::from("/app/log"),

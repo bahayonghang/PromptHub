@@ -37,9 +37,9 @@ everything the original Electron main process did.
 ## Domain Modules
 
 Each domain typically has a matching `commands/<d>.rs` + `services/<d>.rs` pair:
-`prompt`, `folder`, `version` (prompt versions), `skill` (+ `skill_local`,
-`skill_md`, `skill_platform`, `skill_safety` services), `rules`, `settings`,
-`security`, `data_path`, `sync`, `ai`, `media`, `window`, `updater`.
+`prompt`, `folder`, `version` (prompt versions), `rules`, `settings`, `security`,
+`data_path`, `sync`, `ai`, `media`, `window`, `updater`. Shared network address
+validation for untrusted downloads lives in `services/network_safety.rs`.
 
 ## Upstream and Downstream Boundaries
 

@@ -53,26 +53,16 @@ aes-gcm = "0.10"
 scrypt = "0.11"
 rand = "0.8"
 base64 = "0.22"
-# SKILL.md frontmatter (Requirement 10): serde_yaml parses/serializes the YAML
-# frontmatter block, replacing the reference's hand-rolled parser so the
-# round-trip property (10.3) holds. 0.9 is the established, stable choice.
-serde_yaml = "0.9"
-# Skill import sanitization (Requirements 10.5, 10.6): regex powers the
-# conservative removal of `<script>` blocks and HTML `on*` event-handler
-# attributes. regex is already in the dependency tree transitively.
-regex = "1"
 # Rules_Service (Requirement 14): SHA-256 content hashing for rule files. The
 # managed content hash is compared to the target file's hash to compute
 # `syncStatus` (14.2) and to detect changes on save (14.4). Pinned to the stable
 # 0.10 line.
 sha2 = "0.10"
-# Skill safety scanning + remote fetch (Requirement 13): reqwest performs the
-# outbound HTTPS requests (AI safety scan, remote skill content, GitHub repo
-# listing). `default-features = false` + `rustls-tls` avoids the system/native
-# TLS stack so the build is self-contained and cross-platform; the JSON/stream
-# features are intentionally left off (bodies are serialized/parsed with
-# serde_json and size-capped manually). Redirects are followed manually so each
-# hop is re-checked against the SSRF policy (Requirement 13.5).
+# HTTP clients: reqwest powers AI provider requests, protected media downloads,
+# and the WebDAV/S3 transports below. `default-features = false` + `rustls-tls`
+# avoids the system/native TLS stack so the build is self-contained and
+# cross-platform. Media redirects are followed manually so every hop is checked
+# against the shared SSRF policy.
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
 # AI_Client (Requirement 16): tokio-util provides the `CancellationToken` stored
 # in AppState's request registry so an in-flight AI request can be aborted and its

@@ -82,7 +82,7 @@ proptest! {
 
     /// **Property 36: Export archive matches selected scope.**
     ///
-    /// For *any* data set written across the four export categories and *any*
+    /// For *any* data set written across the three export categories and *any*
     /// scope selection, the produced ZIP archive contains exactly the files of
     /// the selected categories — no more, no fewer — each under its fixed
     /// category prefix, and the operation returns the absolute path of the
@@ -97,11 +97,9 @@ proptest! {
     fn export_archive_matches_selected_scope(
         data_sel in any::<bool>(),
         media_sel in any::<bool>(),
-        skill_sel in any::<bool>(),
         rule_sel in any::<bool>(),
         data_files in file_set(),
         media_files in file_set(),
-        skill_files in file_set(),
         rule_files in file_set(),
     ) {
         let tmp = TempDir::new().unwrap();
@@ -109,19 +107,18 @@ proptest! {
         let paths = RuntimePaths {
             data: base.join("data"),
             media: base.join("media"),
-            skill: base.join("skill"),
             rule: base.join("rule"),
             backup: base.join("backup"),
             log: base.join("log"),
         };
 
-        let prefixes = ["data", "media", "skill", "rule"];
-        let dirs: [&PathBuf; 4] = [&paths.data, &paths.media, &paths.skill, &paths.rule];
-        let files: [&FileSet; 4] = [&data_files, &media_files, &skill_files, &rule_files];
-        let sel = [data_sel, media_sel, skill_sel, rule_sel];
+        let prefixes = ["data", "media", "rule"];
+        let dirs: [&PathBuf; 3] = [&paths.data, &paths.media, &paths.rule];
+        let files: [&FileSet; 3] = [&data_files, &media_files, &rule_files];
+        let sel = [data_sel, media_sel, rule_sel];
 
         // Materialize the data set on disk for all four categories.
-        for i in 0..4 {
+        for i in 0..3 {
             std::fs::create_dir_all(dirs[i]).unwrap();
             for (name, content) in files[i].iter() {
                 std::fs::write(dirs[i].join(name), content).unwrap();
@@ -130,7 +127,7 @@ proptest! {
 
         // The archive must contain exactly the files of the selected categories.
         let mut expected: BTreeMap<String, Vec<u8>> = BTreeMap::new();
-        for i in 0..4 {
+        for i in 0..3 {
             if sel[i] {
                 for (name, content) in files[i].iter() {
                     expected.insert(format!("{}/{}", prefixes[i], name), content.clone());
@@ -141,7 +138,6 @@ proptest! {
         let scope = ExportScope {
             data: data_sel,
             media: media_sel,
-            skill: skill_sel,
             rule: rule_sel,
         };
         let dest = base.join("export.zip");

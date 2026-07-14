@@ -35,9 +35,8 @@
 //!
 //! ## Provider endpoints are user-configured
 //!
-//! The endpoint is the user's own AI provider (mirroring [`crate::services::
-//! skill_safety`]'s scan call), so it is not subject to the SSRF policy that
-//! governs untrusted skill-content fetches. The URL is still validated to be a
+//! The endpoint is the user's own AI provider, so it is not subject to the SSRF
+//! policy used for untrusted media URLs. The URL is still validated to be a
 //! well-formed HTTP(S) URL before any client is built.
 #![allow(dead_code)]
 

@@ -43,7 +43,6 @@ const KNOWN_MARKERS: &[&str] = &[
     "logs",
     "images",
     "videos",
-    "skills",
     "rules",
     "shortcuts.json",
     "shortcut-mode.json",

@@ -12,7 +12,7 @@ Runtime Bridge through which all backend access flows.
 
 - `runtime/` — Runtime Bridge (`invoke`/`on`/capabilities) and i18n setup; start
   here for anything crossing to the backend.
-- `features/` — business modules (`prompts/`, `skills/`, `settings/`, `system/`),
+- `features/` — business modules (`prompts/`, `settings/`, `system/`),
   each self-contained; start here for feature behavior.
 - `components/` — shared layout (`layout/`) and top-level views (`views/`).
 - `store/` — app-level Zustand store (readiness, fatal init error).

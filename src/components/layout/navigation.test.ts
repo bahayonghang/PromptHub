@@ -21,7 +21,7 @@ describe("navigation entries (Req 22.3)", () => {
   });
 
   it("splits into primary entries plus a settings footer", () => {
-    expect(PRIMARY_NAV.map((e) => e.view)).toEqual(["prompts", "skills"]);
+    expect(PRIMARY_NAV.map((e) => e.view)).toEqual(["prompts"]);
     expect(FOOTER_NAV.map((e) => e.view)).toEqual(["settings"]);
     expect(PRIMARY_NAV.length + FOOTER_NAV.length).toBe(NAV_ENTRIES.length);
   });
@@ -47,7 +47,6 @@ describe("navigation entries (Req 22.3)", () => {
       "shell.expandSidebar",
       "shell.startupFailedTitle",
       "shell.promptsPlaceholder",
-      "shell.skillsPlaceholder",
       "shell.settingsPlaceholder",
     ];
     for (const key of keys) {
