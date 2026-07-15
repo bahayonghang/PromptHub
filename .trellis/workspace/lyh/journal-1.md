@@ -275,3 +275,37 @@ Added deterministic paging, immutable revisions, portable bundles, private promp
 ### Next Steps
 
 - None - task complete
+
+
+## Session 9: 可扩展 Prompt 类型定义
+
+**Date**: 2026-07-15
+**Task**: 可扩展 Prompt 类型定义
+**Branch**: `main`
+
+### Summary
+
+新增不可变自定义类型定义与 schema v5，保持 text/image/video 为执行基础格式，补齐修订、重复、批量、私有锁定、评估、便携包 v2/v1 兼容、编辑器内联创建和七语言文案；just ci 全量通过。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a258ae8` | (see git log) |
+| `4a0cb50` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
