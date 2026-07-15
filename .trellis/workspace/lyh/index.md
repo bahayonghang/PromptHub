@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 5
+- **Total Sessions**: 6
 - **Last Active**: 2026-07-15
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~174 | Active |
+| `journal-1.md` | ~209 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 6 | 2026-07-15 | 完成 Prompt 工作区布局与本地化重构 | `105da0c85a82f38fce0c70952f5fffde91ac13dd`, `fa8082c8ab716057bcf30bef5080784aae4a5518`, `000b8ef52aade96c50aa72550ec755aca5b3eedd` | `main` |
 | 5 | 2026-07-15 | 完成 Prompt 评测闭环 | `c61c405` | `main` |
 | 4 | 2026-07-15 | Harden prompt library foundations | `5364441` | `main` |
 | 3 | 2026-07-14 | 移除应用内 Skill 管理 | `b0f4709`, `523f04b` | `main` |
