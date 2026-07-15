@@ -1517,6 +1517,7 @@
     "filters": "フィルター",
     "favoritesOnly": "お気に入りのみ",
     "sortBy": "並び替え",
+    "sortDirection": "並び順",
     "sortUpdated": "更新日時",
     "sortCreated": "作成日時",
     "sortTitle": "タイトル",

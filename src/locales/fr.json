@@ -1514,6 +1514,7 @@
     "filters": "Filtres",
     "favoritesOnly": "Favoris uniquement",
     "sortBy": "Trier par",
+    "sortDirection": "Ordre de tri",
     "sortUpdated": "Dernière mise à jour",
     "sortCreated": "Date de création",
     "sortTitle": "Titre",

@@ -1313,6 +1313,7 @@
     "filters": "Filters",
     "favoritesOnly": "Favorites only",
     "sortBy": "Sort by",
+    "sortDirection": "Sort direction",
     "sortUpdated": "Last updated",
     "sortCreated": "Date created",
     "sortTitle": "Title",

@@ -1550,6 +1550,7 @@
     "filters": "筛选",
     "favoritesOnly": "仅收藏",
     "sortBy": "排序方式",
+    "sortDirection": "排序方向",
     "sortUpdated": "最近更新",
     "sortCreated": "创建日期",
     "sortTitle": "标题",

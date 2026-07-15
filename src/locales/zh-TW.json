@@ -1516,6 +1516,7 @@
     "filters": "篩選",
     "favoritesOnly": "僅收藏",
     "sortBy": "排序方式",
+    "sortDirection": "排序方向",
     "sortUpdated": "最近更新",
     "sortCreated": "建立日期",
     "sortTitle": "標題",
