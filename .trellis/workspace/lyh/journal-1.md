@@ -106,3 +106,36 @@ Committed a skill property-test generator constraint fix, initialized Trellis wo
 ### Next Steps
 
 - None - task complete
+
+
+## Session 4: Harden prompt library foundations
+
+**Date**: 2026-07-15
+**Task**: Harden prompt library foundations
+**Branch**: `main`
+
+### Summary
+
+Added deterministic paging, immutable revisions, portable bundles, private prompt encryption, batch and tag workflows, migration safety, and cross-layer contracts; just ci and isolated native export/preview/import smoke passed.
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5364441` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
