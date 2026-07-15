@@ -8,7 +8,13 @@ import {
   type PromptFilters,
 } from "./promptStore";
 import type { PromptApi } from "./api";
-import type { Folder, Prompt, PromptPage, PromptVersion } from "./types";
+import type {
+  Folder,
+  Prompt,
+  PromptPage,
+  PromptTypeDefinition,
+  PromptVersion,
+} from "./types";
 
 function makePrompt(partial: Partial<Prompt> & { id: string }): Prompt {
   return {
@@ -40,6 +46,15 @@ function makeFolder(id: string): Folder {
     sortOrder: 0,
     createdAt: "2024-01-01T00:00:00.000Z",
     updatedAt: null,
+  };
+}
+
+function makePromptType(id = "type-1"): PromptTypeDefinition {
+  return {
+    id,
+    name: "Storyboard",
+    baseKind: "image",
+    createdAt: "2024-01-01T00:00:00.000Z",
   };
 }
 
@@ -89,6 +104,13 @@ function makeApi(overrides: Partial<PromptApi> = {}): PromptApi {
     batchTag: vi.fn(async () => undefined),
     batchDelete: vi.fn(async () => undefined),
     copyPrompt: vi.fn(async () => "copied"),
+    listPromptTypes: vi.fn(async () => []),
+    createPromptType: vi.fn(async (input) => ({
+      id: "type-1",
+      name: input.name,
+      baseKind: input.baseKind,
+      createdAt: "2024-01-01T00:00:00.000Z",
+    })),
     listTags: vi.fn(async () => []),
     renameTag: vi.fn(async () => undefined),
     deleteTag: vi.fn(async () => undefined),
@@ -107,6 +129,8 @@ function makeApi(overrides: Partial<PromptApi> = {}): PromptApi {
       additions: 0,
       conflicts: 0,
       privatePrompts: 0,
+      typeDefinitionAdditions: 0,
+      typeDefinitionConflicts: 0,
     })),
     importBundle: vi.fn(async () => ({
       added: 0,
@@ -134,6 +158,7 @@ function resetStore(api: PromptApi) {
     total: 0,
     offset: 0,
     tags: [],
+    promptTypeDefinitions: [],
     filters: { ...DEFAULT_FILTERS },
     selectedPromptId: null,
     selectedPrompt: null,
@@ -182,10 +207,11 @@ describe("buildSearchQuery (Req 5.3-5.5)", () => {
 describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
   beforeEach(() => resetStore(makeApi()));
 
-  it("load() fetches folders, tags, and the filtered prompt list", async () => {
+  it("load() fetches folders, tags, prompt types, and the filtered prompt list", async () => {
     const api = makeApi({
       listFolders: vi.fn(async () => [makeFolder("f1")]),
       listTags: vi.fn(async () => ["t1"]),
+      listPromptTypes: vi.fn(async () => [makePromptType()]),
       searchPrompts: vi.fn(async () => makePage([makePrompt({ id: "p1" })])),
     });
     resetStore(api);
@@ -195,6 +221,7 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
     const state = usePromptStore.getState();
     expect(state.folders).toHaveLength(1);
     expect(state.tags).toEqual(["t1"]);
+    expect(state.promptTypeDefinitions).toEqual([makePromptType()]);
     expect(state.prompts.map((p) => p.id)).toEqual(["p1"]);
     expect(api.searchPrompts).toHaveBeenCalledWith(
       {
@@ -278,6 +305,24 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
 
     expect(usePromptStore.getState().selectedPromptId).toBeNull();
     expect(usePromptStore.getState().versions).toEqual([]);
+  });
+
+  it("createPromptType() refreshes definitions and returns the authoritative row", async () => {
+    const created = makePromptType();
+    const createPromptType = vi.fn(async () => created);
+    const listPromptTypes = vi.fn(async () => [created]);
+    resetStore(makeApi({ createPromptType, listPromptTypes }));
+
+    const result = await usePromptStore
+      .getState()
+      .createPromptType({ name: "Storyboard", baseKind: "image" });
+
+    expect(result).toEqual(created);
+    expect(createPromptType).toHaveBeenCalledWith({
+      name: "Storyboard",
+      baseKind: "image",
+    });
+    expect(usePromptStore.getState().promptTypeDefinitions).toEqual([created]);
   });
 
   it("deleteFolder() resets the folder filter when it pointed at the deleted folder (Req 8.4)", async () => {

@@ -56,4 +56,33 @@ describe("diffPromptRevision", () => {
       currentValue: "current",
     });
   });
+
+  it("compares revision snapshots with the current custom type name", () => {
+    const diff = diffPromptRevision(
+      { ...prompt, typeDefinitionId: "current-type" },
+      {
+        ...revision,
+        typeDefinitionId: "old-type",
+        typeDefinition: {
+          id: "old-type",
+          name: "Legacy copy",
+          baseKind: "text",
+        },
+      },
+      [
+        {
+          id: "current-type",
+          name: "Marketing copy",
+          baseKind: "text",
+          createdAt: "2024-01-01T00:00:00.000Z",
+        },
+      ],
+    );
+
+    expect(diff.find((entry) => entry.field === "typeDefinition")).toEqual({
+      field: "typeDefinition",
+      revisionValue: "Legacy copy",
+      currentValue: "Marketing copy",
+    });
+  });
 });

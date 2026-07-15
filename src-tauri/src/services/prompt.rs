@@ -64,6 +64,8 @@ pub struct PromptCreate {
     pub description: Option<String>,
     /// Prompt kind; defaults to `text` when omitted, validated against the domain.
     pub prompt_type: Option<String>,
+    /// Optional custom organizational type whose base kind must match `promptType`.
+    pub type_definition_id: Option<String>,
     /// Optional system prompt.
     pub system_prompt: Option<String>,
     /// Ordered chat messages. Empty or omitted for a simple text prompt.
@@ -108,6 +110,8 @@ pub struct PromptUpdate {
     pub description: Option<String>,
     /// Replacement prompt kind (validated against the domain).
     pub prompt_type: Option<String>,
+    /// Omitted preserves the reference; null clears it; a string assigns it.
+    pub type_definition_id: Option<Option<String>>,
     /// Replacement system prompt.
     pub system_prompt: Option<String>,
     /// Replacement ordered chat messages.
@@ -170,6 +174,24 @@ fn prompt_type_wire(prompt_type: PromptType) -> &'static str {
     }
 }
 
+fn resolve_prompt_type_reference(
+    conn: &Connection,
+    requested_prompt_type: Option<PromptType>,
+    type_definition_id: Option<String>,
+    fallback_prompt_type: PromptType,
+) -> Result<(PromptType, Option<String>), AppError> {
+    let Some(id) = type_definition_id else {
+        return Ok((requested_prompt_type.unwrap_or(fallback_prompt_type), None));
+    };
+    let definition = crate::services::prompt_type::get(conn, &id)?;
+    if requested_prompt_type.is_some_and(|prompt_type| prompt_type != definition.base_kind) {
+        return Err(AppError::validation(format!(
+            "promptType does not match prompt type definition `{id}`"
+        )));
+    }
+    Ok((definition.base_kind, Some(id)))
+}
+
 fn validate_messages(messages: &[PromptMessage]) -> Result<(), AppError> {
     for (index, message) in messages.iter().enumerate() {
         if !matches!(message.role.as_str(), "system" | "user" | "assistant") {
@@ -204,10 +226,20 @@ pub fn create(conn: &Connection, input: PromptCreate) -> Result<Prompt, AppError
             "userPrompt or at least one chat message is required",
         ));
     }
-    let prompt_type = match input.prompt_type.as_deref() {
+    let requested_prompt_type = match input.prompt_type.as_deref() {
         Some(raw) => parse_prompt_type(raw)?,
         None => PromptType::Text,
     };
+    let (prompt_type, type_definition_id) = resolve_prompt_type_reference(
+        conn,
+        input
+            .prompt_type
+            .as_deref()
+            .map(parse_prompt_type)
+            .transpose()?,
+        input.type_definition_id,
+        requested_prompt_type,
+    )?;
 
     let id = uuid::Uuid::new_v4().to_string();
     let now = now_millis();
@@ -222,15 +254,16 @@ pub fn create(conn: &Connection, input: PromptCreate) -> Result<Prompt, AppError
         .map_err(|e| db_err("failed to begin create-prompt transaction", e))?;
     tx.execute(
         "INSERT INTO prompts \
-         (id, title, description, prompt_type, system_prompt, user_prompt, messages, variables, tags, \
+         (id, title, description, prompt_type, type_definition_id, system_prompt, user_prompt, messages, variables, tags, \
           folder_id, images, videos, is_favorite, is_pinned, is_private, current_version, usage_count, \
           source, notes, last_ai_response, created_at, updated_at) \
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22)",
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23)",
         params![
             id,
             input.title,
             input.description,
             prompt_type_wire(prompt_type),
+            type_definition_id,
             input.system_prompt,
             input.user_prompt,
             messages,
@@ -307,7 +340,15 @@ pub fn update(conn: &Connection, id: &str, patch: PromptUpdate) -> Result<Prompt
 
     let title = patch.title.unwrap_or_else(|| existing.title.clone());
     let description = patch.description.or_else(|| existing.description.clone());
-    let prompt_type = new_prompt_type.unwrap_or(existing.prompt_type);
+    let type_definition_id = patch
+        .type_definition_id
+        .unwrap_or_else(|| existing.type_definition_id.clone());
+    let (prompt_type, type_definition_id) = resolve_prompt_type_reference(
+        conn,
+        new_prompt_type,
+        type_definition_id,
+        existing.prompt_type,
+    )?;
     let system_prompt = patch
         .system_prompt
         .or_else(|| existing.system_prompt.clone());
@@ -341,6 +382,7 @@ pub fn update(conn: &Connection, id: &str, patch: PromptUpdate) -> Result<Prompt
     let revision_changed = title != existing.title
         || description != existing.description
         || prompt_type != existing.prompt_type
+        || type_definition_id != existing.type_definition_id
         || system_prompt != existing.system_prompt
         || user_prompt != existing.user_prompt
         || messages != existing.messages
@@ -365,15 +407,16 @@ pub fn update(conn: &Connection, id: &str, patch: PromptUpdate) -> Result<Prompt
         .map_err(|e| db_err("failed to begin update-prompt transaction", e))?;
     tx.execute(
         "UPDATE prompts SET \
-         title=?1, description=?2, prompt_type=?3, system_prompt=?4, user_prompt=?5, messages=?6, \
-         variables=?7, tags=?8, folder_id=?9, images=?10, videos=?11, is_favorite=?12, \
-         is_pinned=?13, is_private=?14, usage_count=?15, source=?16, notes=?17, last_ai_response=?18, \
-         updated_at=?19 \
-         WHERE id=?20",
+         title=?1, description=?2, prompt_type=?3, type_definition_id=?4, system_prompt=?5, user_prompt=?6, messages=?7, \
+         variables=?8, tags=?9, folder_id=?10, images=?11, videos=?12, is_favorite=?13, \
+         is_pinned=?14, is_private=?15, usage_count=?16, source=?17, notes=?18, last_ai_response=?19, \
+         updated_at=?20 \
+         WHERE id=?21",
         params![
             title,
             description,
             prompt_type_wire(prompt_type),
+            type_definition_id,
             system_prompt,
             user_prompt,
             json_array(&messages),
@@ -675,13 +718,14 @@ pub fn duplicate(conn: &Connection, id: &str) -> Result<Prompt, AppError> {
         .unchecked_transaction()
         .map_err(|error| db_err("failed to begin duplicate transaction", error))?;
     tx.execute(
-        "INSERT INTO prompts (id,title,description,prompt_type,system_prompt,user_prompt,messages,variables,tags,folder_id,images,videos,is_favorite,is_pinned,is_private,current_version,usage_count,source,notes,last_ai_response,created_at,updated_at) \
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,0,0,?16,?17,?18,?19,?19)",
+        "INSERT INTO prompts (id,title,description,prompt_type,type_definition_id,system_prompt,user_prompt,messages,variables,tags,folder_id,images,videos,is_favorite,is_pinned,is_private,current_version,usage_count,source,notes,last_ai_response,created_at,updated_at) \
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,0,0,?17,?18,?19,?20,?20)",
         params![
             duplicate_id,
             title,
             source.description,
             prompt_type_wire(source.prompt_type),
+            source.type_definition_id,
             source.system_prompt,
             source.user_prompt,
             json_array(&source.messages),
@@ -1235,6 +1279,7 @@ mod tests {
             user_prompt: "Hello {{name}}".into(),
             description: Some("a description".into()),
             prompt_type: None,
+            type_definition_id: None,
             system_prompt: Some("be helpful".into()),
             messages: None,
             variables: Some(vec![Variable {
@@ -2370,5 +2415,133 @@ mod tests {
                 .messages,
             messages
         );
+    }
+
+    #[test]
+    fn custom_type_derives_base_kind_and_round_trips_revision_duplicate_and_lock() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let definition = crate::services::prompt_type::create(
+            &conn,
+            crate::services::prompt_type::PromptTypeCreate {
+                name: "Storyboard".into(),
+                base_kind: "image".into(),
+            },
+        )
+        .unwrap();
+        let encryption = Mutex::new(EncryptionState::default());
+        crate::services::security::set_master_password(&conn, &encryption, "password").unwrap();
+        let created = create_secure(
+            &conn,
+            &encryption,
+            PromptCreate {
+                title: "Private storyboard".into(),
+                user_prompt: "scene".into(),
+                type_definition_id: Some(definition.id.clone()),
+                is_private: Some(true),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(created.prompt_type, PromptType::Image);
+        assert_eq!(created.type_definition_id, Some(definition.id.clone()));
+
+        let revision = crate::services::version::list(&conn, &created.id).unwrap();
+        assert_eq!(revision[0].type_definition_id, Some(definition.id.clone()));
+        assert_eq!(
+            revision[0]
+                .type_definition
+                .as_ref()
+                .map(|snapshot| snapshot.name.as_str()),
+            Some("Storyboard")
+        );
+        let rendered = crate::services::evaluation::render_prompt(
+            &conn,
+            &encryption,
+            &revision[0].id,
+            &std::collections::BTreeMap::new(),
+        )
+        .unwrap();
+        assert_eq!(rendered.messages.last().unwrap().content, "scene");
+
+        let duplicate = duplicate(&conn, &created.id).unwrap();
+        assert_eq!(duplicate.type_definition_id, Some(definition.id.clone()));
+        crate::services::security::lock(&encryption).unwrap();
+        let locked = get_secure(&conn, &encryption, &created.id).unwrap();
+        assert!(locked.is_locked);
+        assert_eq!(locked.type_definition_id, Some(definition.id));
+    }
+
+    #[test]
+    fn custom_type_rejects_missing_and_mismatched_pairs_before_mutation() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let definition = crate::services::prompt_type::create(
+            &conn,
+            crate::services::prompt_type::PromptTypeCreate {
+                name: "Storyboard".into(),
+                base_kind: "image".into(),
+            },
+        )
+        .unwrap();
+        let mismatch = create(
+            &conn,
+            PromptCreate {
+                title: "Bad".into(),
+                user_prompt: "body".into(),
+                prompt_type: Some("text".into()),
+                type_definition_id: Some(definition.id.clone()),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(mismatch.code_str(), "VALIDATION");
+        assert!(list(&conn).unwrap().is_empty());
+
+        let created = create(
+            &conn,
+            PromptCreate {
+                title: "Good".into(),
+                user_prompt: "body".into(),
+                type_definition_id: Some(definition.id),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let error = update(
+            &conn,
+            &created.id,
+            PromptUpdate {
+                title: Some("Must not persist".into()),
+                prompt_type: Some("text".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error.code_str(), "VALIDATION");
+        assert_eq!(get(&conn, &created.id).unwrap().title, "Good");
+
+        let missing = update(
+            &conn,
+            &created.id,
+            PromptUpdate {
+                type_definition_id: Some(Some("missing".into())),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(missing.code_str(), "NOT_FOUND");
+        let cleared = update(
+            &conn,
+            &created.id,
+            PromptUpdate {
+                prompt_type: Some("text".into()),
+                type_definition_id: Some(None),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(cleared.prompt_type, PromptType::Text);
+        assert_eq!(cleared.type_definition_id, None);
     }
 }

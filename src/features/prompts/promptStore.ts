@@ -14,6 +14,7 @@ import type {
   PortableExportResult,
   PortableImportResult,
   Prompt,
+  PromptTypeDefinition,
   PromptVersion,
   SearchQuery,
   SortField,
@@ -83,6 +84,7 @@ interface PromptStoreState {
   total: number;
   offset: number;
   tags: string[];
+  promptTypeDefinitions: PromptTypeDefinition[];
   filters: PromptFilters;
 
   /** The id of the prompt open in the editor, or `null` when none is selected. */
@@ -136,6 +138,10 @@ interface PromptStoreState {
     policy: ImportConflictPolicy,
   ) => Promise<PortableImportResult | null>;
 
+  createPromptType: (
+    input: Parameters<PromptApi["createPromptType"]>[0],
+  ) => Promise<PromptTypeDefinition | null>;
+
   /** Creates a folder and refreshes the folder list (Req 8.1). */
   createFolder: (
     input: Parameters<PromptApi["createFolder"]>[0],
@@ -164,6 +170,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
   total: 0,
   offset: 0,
   tags: [],
+  promptTypeDefinitions: [],
   filters: { ...DEFAULT_FILTERS },
 
   selectedPromptId: null,
@@ -178,9 +185,10 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
     const { api, filters, offset } = get();
     set({ loading: true, error: null });
     try {
-      const [folders, tags, page] = await Promise.all([
+      const [folders, tags, promptTypeDefinitions, page] = await Promise.all([
         api.listFolders(),
         api.listTags(),
+        api.listPromptTypes(),
         api.searchPrompts({
           ...buildSearchQuery(filters),
           limit: PROMPT_PAGE_SIZE,
@@ -190,6 +198,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
       set({
         folders,
         tags,
+        promptTypeDefinitions,
         prompts: page.items,
         total: page.total,
         offset: page.offset,
@@ -442,6 +451,19 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
       set({ offset: 0, selectedPromptIds: [] });
       await get().load();
       return result;
+    } catch (err) {
+      set({ error: errorMessage(err) });
+      return null;
+    }
+  },
+
+  createPromptType: async (input) => {
+    const { api } = get();
+    set({ error: null });
+    try {
+      const definition = await api.createPromptType(input);
+      set({ promptTypeDefinitions: await api.listPromptTypes() });
+      return definition;
     } catch (err) {
       set({ error: errorMessage(err) });
       return null;

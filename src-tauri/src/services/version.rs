@@ -106,13 +106,18 @@ pub(crate) fn append_snapshot(
     };
     let id = uuid::Uuid::new_v4().to_string();
     let now = now_millis();
+    let type_definition = prompt
+        .type_definition_id
+        .as_deref()
+        .map(|id| crate::services::prompt_type::get(conn, id))
+        .transpose()?;
 
     conn.execute(
         "INSERT INTO prompt_versions \
          (id,prompt_id,version,system_prompt,user_prompt,messages,variables,title,description,prompt_type,\
-          tags,folder_id,images,videos,is_favorite,is_pinned,is_private,source,notes,note,ai_response,\
-          source_action,parent_revision_id,created_at) \
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24)",
+          type_definition_id,type_definition_name,type_definition_base_kind,tags,folder_id,images,videos,\
+          is_favorite,is_pinned,is_private,source,notes,note,ai_response,source_action,parent_revision_id,created_at) \
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27)",
         params![
             id,
             prompt.id,
@@ -124,6 +129,11 @@ pub(crate) fn append_snapshot(
             prompt.title,
             prompt.description,
             prompt_type_wire(prompt.prompt_type),
+            prompt.type_definition_id,
+            type_definition.as_ref().map(|definition| &definition.name),
+            type_definition
+                .as_ref()
+                .map(|definition| prompt_type_wire(definition.base_kind)),
             json_array(&prompt.tags),
             prompt.folder_id,
             json_array(&prompt.images),
@@ -251,13 +261,14 @@ pub fn rollback(conn: &Connection, prompt_id: &str, version: i64) -> Result<Prom
 
     let now = now_millis();
     tx.execute(
-        "UPDATE prompts SET title=?1,description=?2,prompt_type=?3,system_prompt=?4,user_prompt=?5,messages=?6,\
-         variables=?7,tags=?8,folder_id=?9,images=?10,videos=?11,is_favorite=?12,is_pinned=?13,\
-         is_private=?14,source=?15,notes=?16,last_ai_response=?17,updated_at=?18 WHERE id=?19",
+        "UPDATE prompts SET title=?1,description=?2,prompt_type=?3,type_definition_id=?4,system_prompt=?5,user_prompt=?6,messages=?7,\
+         variables=?8,tags=?9,folder_id=?10,images=?11,videos=?12,is_favorite=?13,is_pinned=?14,\
+         is_private=?15,source=?16,notes=?17,last_ai_response=?18,updated_at=?19 WHERE id=?20",
         params![
             snapshot.title,
             snapshot.description,
             prompt_type_wire(snapshot.prompt_type),
+            snapshot.type_definition_id,
             snapshot.system_prompt,
             snapshot.user_prompt,
             json_array(&snapshot.messages),

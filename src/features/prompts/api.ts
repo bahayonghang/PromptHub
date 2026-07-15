@@ -7,12 +7,14 @@
 import { runtime, type RuntimeBridge } from "../../runtime";
 import type {
   CreateFolderInput,
+  CreatePromptTypeInput,
   CreatePromptInput,
   Folder,
   BundlePreview,
   ImportConflictPolicy,
   Prompt,
   PromptPage,
+  PromptTypeDefinition,
   PromptVersion,
   PortableExportResult,
   PortableImportResult,
@@ -34,6 +36,9 @@ export interface PromptApi {
   batchTag(ids: string[], tags: string[]): Promise<void>;
   batchDelete(ids: string[]): Promise<void>;
   copyPrompt(id: string, values: Record<string, string>): Promise<string>;
+
+  listPromptTypes(): Promise<PromptTypeDefinition[]>;
+  createPromptType(input: CreatePromptTypeInput): Promise<PromptTypeDefinition>;
 
   listTags(): Promise<string[]>;
   renameTag(old: string, next: string): Promise<void>;
@@ -78,6 +83,11 @@ export function createPromptApi(bridge: RuntimeBridge = runtime): PromptApi {
     batchDelete: (ids) => bridge.invoke<void>("prompt.batchDelete", { ids }),
     copyPrompt: (id, values) =>
       bridge.invoke<string>("prompt.copy", { id, values }),
+
+    listPromptTypes: () =>
+      bridge.invoke<PromptTypeDefinition[]>("promptType.list"),
+    createPromptType: (input) =>
+      bridge.invoke<PromptTypeDefinition>("promptType.create", { input }),
 
     listTags: () => bridge.invoke<string[]>("tag.list"),
     renameTag: (old, next) =>

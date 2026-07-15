@@ -24,7 +24,7 @@ use rusqlite::types::Type;
 use rusqlite::{Error as SqlError, Row};
 use serde::de::DeserializeOwned;
 
-use crate::models::{Folder, Prompt, PromptVersion};
+use crate::models::{Folder, Prompt, PromptTypeDefinition, PromptTypeSnapshot, PromptVersion};
 use crate::storage::time::millis_to_iso8601;
 
 /// Wraps a JSON/enum decode failure as a rusqlite column-conversion error.
@@ -77,6 +77,7 @@ pub fn prompt_from_row(row: &Row<'_>) -> rusqlite::Result<Prompt> {
         title: row.get("title")?,
         description: row.get("description")?,
         prompt_type: get_enum(row, "prompt_type")?,
+        type_definition_id: row.get("type_definition_id")?,
         system_prompt: row.get("system_prompt")?,
         user_prompt: row.get("user_prompt")?,
         messages: get_json_array(row, "messages")?,
@@ -101,6 +102,12 @@ pub fn prompt_from_row(row: &Row<'_>) -> rusqlite::Result<Prompt> {
 
 /// Maps a `prompt_versions` row into a [`PromptVersion`].
 pub fn prompt_version_from_row(row: &Row<'_>) -> rusqlite::Result<PromptVersion> {
+    let type_definition_id: Option<String> = row.get("type_definition_id")?;
+    let type_definition_name: Option<String> = row.get("type_definition_name")?;
+    let type_definition_base_kind = row
+        .get::<_, Option<String>>("type_definition_base_kind")?
+        .map(|value| parse_enum(&value).map_err(conversion_err))
+        .transpose()?;
     Ok(PromptVersion {
         id: row.get("id")?,
         prompt_id: row.get("prompt_id")?,
@@ -112,6 +119,19 @@ pub fn prompt_version_from_row(row: &Row<'_>) -> rusqlite::Result<PromptVersion>
         title: row.get("title")?,
         description: row.get("description")?,
         prompt_type: get_enum(row, "prompt_type")?,
+        type_definition_id: type_definition_id.clone(),
+        type_definition: match (
+            type_definition_id,
+            type_definition_name,
+            type_definition_base_kind,
+        ) {
+            (Some(id), Some(name), Some(base_kind)) => Some(PromptTypeSnapshot {
+                id,
+                name,
+                base_kind,
+            }),
+            _ => None,
+        },
         tags: get_json_array(row, "tags")?,
         folder_id: row.get("folder_id")?,
         images: get_json_array(row, "images")?,
@@ -125,6 +145,15 @@ pub fn prompt_version_from_row(row: &Row<'_>) -> rusqlite::Result<PromptVersion>
         ai_response: row.get("ai_response")?,
         source_action: get_enum(row, "source_action")?,
         parent_revision_id: row.get("parent_revision_id")?,
+        created_at: get_iso(row, "created_at")?,
+    })
+}
+
+pub fn prompt_type_definition_from_row(row: &Row<'_>) -> rusqlite::Result<PromptTypeDefinition> {
+    Ok(PromptTypeDefinition {
+        id: row.get("id")?,
+        name: row.get("name")?,
+        base_kind: get_enum(row, "base_kind")?,
         created_at: get_iso(row, "created_at")?,
     })
 }

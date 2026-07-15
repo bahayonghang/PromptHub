@@ -7,7 +7,7 @@ import {
   RotateCcwIcon,
   SaveIcon,
 } from "lucide-react";
-import type { Prompt, PromptVersion } from "../types";
+import type { Prompt, PromptTypeDefinition, PromptVersion } from "../types";
 import { diffPromptRevision } from "../versionDiff";
 
 /** The 1,000-character note limit enforced by `version.create` (Req 7.8). */
@@ -16,6 +16,7 @@ const NOTE_MAX = 1000;
 interface VersionHistoryProps {
   prompt: Prompt;
   versions: PromptVersion[];
+  promptTypeDefinitions: PromptTypeDefinition[];
   onCreateVersion: (note?: string) => void;
   onRollback: (version: number) => void;
 }
@@ -29,6 +30,7 @@ interface VersionHistoryProps {
 export function VersionHistory({
   prompt,
   versions,
+  promptTypeDefinitions,
   onCreateVersion,
   onRollback,
 }: VersionHistoryProps) {
@@ -91,7 +93,11 @@ export function VersionHistory({
           </li>
         ) : (
           ordered.map((version) => {
-            const diff = diffPromptRevision(prompt, version);
+            const diff = diffPromptRevision(
+              prompt,
+              version,
+              promptTypeDefinitions,
+            );
             const expanded = expandedId === version.id;
             return (
             <li key={version.id} className="border-b border-border px-2 py-2 last:border-b-0">

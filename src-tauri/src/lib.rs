@@ -113,6 +113,8 @@ pub fn run() {
             commands::prompt::prompt_tag_list,
             commands::prompt::prompt_tag_rename,
             commands::prompt::prompt_tag_delete,
+            commands::prompt_type::prompt_type_list,
+            commands::prompt_type::prompt_type_create,
             commands::portable::prompt_bundle_export,
             commands::portable::prompt_bundle_preview,
             commands::portable::prompt_bundle_import,

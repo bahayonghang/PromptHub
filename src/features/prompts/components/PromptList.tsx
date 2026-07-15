@@ -1,9 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { ImageIcon, LockIcon, StarIcon, VideoIcon } from "lucide-react";
-import type { Prompt } from "../types";
+import type { Prompt, PromptTypeDefinition } from "../types";
 
 interface PromptListProps {
   prompts: Prompt[];
+  promptTypeDefinitions: PromptTypeDefinition[];
   selectedPromptId: string | null;
   selectedPromptIds: string[];
   loading: boolean;
@@ -29,6 +30,7 @@ function TypeBadge({ type }: { type: Prompt["promptType"] }) {
  */
 export function PromptList({
   prompts,
+  promptTypeDefinitions,
   selectedPromptId,
   selectedPromptIds,
   loading,
@@ -63,6 +65,11 @@ export function PromptList({
       {prompts.map((prompt) => {
         const selected = prompt.id === selectedPromptId;
         const title = prompt.title.trim() || t("promptsView.untitled");
+        const customType = prompt.typeDefinitionId
+          ? promptTypeDefinitions.find(
+              (definition) => definition.id === prompt.typeDefinitionId,
+            )
+          : null;
         return (
           <li key={prompt.id} className="flex items-start gap-1">
             <input
@@ -93,6 +100,11 @@ export function PromptList({
                 <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                   {title}
                 </span>
+                {customType && (
+                  <span className="max-w-24 truncate rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    {customType.name}
+                  </span>
+                )}
                 {prompt.isFavorite && (
                   <StarIcon
                     className="h-3.5 w-3.5 shrink-0 fill-current text-primary"

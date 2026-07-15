@@ -12,6 +12,24 @@ export type PromptType = "text" | "image" | "video";
 /** All prompt types in display order, used for validation and the type picker. */
 export const PROMPT_TYPES: readonly PromptType[] = ["text", "image", "video"];
 
+export interface PromptTypeDefinition {
+  id: string;
+  name: string;
+  baseKind: PromptType;
+  createdAt: string;
+}
+
+export interface PromptTypeSnapshot {
+  id: string;
+  name: string;
+  baseKind: PromptType;
+}
+
+export interface CreatePromptTypeInput {
+  name: string;
+  baseKind: PromptType;
+}
+
 /** The input control a variable renders as when a prompt is filled in. */
 export type VariableType = "text" | "textarea" | "number" | "select";
 
@@ -46,6 +64,7 @@ export interface Prompt {
   title: string;
   description?: string | null;
   promptType: PromptType;
+  typeDefinitionId?: string | null;
   systemPrompt?: string | null;
   userPrompt: string;
   messages: PromptMessage[];
@@ -88,6 +107,8 @@ export interface PromptVersion {
   title: string;
   description?: string | null;
   promptType: PromptType;
+  typeDefinitionId?: string | null;
+  typeDefinition?: PromptTypeSnapshot | null;
   tags: string[];
   folderId?: string | null;
   images: string[];
@@ -123,6 +144,7 @@ export interface CreatePromptInput {
   title: string;
   description?: string;
   promptType?: PromptType;
+  typeDefinitionId?: string | null;
   systemPrompt?: string;
   userPrompt: string;
   messages?: PromptMessage[];
@@ -141,6 +163,7 @@ export interface UpdatePromptInput {
   title?: string;
   description?: string;
   promptType?: PromptType;
+  typeDefinitionId?: string | null;
   systemPrompt?: string;
   userPrompt?: string;
   messages?: PromptMessage[];
@@ -194,6 +217,8 @@ export interface BundlePreview {
   additions: number;
   conflicts: number;
   privatePrompts: number;
+  typeDefinitionAdditions: number;
+  typeDefinitionConflicts: number;
 }
 
 export interface PortableExportResult {

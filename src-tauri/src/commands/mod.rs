@@ -8,6 +8,7 @@ pub mod folder;
 pub mod media;
 pub mod portable;
 pub mod prompt;
+pub mod prompt_type;
 pub mod rules;
 pub mod security;
 pub mod settings;

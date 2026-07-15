@@ -133,4 +133,17 @@ describe("createPromptApi command contract (Req 3.1)", () => {
       policy: "replace",
     });
   });
+
+  it("routes prompt type commands through the bridge", async () => {
+    const { bridge, invoke } = makeBridge([]);
+    const api = createPromptApi(bridge);
+
+    await api.listPromptTypes();
+    await api.createPromptType({ name: "Storyboard", baseKind: "image" });
+
+    expect(invoke).toHaveBeenCalledWith("promptType.list");
+    expect(invoke).toHaveBeenCalledWith("promptType.create", {
+      input: { name: "Storyboard", baseKind: "image" },
+    });
+  });
 });

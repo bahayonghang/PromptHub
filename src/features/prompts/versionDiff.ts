@@ -1,9 +1,10 @@
-import type { Prompt, PromptVersion } from "./types";
+import type { Prompt, PromptTypeDefinition, PromptVersion } from "./types";
 
 export type PromptRevisionField =
   | "title"
   | "description"
   | "promptType"
+  | "typeDefinition"
   | "systemPrompt"
   | "userPrompt"
   | "messages"
@@ -42,11 +43,20 @@ function displayValue(value: unknown): string {
 export function diffPromptRevision(
   prompt: Prompt,
   revision: PromptVersion,
+  definitions: readonly PromptTypeDefinition[] = [],
 ): PromptRevisionDiff[] {
+  const currentDefinition = definitions.find(
+    (definition) => definition.id === prompt.typeDefinitionId,
+  );
   const values: Array<[PromptRevisionField, unknown, unknown]> = [
     ["title", revision.title, prompt.title],
     ["description", revision.description, prompt.description],
     ["promptType", revision.promptType, prompt.promptType],
+    [
+      "typeDefinition",
+      revision.typeDefinition?.name,
+      currentDefinition?.name ?? prompt.typeDefinitionId,
+    ],
     ["systemPrompt", revision.systemPrompt, prompt.systemPrompt],
     ["userPrompt", revision.userPrompt, prompt.userPrompt],
     ["messages", revision.messages, prompt.messages],

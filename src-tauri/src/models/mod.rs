@@ -20,7 +20,10 @@ mod settings;
 pub use enums::{PromptRevisionSource, PromptType, SortField, SortOrder, SyncStatus};
 pub use evaluation::*;
 pub use folder::Folder;
-pub use prompt::{Prompt, PromptMessage, PromptPage, PromptVersion, SearchQuery, Variable};
+pub use prompt::{
+    Prompt, PromptMessage, PromptPage, PromptTypeDefinition, PromptTypeSnapshot, PromptVersion,
+    SearchQuery, Variable,
+};
 pub use rules::{RuleFileContent, RuleVersionSnapshot};
 pub use security::StoredMasterPassword;
 pub use settings::{SecuritySettings, Settings, SyncSettings};
@@ -104,6 +107,7 @@ mod tests {
             title: "Title".into(),
             description: None,
             prompt_type: PromptType::Text,
+            type_definition_id: None,
             system_prompt: None,
             user_prompt: "Hello {{name}}".into(),
             messages: vec![],

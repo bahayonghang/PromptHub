@@ -3,17 +3,17 @@ use std::fs;
 use std::io::{Read, Write};
 use std::path::{Component, Path, PathBuf};
 
-use rusqlite::{params, Connection, Transaction};
+use rusqlite::{params, Connection, OptionalExtension, Transaction};
 use serde::{Deserialize, Serialize};
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 use crate::error::AppError;
-use crate::models::{Folder, Prompt, PromptRevisionSource, PromptVersion};
+use crate::models::{Folder, Prompt, PromptRevisionSource, PromptTypeDefinition, PromptVersion};
 use crate::storage::mapping::{folder_from_row, prompt_from_row, prompt_version_from_row};
 use crate::storage::time::{iso8601_to_millis, now_millis};
 
-const FORMAT_VERSION: u32 = 1;
+const FORMAT_VERSION: u32 = 2;
 const MANIFEST_NAME: &str = "manifest.json";
 const MAX_MANIFEST_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_MEDIA_BYTES: u64 = 100 * 1024 * 1024;
@@ -26,6 +26,8 @@ pub struct PromptBundleManifest {
     pub prompts: Vec<Prompt>,
     pub revisions: Vec<PromptVersion>,
     pub folders: Vec<Folder>,
+    #[serde(default)]
+    pub type_definitions: Vec<PromptTypeDefinition>,
     pub media_files: Vec<String>,
 }
 
@@ -48,6 +50,8 @@ pub struct BundlePreview {
     pub additions: usize,
     pub conflicts: usize,
     pub private_prompts: usize,
+    pub type_definition_additions: usize,
+    pub type_definition_conflicts: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -78,6 +82,7 @@ struct BundleData {
     prompts: Vec<Prompt>,
     revisions: Vec<PromptVersion>,
     folders: Vec<Folder>,
+    type_definitions: Vec<PromptTypeDefinition>,
 }
 
 fn db_err(context: &str, error: rusqlite::Error) -> AppError {
@@ -146,10 +151,24 @@ fn load_all(conn: &Connection) -> Result<BundleData, AppError> {
             .map_err(|error| db_err("failed to read folders", error))?;
         rows
     };
+    let referenced_definition_ids: HashSet<&str> = prompts
+        .iter()
+        .filter_map(|prompt| prompt.type_definition_id.as_deref())
+        .chain(
+            revisions
+                .iter()
+                .filter_map(|revision| revision.type_definition_id.as_deref()),
+        )
+        .collect();
+    let type_definitions = crate::services::prompt_type::list(conn)?
+        .into_iter()
+        .filter(|definition| referenced_definition_ids.contains(definition.id.as_str()))
+        .collect();
     Ok(BundleData {
         prompts,
         revisions,
         folders,
+        type_definitions,
     })
 }
 
@@ -162,6 +181,7 @@ pub fn export_bundle(
         prompts,
         revisions,
         folders,
+        type_definitions,
     } = load_all(conn)?;
     let mut media_files = Vec::new();
     let mut seen = HashSet::new();
@@ -182,6 +202,7 @@ pub fn export_bundle(
         prompts,
         revisions,
         folders,
+        type_definitions,
         media_files,
     };
     validate_manifest(&manifest)?;
@@ -321,7 +342,7 @@ fn validate_unique<'a>(values: impl Iterator<Item = &'a str>, label: &str) -> Re
 }
 
 fn validate_manifest(manifest: &PromptBundleManifest) -> Result<(), AppError> {
-    if manifest.format_version != FORMAT_VERSION {
+    if !(1..=FORMAT_VERSION).contains(&manifest.format_version) {
         return Err(AppError::validation(format!(
             "unsupported prompt bundle version {}",
             manifest.format_version
@@ -331,6 +352,32 @@ fn validate_manifest(manifest: &PromptBundleManifest) -> Result<(), AppError> {
         manifest.prompts.iter().map(|prompt| prompt.id.as_str()),
         "prompt id",
     )?;
+    validate_unique(
+        manifest
+            .type_definitions
+            .iter()
+            .map(|definition| definition.id.as_str()),
+        "prompt type definition id",
+    )?;
+    let mut normalized_names = HashSet::new();
+    for definition in &manifest.type_definitions {
+        let name = definition.name.trim();
+        let normalized = crate::services::prompt_type::normalize_name(name);
+        if name.is_empty()
+            || name.chars().count() > crate::services::prompt_type::MAX_TYPE_NAME_CHARS
+            || !normalized_names.insert(normalized)
+        {
+            return Err(AppError::validation(format!(
+                "bundle has an invalid or duplicate prompt type name `{}`",
+                definition.name
+            )));
+        }
+    }
+    let definitions_by_id: HashMap<&str, &PromptTypeDefinition> = manifest
+        .type_definitions
+        .iter()
+        .map(|definition| (definition.id.as_str(), definition))
+        .collect();
     validate_unique(
         manifest
             .revisions
@@ -372,6 +419,20 @@ fn validate_manifest(manifest: &PromptBundleManifest) -> Result<(), AppError> {
         .map(|prompt| prompt.id.as_str())
         .collect();
     for prompt in &manifest.prompts {
+        if let Some(definition_id) = prompt.type_definition_id.as_deref() {
+            let definition = definitions_by_id.get(definition_id).ok_or_else(|| {
+                AppError::validation(format!(
+                    "prompt `{}` references missing prompt type definition `{definition_id}`",
+                    prompt.id
+                ))
+            })?;
+            if definition.base_kind != prompt.prompt_type {
+                return Err(AppError::validation(format!(
+                    "prompt `{}` has a mismatched prompt type definition",
+                    prompt.id
+                )));
+            }
+        }
         if let Some(folder_id) = prompt.folder_id.as_deref() {
             if !folders_by_id.contains_key(folder_id) {
                 return Err(AppError::validation(format!(
@@ -388,6 +449,26 @@ fn validate_manifest(manifest: &PromptBundleManifest) -> Result<(), AppError> {
         .collect();
     let mut prompt_versions = HashSet::new();
     for revision in &manifest.revisions {
+        if let Some(definition_id) = revision.type_definition_id.as_deref() {
+            let definition = definitions_by_id.get(definition_id).ok_or_else(|| {
+                AppError::validation(format!(
+                    "revision `{}` references missing prompt type definition `{definition_id}`",
+                    revision.id
+                ))
+            })?;
+            if definition.base_kind != revision.prompt_type
+                || revision.type_definition.as_ref().map_or(true, |snapshot| {
+                    snapshot.id != definition.id
+                        || snapshot.name != definition.name
+                        || snapshot.base_kind != definition.base_kind
+                })
+            {
+                return Err(AppError::validation(format!(
+                    "revision `{}` has mismatched prompt type metadata",
+                    revision.id
+                )));
+            }
+        }
         if !prompt_ids.contains(revision.prompt_id.as_str()) {
             return Err(AppError::validation(format!(
                 "revision `{}` references missing prompt",
@@ -491,8 +572,83 @@ fn validate_private_bundle_key(
     Ok(())
 }
 
+struct DefinitionImportPlan {
+    id_map: HashMap<String, String>,
+    inserts: Vec<(PromptTypeDefinition, String)>,
+    conflicts: usize,
+}
+
+fn plan_type_definitions(
+    conn: &Connection,
+    definitions: &[PromptTypeDefinition],
+) -> Result<DefinitionImportPlan, AppError> {
+    let mut id_map = HashMap::new();
+    let mut inserts = Vec::new();
+    let mut conflicts = 0;
+    for definition in definitions {
+        let normalized = crate::services::prompt_type::normalize_name(&definition.name);
+        let existing = conn
+            .query_row(
+                "SELECT id,base_kind FROM prompt_type_definitions WHERE normalized_name=?1",
+                [&normalized],
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+            )
+            .optional()
+            .map_err(|error| db_err("failed to inspect prompt type conflict", error))?;
+        if let Some((id, base_kind)) = existing {
+            if crate::services::prompt_type::parse_base_kind(&base_kind)? != definition.base_kind {
+                conflicts += 1;
+            } else {
+                id_map.insert(definition.id.clone(), id);
+            }
+            continue;
+        }
+
+        let id_exists: bool = conn
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM prompt_type_definitions WHERE id=?1)",
+                [&definition.id],
+                |row| row.get(0),
+            )
+            .map_err(|error| db_err("failed to inspect prompt type id", error))?;
+        let target_id = if id_exists {
+            uuid::Uuid::new_v4().to_string()
+        } else {
+            definition.id.clone()
+        };
+        id_map.insert(definition.id.clone(), target_id.clone());
+        inserts.push((definition.clone(), target_id));
+    }
+    Ok(DefinitionImportPlan {
+        id_map,
+        inserts,
+        conflicts,
+    })
+}
+
+fn insert_type_definitions(
+    tx: &Transaction<'_>,
+    inserts: &[(PromptTypeDefinition, String)],
+) -> Result<(), AppError> {
+    for (definition, id) in inserts {
+        tx.execute(
+            "INSERT INTO prompt_type_definitions (id,name,normalized_name,base_kind,created_at) VALUES (?1,?2,?3,?4,?5)",
+            params![
+                id,
+                definition.name.trim(),
+                crate::services::prompt_type::normalize_name(&definition.name),
+                crate::services::prompt_type::base_kind_wire(definition.base_kind),
+                iso8601_to_millis(&definition.created_at)?,
+            ],
+        )
+        .map_err(|error| db_err("failed to import prompt type definition", error))?;
+    }
+    Ok(())
+}
+
 pub fn preview_bundle(conn: &Connection, path: &Path) -> Result<BundlePreview, AppError> {
     let loaded = load_bundle(path)?;
+    let definition_plan = plan_type_definitions(conn, &loaded.manifest.type_definitions)?;
     let mut conflicts = 0;
     for prompt in &loaded.manifest.prompts {
         let exists: bool = conn
@@ -518,6 +674,8 @@ pub fn preview_bundle(conn: &Connection, path: &Path) -> Result<BundlePreview, A
             .iter()
             .filter(|prompt| prompt.is_private)
             .count(),
+        type_definition_additions: definition_plan.inserts.len(),
+        type_definition_conflicts: definition_plan.conflicts,
     })
 }
 
@@ -583,13 +741,14 @@ fn insert_prompt(
     prompt: &Prompt,
     id: &str,
     folder_id: Option<&str>,
+    type_definition_id: Option<&str>,
 ) -> Result<(), AppError> {
     tx.execute(
-        "INSERT INTO prompts (id,title,description,prompt_type,system_prompt,user_prompt,messages,variables,tags,folder_id,images,videos,is_favorite,is_pinned,is_private,current_version,usage_count,source,notes,last_ai_response,created_at,updated_at) \
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22)",
+        "INSERT INTO prompts (id,title,description,prompt_type,type_definition_id,system_prompt,user_prompt,messages,variables,tags,folder_id,images,videos,is_favorite,is_pinned,is_private,current_version,usage_count,source,notes,last_ai_response,created_at,updated_at) \
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23)",
         params![
             id, prompt.title, prompt.description, enum_wire(&prompt.prompt_type)?,
-            prompt.system_prompt, prompt.user_prompt, json(&prompt.messages)?, json(&prompt.variables)?, json(&prompt.tags)?,
+            type_definition_id, prompt.system_prompt, prompt.user_prompt, json(&prompt.messages)?, json(&prompt.variables)?, json(&prompt.tags)?,
             folder_id, json(&prompt.images)?, json(&prompt.videos)?, prompt.is_favorite,
             prompt.is_pinned, prompt.is_private, prompt.current_version, prompt.usage_count,
             prompt.source, prompt.notes, prompt.last_ai_response,
@@ -606,14 +765,18 @@ fn insert_revision(
     id: &str,
     prompt_id: &str,
     parent_revision_id: Option<&str>,
+    type_definition_id: Option<&str>,
 ) -> Result<(), AppError> {
     tx.execute(
-        "INSERT INTO prompt_versions (id,prompt_id,version,system_prompt,user_prompt,messages,variables,title,description,prompt_type,tags,folder_id,images,videos,is_favorite,is_pinned,is_private,source,notes,note,ai_response,source_action,parent_revision_id,created_at) \
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24)",
+        "INSERT INTO prompt_versions (id,prompt_id,version,system_prompt,user_prompt,messages,variables,title,description,prompt_type,type_definition_id,type_definition_name,type_definition_base_kind,tags,folder_id,images,videos,is_favorite,is_pinned,is_private,source,notes,note,ai_response,source_action,parent_revision_id,created_at) \
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27)",
         params![
             id, prompt_id, revision.version, revision.system_prompt, revision.user_prompt, json(&revision.messages)?,
             json(&revision.variables)?, revision.title, revision.description,
-            enum_wire(&revision.prompt_type)?, json(&revision.tags)?, revision.folder_id,
+            enum_wire(&revision.prompt_type)?, type_definition_id,
+            revision.type_definition.as_ref().map(|definition| &definition.name),
+            revision.type_definition.as_ref().map(|definition| enum_wire(&definition.base_kind)).transpose()?,
+            json(&revision.tags)?, revision.folder_id,
             json(&revision.images)?, json(&revision.videos)?, revision.is_favorite,
             revision.is_pinned, revision.is_private, revision.source, revision.notes,
             revision.note, revision.ai_response, enum_wire(&revision.source_action)?,
@@ -624,12 +787,16 @@ fn insert_revision(
     Ok(())
 }
 
-fn replace_prompt(tx: &Transaction<'_>, incoming: &Prompt) -> Result<(), AppError> {
+fn replace_prompt(
+    tx: &Transaction<'_>,
+    incoming: &Prompt,
+    type_definition_id: Option<&str>,
+) -> Result<(), AppError> {
     tx.execute(
-        "UPDATE prompts SET title=?1,description=?2,prompt_type=?3,system_prompt=?4,user_prompt=?5,messages=?6,variables=?7,tags=?8,folder_id=?9,images=?10,videos=?11,is_favorite=?12,is_pinned=?13,is_private=?14,source=?15,notes=?16,last_ai_response=?17,updated_at=?18 WHERE id=?19",
+        "UPDATE prompts SET title=?1,description=?2,prompt_type=?3,type_definition_id=?4,system_prompt=?5,user_prompt=?6,messages=?7,variables=?8,tags=?9,folder_id=?10,images=?11,videos=?12,is_favorite=?13,is_pinned=?14,is_private=?15,source=?16,notes=?17,last_ai_response=?18,updated_at=?19 WHERE id=?20",
         params![
             incoming.title, incoming.description, enum_wire(&incoming.prompt_type)?,
-            incoming.system_prompt, incoming.user_prompt, json(&incoming.messages)?, json(&incoming.variables)?,
+            type_definition_id, incoming.system_prompt, incoming.user_prompt, json(&incoming.messages)?, json(&incoming.variables)?,
             json(&incoming.tags)?, incoming.folder_id, json(&incoming.images)?,
             json(&incoming.videos)?, incoming.is_favorite, incoming.is_pinned,
             incoming.is_private, incoming.source, incoming.notes, incoming.last_ai_response,
@@ -665,6 +832,12 @@ pub fn import_bundle(
 ) -> Result<PortableImportResult, AppError> {
     let loaded = load_bundle(path)?;
     validate_private_bundle_key(&loaded.manifest, encryption_key)?;
+    let definition_plan = plan_type_definitions(conn, &loaded.manifest.type_definitions)?;
+    if definition_plan.conflicts > 0 {
+        return Err(AppError::conflict(
+            "bundle contains a prompt type name with a different base format",
+        ));
+    }
     let backup = crate::services::sync::backup_create(data_root, backup_root)?;
 
     let import_id = uuid::Uuid::new_v4().to_string();
@@ -724,6 +897,7 @@ pub fn import_bundle(
         let tx = conn
             .unchecked_transaction()
             .map_err(|error| db_err("failed to start bundle import", error))?;
+        insert_type_definitions(&tx, &definition_plan.inserts)?;
         insert_folders(&tx, &loaded.manifest.folders, &folder_map)?;
 
         let mut added = 0;
@@ -744,7 +918,12 @@ pub fn import_bundle(
                 continue;
             }
             if exists && matches!(policy, ImportConflictPolicy::Replace) {
-                replace_prompt(&tx, prompt)?;
+                let type_definition_id = prompt
+                    .type_definition_id
+                    .as_ref()
+                    .and_then(|id| definition_plan.id_map.get(id))
+                    .map(String::as_str);
+                replace_prompt(&tx, prompt, type_definition_id)?;
                 replaced += 1;
                 skipped_prompt_ids.insert(prompt.id.clone());
                 continue;
@@ -754,7 +933,18 @@ pub fn import_bundle(
                 .as_ref()
                 .and_then(|folder| folder_map.get(folder))
                 .map(String::as_str);
-            insert_prompt(&tx, prompt, &prompt_map[&prompt.id], folder)?;
+            let type_definition_id = prompt
+                .type_definition_id
+                .as_ref()
+                .and_then(|id| definition_plan.id_map.get(id))
+                .map(String::as_str);
+            insert_prompt(
+                &tx,
+                prompt,
+                &prompt_map[&prompt.id],
+                folder,
+                type_definition_id,
+            )?;
             added += 1;
         }
         for revision in &loaded.manifest.revisions {
@@ -766,12 +956,18 @@ pub fn import_bundle(
                 .as_ref()
                 .and_then(|parent| revision_map.get(parent))
                 .map(String::as_str);
+            let type_definition_id = revision
+                .type_definition_id
+                .as_ref()
+                .and_then(|id| definition_plan.id_map.get(id))
+                .map(String::as_str);
             insert_revision(
                 &tx,
                 revision,
                 &revision_map[&revision.id],
                 &prompt_map[&revision.prompt_id],
                 parent,
+                type_definition_id,
             )?;
         }
 
@@ -918,6 +1114,7 @@ mod tests {
             mut prompts,
             revisions,
             folders,
+            type_definitions,
         } = load_all(&source).unwrap();
         prompts[0].folder_id = Some("missing-folder".into());
         let manifest = PromptBundleManifest {
@@ -926,6 +1123,7 @@ mod tests {
             prompts,
             revisions,
             folders,
+            type_definitions,
             media_files: Vec::new(),
         };
 
@@ -953,6 +1151,7 @@ mod tests {
             prompts: valid.prompts,
             revisions: valid.revisions,
             folders: valid.folders,
+            type_definitions: valid.type_definitions,
             media_files: Vec::new(),
         };
         let path = root.path().join("extra-media.prompthub");
@@ -1126,5 +1325,160 @@ mod tests {
             )
             .unwrap();
         assert_eq!(parent, "z-parent");
+    }
+
+    #[test]
+    fn custom_type_round_trips_and_reuses_matching_definition_for_all_policies() {
+        let source_pool = create_memory_pool().unwrap();
+        let source = source_pool.get().unwrap();
+        init_schema(&source).unwrap();
+        let source_definition = crate::services::prompt_type::create(
+            &source,
+            crate::services::prompt_type::PromptTypeCreate {
+                name: "Storyboard".into(),
+                base_kind: "image".into(),
+            },
+        )
+        .unwrap();
+        prompt::create(
+            &source,
+            PromptCreate {
+                title: "Custom type".into(),
+                user_prompt: "body".into(),
+                type_definition_id: Some(source_definition.id),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        crate::services::prompt_type::create(
+            &source,
+            crate::services::prompt_type::PromptTypeCreate {
+                name: "Unused definition".into(),
+                base_kind: "video".into(),
+            },
+        )
+        .unwrap();
+
+        let root = tempfile::tempdir().unwrap();
+        let bundle = root.path().join("custom-type.prompthub");
+        export_bundle(&source, &root.path().join("source-media"), &bundle).unwrap();
+        assert_eq!(
+            load_bundle(&bundle)
+                .unwrap()
+                .manifest
+                .type_definitions
+                .len(),
+            1
+        );
+
+        for (index, policy) in [
+            ImportConflictPolicy::Skip,
+            ImportConflictPolicy::Duplicate,
+            ImportConflictPolicy::Replace,
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let target_pool = create_memory_pool().unwrap();
+            let target = target_pool.get().unwrap();
+            init_schema(&target).unwrap();
+            let target_definition = crate::services::prompt_type::create(
+                &target,
+                crate::services::prompt_type::PromptTypeCreate {
+                    name: " storyboard ".into(),
+                    base_kind: "image".into(),
+                },
+            )
+            .unwrap();
+            let preview = preview_bundle(&target, &bundle).unwrap();
+            assert_eq!(preview.type_definition_additions, 0);
+            assert_eq!(preview.type_definition_conflicts, 0);
+
+            let data = root.path().join(format!("data-{index}"));
+            fs::create_dir_all(&data).unwrap();
+            import_bundle(
+                &target,
+                &bundle,
+                policy,
+                &data,
+                &root.path().join(format!("backups-{index}")),
+                &root.path().join(format!("media-{index}")),
+                None,
+            )
+            .unwrap();
+            let imported = prompt::list(&target).unwrap();
+            assert_eq!(imported.len(), 1);
+            assert_eq!(
+                imported[0].type_definition_id.as_deref(),
+                Some(target_definition.id.as_str())
+            );
+            assert_eq!(imported[0].prompt_type, crate::models::PromptType::Image);
+            let revisions = crate::services::version::list(&target, &imported[0].id).unwrap();
+            assert_eq!(
+                revisions[0]
+                    .type_definition
+                    .as_ref()
+                    .map(|snapshot| snapshot.name.as_str()),
+                Some("Storyboard")
+            );
+        }
+    }
+
+    #[test]
+    fn custom_type_name_with_different_base_is_previewed_and_rejected_before_backup() {
+        let source_pool = create_memory_pool().unwrap();
+        let source = source_pool.get().unwrap();
+        init_schema(&source).unwrap();
+        let source_definition = crate::services::prompt_type::create(
+            &source,
+            crate::services::prompt_type::PromptTypeCreate {
+                name: "Campaign".into(),
+                base_kind: "text".into(),
+            },
+        )
+        .unwrap();
+        prompt::create(
+            &source,
+            PromptCreate {
+                title: "Campaign prompt".into(),
+                user_prompt: "body".into(),
+                type_definition_id: Some(source_definition.id),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let root = tempfile::tempdir().unwrap();
+        let bundle = root.path().join("conflict.prompthub");
+        export_bundle(&source, &root.path().join("source-media"), &bundle).unwrap();
+
+        let target_pool = create_memory_pool().unwrap();
+        let target = target_pool.get().unwrap();
+        init_schema(&target).unwrap();
+        crate::services::prompt_type::create(
+            &target,
+            crate::services::prompt_type::PromptTypeCreate {
+                name: "campaign".into(),
+                base_kind: "video".into(),
+            },
+        )
+        .unwrap();
+        let preview = preview_bundle(&target, &bundle).unwrap();
+        assert_eq!(preview.type_definition_conflicts, 1);
+
+        let data = root.path().join("data");
+        fs::create_dir_all(&data).unwrap();
+        let backups = root.path().join("backups");
+        let error = import_bundle(
+            &target,
+            &bundle,
+            ImportConflictPolicy::Skip,
+            &data,
+            &backups,
+            &root.path().join("media"),
+            None,
+        )
+        .unwrap_err();
+        assert_eq!(error.code_str(), "CONFLICT");
+        assert!(!backups.exists());
     }
 }

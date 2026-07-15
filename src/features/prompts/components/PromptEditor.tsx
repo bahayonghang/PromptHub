@@ -17,11 +17,13 @@ import {
   PROMPT_TYPES,
   type CreateFolderInput,
   type CreatePromptInput,
+  type CreatePromptTypeInput,
   type Folder,
   type Prompt,
   type PromptMessage,
   type PromptMessageRole,
   type PromptType,
+  type PromptTypeDefinition,
   type UpdatePromptInput,
   type Variable,
 } from "../types";
@@ -34,6 +36,7 @@ interface Draft {
   title: string;
   description: string;
   promptType: PromptType;
+  typeDefinitionId: string | null;
   folderId: string | null;
   systemPrompt: string;
   userPrompt: string;
@@ -53,6 +56,7 @@ function toDraft(prompt: Prompt | null): Draft {
     title: prompt?.title ?? "",
     description: prompt?.description ?? "",
     promptType: prompt?.promptType ?? "text",
+    typeDefinitionId: prompt?.typeDefinitionId ?? null,
     folderId: prompt?.folderId ?? null,
     systemPrompt: prompt?.systemPrompt ?? "",
     userPrompt: prompt?.userPrompt ?? "",
@@ -73,11 +77,15 @@ interface PromptEditorProps {
   /** Whether the editor is in create mode (no prompt yet). */
   creating: boolean;
   folders: Folder[];
+  promptTypeDefinitions: PromptTypeDefinition[];
   knownTags: string[];
   onCreate: (input: CreatePromptInput) => void;
   onSave: (id: string, patch: UpdatePromptInput) => void;
   onCancelCreate: () => void;
   onCreateFolder: (input: CreateFolderInput) => Promise<Folder | null>;
+  onCreatePromptType: (
+    input: CreatePromptTypeInput,
+  ) => Promise<PromptTypeDefinition | null>;
 }
 
 interface FolderPickerProps {
@@ -259,6 +267,212 @@ function FolderPicker({
   );
 }
 
+interface PromptTypePickerProps {
+  definitions: PromptTypeDefinition[];
+  baseKind: PromptType;
+  definitionId: string | null;
+  onChange: (baseKind: PromptType, definitionId: string | null) => void;
+  onCreate: (
+    input: CreatePromptTypeInput,
+  ) => Promise<PromptTypeDefinition | null>;
+}
+
+function PromptTypePicker({
+  definitions,
+  baseKind,
+  definitionId,
+  onChange,
+  onCreate,
+}: PromptTypePickerProps) {
+  const { t } = useTranslation();
+  const selectRef = useRef<HTMLSelectElement>(null);
+  const createButtonRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState("");
+  const [newBaseKind, setNewBaseKind] = useState<PromptType>("text");
+  const [busy, setBusy] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (creating) inputRef.current?.focus();
+  }, [creating]);
+
+  const cancel = () => {
+    if (busy) return;
+    setCreating(false);
+    setName("");
+    setValidationError(null);
+    createButtonRef.current?.focus();
+  };
+
+  const submit = async () => {
+    if (busy) return;
+    const trimmedName = name.trim();
+    if (trimmedName === "") {
+      setValidationError("promptsView.editor.typeNameRequired");
+      return;
+    }
+    if ([...trimmedName].length > 100) {
+      setValidationError("promptsView.editor.typeNameTooLong");
+      return;
+    }
+    setValidationError(null);
+    setBusy(true);
+    const definition = await onCreate({
+      name: trimmedName,
+      baseKind: newBaseKind,
+    });
+    setBusy(false);
+    if (!definition) return;
+    onChange(definition.baseKind, definition.id);
+    setCreating(false);
+    setName("");
+    selectRef.current?.focus();
+  };
+
+  const inputClass =
+    "min-w-0 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  const iconButtonClass =
+    "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-input text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
+  const value = definitionId ? `custom:${definitionId}` : `base:${baseKind}`;
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-medium text-muted-foreground" htmlFor="prompt-type">
+        {t("promptsView.editor.type")}
+      </label>
+      <div className="grid grid-cols-[minmax(0,1fr)_2.25rem] gap-2">
+        <select
+          ref={selectRef}
+          id="prompt-type"
+          value={value}
+          onChange={(event) => {
+            const selected = event.target.value;
+            if (selected.startsWith("base:")) {
+              onChange(selected.slice(5) as PromptType, null);
+              return;
+            }
+            const definition = definitions.find(
+              (item) => `custom:${item.id}` === selected,
+            );
+            if (definition) onChange(definition.baseKind, definition.id);
+          }}
+          className={inputClass}
+        >
+          <optgroup label={t("promptsView.editor.builtInTypes")}>
+            {PROMPT_TYPES.map((type) => (
+              <option key={type} value={`base:${type}`}>
+                {t(
+                  `promptsView.editor.type${type[0].toUpperCase()}${type.slice(1)}`,
+                )}
+              </option>
+            ))}
+          </optgroup>
+          {definitions.length > 0 && (
+            <optgroup label={t("promptsView.editor.customTypes")}>
+              {definitions.map((definition) => (
+                <option key={definition.id} value={`custom:${definition.id}`}>
+                  {definition.name}
+                </option>
+              ))}
+            </optgroup>
+          )}
+        </select>
+        <button
+          ref={createButtonRef}
+          type="button"
+          title={t("promptsView.editor.newType")}
+          aria-label={t("promptsView.editor.newType")}
+          aria-expanded={creating}
+          onClick={() => {
+            setCreating(true);
+            setNewBaseKind(baseKind);
+            setValidationError(null);
+          }}
+          className={iconButtonClass}
+        >
+          <PlusIcon className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+      {creating && (
+        <div className="flex flex-col gap-1">
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(7rem,0.6fr)_2.25rem_2.25rem] gap-2">
+            <input
+              ref={inputRef}
+              value={name}
+              aria-label={t("promptsView.editor.typeName")}
+              aria-busy={busy}
+              aria-invalid={validationError != null}
+              aria-describedby={validationError ? "prompt-type-name-error" : undefined}
+              placeholder={t("promptsView.editor.typeNamePlaceholder")}
+              disabled={busy}
+              onChange={(event) => {
+                setName(event.target.value);
+                setValidationError(null);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void submit();
+                } else if (event.key === "Escape") {
+                  event.preventDefault();
+                  cancel();
+                }
+              }}
+              className={inputClass}
+            />
+            <select
+              value={newBaseKind}
+              aria-label={t("promptsView.editor.baseType")}
+              disabled={busy}
+              onChange={(event) => setNewBaseKind(event.target.value as PromptType)}
+              className={inputClass}
+            >
+              {PROMPT_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {t(
+                    `promptsView.editor.type${type[0].toUpperCase()}${type.slice(1)}`,
+                  )}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              title={busy ? t("promptsView.editor.creatingType") : t("promptsView.editor.createType")}
+              aria-label={busy ? t("promptsView.editor.creatingType") : t("promptsView.editor.createType")}
+              disabled={busy}
+              onClick={() => void submit()}
+              className={iconButtonClass}
+            >
+              {busy ? (
+                <LoaderCircleIcon className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <CheckIcon className="h-4 w-4" aria-hidden="true" />
+              )}
+            </button>
+            <button
+              type="button"
+              title={t("promptsView.editor.cancelTypeCreate")}
+              aria-label={t("promptsView.editor.cancelTypeCreate")}
+              disabled={busy}
+              onClick={cancel}
+              className={iconButtonClass}
+            >
+              <XIcon className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+          {validationError && (
+            <span id="prompt-type-name-error" role="alert" className="text-xs text-destructive">
+              {t(validationError)}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
  * The prompt editor form (Req 6.1, 6.4, 6.7). Edits title, description, type,
  * folder, system/user prompt, variables, tags, media references, source, and
@@ -270,11 +484,13 @@ export function PromptEditor({
   prompt,
   creating,
   folders,
+  promptTypeDefinitions,
   knownTags,
   onCreate,
   onSave,
   onCancelCreate,
   onCreateFolder,
+  onCreatePromptType,
 }: PromptEditorProps) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState<Draft>(() => toDraft(prompt));
@@ -378,6 +594,7 @@ export function PromptEditor({
         title: draft.title.trim(),
         userPrompt: draft.userPrompt,
         promptType: draft.promptType,
+        typeDefinitionId: draft.typeDefinitionId,
         description: draft.description || undefined,
         systemPrompt: draft.systemPrompt || undefined,
         messages: draft.messages,
@@ -396,6 +613,7 @@ export function PromptEditor({
         title: draft.title.trim(),
         description: draft.description,
         promptType: draft.promptType,
+        typeDefinitionId: draft.typeDefinitionId,
         systemPrompt: draft.systemPrompt,
         userPrompt: draft.userPrompt,
         messages: draft.messages,
@@ -465,27 +683,19 @@ export function PromptEditor({
                 />
               </div>
 
-              <div className="flex flex-col gap-1">
-                <label className={labelClass} htmlFor="prompt-type">
-                  {t("promptsView.editor.type")}
-                </label>
-                <select
-                  id="prompt-type"
-                  value={draft.promptType}
-                  onChange={(e) =>
-                    update("promptType", e.target.value as PromptType)
-                  }
-                  className={inputClass}
-                >
-                  {PROMPT_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {t(
-                        `promptsView.editor.type${type[0].toUpperCase()}${type.slice(1)}`,
-                      )}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <PromptTypePicker
+                definitions={promptTypeDefinitions}
+                baseKind={draft.promptType}
+                definitionId={draft.typeDefinitionId}
+                onChange={(promptType, typeDefinitionId) =>
+                  setDraft((current) => ({
+                    ...current,
+                    promptType,
+                    typeDefinitionId,
+                  }))
+                }
+                onCreate={onCreatePromptType}
+              />
 
               <label className="flex items-center gap-2 self-end py-2 text-sm text-foreground">
                 <input

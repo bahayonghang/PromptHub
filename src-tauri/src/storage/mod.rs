@@ -45,7 +45,7 @@ pub type DbPool = Pool<SqliteConnectionManager>;
 const BUSY_TIMEOUT_MS: u64 = 5_000;
 
 /// Latest ordered schema migration understood by this binary.
-pub const CURRENT_SCHEMA_VERSION: u32 = 4;
+pub const CURRENT_SCHEMA_VERSION: u32 = 5;
 
 struct Migration {
     version: u32,
@@ -216,6 +216,26 @@ CREATE INDEX idx_evaluation_runs_started ON evaluation_runs(started_at DESC);
 CREATE INDEX idx_evaluation_cells_run ON evaluation_cells(evaluation_run_id, sort_order);
 CREATE INDEX idx_evaluation_cells_cache ON evaluation_cells(cache_key, status);
 CREATE INDEX idx_label_history_prompt ON prompt_label_history(prompt_id, label, created_at DESC);
+"#,
+    },
+    Migration {
+        version: 5,
+        sql: r#"
+CREATE TABLE prompt_type_definitions (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  normalized_name TEXT NOT NULL UNIQUE,
+  base_kind TEXT NOT NULL CHECK(base_kind IN ('text','image','video')),
+  created_at INTEGER NOT NULL
+);
+
+ALTER TABLE prompts ADD COLUMN type_definition_id TEXT REFERENCES prompt_type_definitions(id);
+ALTER TABLE prompt_versions ADD COLUMN type_definition_id TEXT;
+ALTER TABLE prompt_versions ADD COLUMN type_definition_name TEXT;
+ALTER TABLE prompt_versions ADD COLUMN type_definition_base_kind TEXT CHECK(type_definition_base_kind IN ('text','image','video'));
+
+CREATE INDEX idx_prompts_type_definition ON prompts(type_definition_id);
+CREATE INDEX idx_versions_type_definition ON prompt_versions(type_definition_id);
 "#,
     },
 ];
@@ -410,6 +430,14 @@ pub fn init_schema_with_pool(pool: &DbPool) -> Result<(), AppError> {
 /// `ON DELETE CASCADE` so deleting the parent removes history (Requirements 4.4,
 /// 4.5). The FTS virtual table/triggers live in the Search_Engine module.
 const SCHEMA_SQL: &str = r#"
+CREATE TABLE IF NOT EXISTS prompt_type_definitions (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  normalized_name TEXT NOT NULL UNIQUE,
+  base_kind TEXT NOT NULL CHECK(base_kind IN ('text','image','video')),
+  created_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS folders (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -425,6 +453,7 @@ CREATE TABLE IF NOT EXISTS prompts (
   title TEXT NOT NULL,
   description TEXT,
   prompt_type TEXT NOT NULL DEFAULT 'text' CHECK(prompt_type IN ('text','image','video')),
+  type_definition_id TEXT REFERENCES prompt_type_definitions(id),
   system_prompt TEXT,
   user_prompt TEXT NOT NULL,
   messages TEXT NOT NULL DEFAULT '[]',
@@ -456,6 +485,9 @@ CREATE TABLE IF NOT EXISTS prompt_versions (
   title TEXT NOT NULL DEFAULT '',
   description TEXT,
   prompt_type TEXT NOT NULL DEFAULT 'text' CHECK(prompt_type IN ('text','image','video')),
+  type_definition_id TEXT,
+  type_definition_name TEXT,
+  type_definition_base_kind TEXT CHECK(type_definition_base_kind IN ('text','image','video')),
   tags TEXT NOT NULL DEFAULT '[]',
   folder_id TEXT,
   images TEXT NOT NULL DEFAULT '[]',
@@ -619,6 +651,8 @@ CREATE INDEX IF NOT EXISTS idx_prompts_created  ON prompts(created_at);
 CREATE INDEX IF NOT EXISTS idx_prompts_usage    ON prompts(usage_count);
 CREATE INDEX IF NOT EXISTS idx_versions_prompt  ON prompt_versions(prompt_id);
 CREATE INDEX IF NOT EXISTS idx_versions_parent  ON prompt_versions(parent_revision_id);
+CREATE INDEX IF NOT EXISTS idx_prompts_type_definition ON prompts(type_definition_id);
+CREATE INDEX IF NOT EXISTS idx_versions_type_definition ON prompt_versions(type_definition_id);
 CREATE INDEX IF NOT EXISTS idx_folders_parent   ON folders(parent_id);
 CREATE INDEX IF NOT EXISTS idx_folders_sort     ON folders(sort_order);
 CREATE INDEX IF NOT EXISTS idx_rules_scope      ON rules(scope);
@@ -641,6 +675,7 @@ mod tests {
 
     /// Expected base tables created by [`init_schema`].
     const EXPECTED_TABLES: &[&str] = &[
+        "prompt_type_definitions",
         "folders",
         "prompts",
         "prompt_versions",
@@ -668,6 +703,8 @@ mod tests {
         "idx_prompts_usage",
         "idx_versions_prompt",
         "idx_versions_parent",
+        "idx_prompts_type_definition",
+        "idx_versions_type_definition",
         "idx_folders_parent",
         "idx_folders_sort",
         "idx_rules_scope",
@@ -961,5 +998,59 @@ mod tests {
             );
         }
         assert!(db_path.exists(), "database file should have been created");
+    }
+
+    #[test]
+    fn schema_v5_upgrade_is_additive_and_idempotent() {
+        let pool = create_memory_pool().unwrap();
+        let conn = pool.get().unwrap();
+        conn.execute_batch(
+            r#"
+            CREATE TABLE prompts (
+              id TEXT PRIMARY KEY,
+              title TEXT NOT NULL,
+              prompt_type TEXT NOT NULL,
+              user_prompt TEXT NOT NULL,
+              created_at INTEGER NOT NULL,
+              updated_at INTEGER NOT NULL
+            );
+            CREATE TABLE prompt_versions (
+              id TEXT PRIMARY KEY,
+              prompt_id TEXT NOT NULL,
+              version INTEGER NOT NULL,
+              prompt_type TEXT NOT NULL,
+              user_prompt TEXT NOT NULL,
+              created_at INTEGER NOT NULL
+            );
+            INSERT INTO prompts VALUES ('p1','Legacy','text','exact bytes',1,2);
+            INSERT INTO prompt_versions VALUES ('v1','p1',1,'text','exact bytes',1);
+            PRAGMA user_version = 4;
+            "#,
+        )
+        .unwrap();
+
+        run_migrations(&conn, MIGRATIONS).unwrap();
+        run_migrations(&conn, MIGRATIONS).unwrap();
+
+        assert_eq!(schema_version(&conn).unwrap(), 5);
+        let prompt: (String, String, Option<String>) = conn
+            .query_row(
+                "SELECT title,user_prompt,type_definition_id FROM prompts WHERE id='p1'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(prompt, ("Legacy".into(), "exact bytes".into(), None));
+        let revision: (String, Option<String>, Option<String>) = conn
+            .query_row(
+                "SELECT user_prompt,type_definition_name,type_definition_base_kind FROM prompt_versions WHERE id='v1'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(revision, ("exact bytes".into(), None, None));
+        assert!(names_of_type(&conn, "table")
+            .iter()
+            .any(|name| name == "prompt_type_definitions"));
     }
 }

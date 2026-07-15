@@ -627,6 +627,7 @@ proptest! {
         let before = prompt::get(&conn, &id).unwrap();
 
         let patch = PromptUpdate {
+            type_definition_id: None,
             title: p_title.clone(),
             user_prompt: p_user.clone(),
             description: p_desc.clone(),

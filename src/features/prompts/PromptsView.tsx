@@ -49,6 +49,7 @@ export function PromptsView() {
   const total = usePromptStore((s) => s.total);
   const offset = usePromptStore((s) => s.offset);
   const tags = usePromptStore((s) => s.tags);
+  const promptTypeDefinitions = usePromptStore((s) => s.promptTypeDefinitions);
   const filters = usePromptStore((s) => s.filters);
   const selectedPromptId = usePromptStore((s) => s.selectedPromptId);
   const versions = usePromptStore((s) => s.versions);
@@ -79,6 +80,7 @@ export function PromptsView() {
   const previewBundle = usePromptStore((s) => s.previewBundle);
   const importBundle = usePromptStore((s) => s.importBundle);
   const createFolder = usePromptStore((s) => s.createFolder);
+  const createPromptType = usePromptStore((s) => s.createPromptType);
   const updateFolder = usePromptStore((s) => s.updateFolder);
   const deleteFolder = usePromptStore((s) => s.deleteFolder);
   const reorderFolders = usePromptStore((s) => s.reorderFolders);
@@ -294,6 +296,17 @@ export function PromptsView() {
                     mediaFiles: bundlePreview.mediaFiles,
                   })}
                 </p>
+                <p>
+                  {t("promptsView.bundle.typeDefinitionSummary", {
+                    additions: bundlePreview.typeDefinitionAdditions,
+                    conflicts: bundlePreview.typeDefinitionConflicts,
+                  })}
+                </p>
+                {bundlePreview.typeDefinitionConflicts > 0 && (
+                  <p role="alert" className="mt-1 text-destructive">
+                    {t("promptsView.bundle.typeDefinitionConflict")}
+                  </p>
+                )}
                 {bundlePreview.privatePrompts > 0 && (
                   <p className="mt-1 text-foreground">
                     {t("promptsView.bundle.privateKeyWarning", {
@@ -303,6 +316,7 @@ export function PromptsView() {
                 )}
                 <button
                   type="button"
+                  disabled={bundlePreview.typeDefinitionConflicts > 0}
                   onClick={() =>
                     void importBundle(bundlePath.trim(), conflictPolicy).then(
                       (result) => {
@@ -321,7 +335,7 @@ export function PromptsView() {
                       },
                     )
                   }
-                  className="mt-2 rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground"
+                  className="mt-2 rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {t("promptsView.bundle.confirmImport")}
                 </button>
@@ -361,6 +375,7 @@ export function PromptsView() {
         <div className="min-h-0 flex-1 overflow-y-auto">
           <PromptList
             prompts={prompts}
+            promptTypeDefinitions={promptTypeDefinitions}
             selectedPromptId={selectedPromptId}
             selectedPromptIds={selectedPromptIds}
             loading={loading}
@@ -593,17 +608,19 @@ export function PromptsView() {
                   <EvaluationWorkbench prompt={selectedPrompt} versions={versions} />
                 ) : (
                   <PromptEditor
-                  prompt={creating ? null : selectedPrompt}
-                  creating={creating}
-                  folders={folders}
-                  knownTags={tags}
-                  onCreateFolder={createFolder}
-                  onCreate={(input) => {
-                    void createPrompt(input).then((created) => {
-                      if (created) setCreating(false);
-                    });
-                  }}
-                  onSave={(id, patch) => void savePrompt(id, patch)}
+                    prompt={creating ? null : selectedPrompt}
+                    creating={creating}
+                    folders={folders}
+                    promptTypeDefinitions={promptTypeDefinitions}
+                    knownTags={tags}
+                    onCreateFolder={createFolder}
+                    onCreatePromptType={createPromptType}
+                    onCreate={(input) => {
+                      void createPrompt(input).then((created) => {
+                        if (created) setCreating(false);
+                      });
+                    }}
+                    onSave={(id, patch) => void savePrompt(id, patch)}
                     onCancelCreate={() => setCreating(false)}
                   />
                 )}
@@ -616,6 +633,7 @@ export function PromptsView() {
                   <VersionHistory
                     prompt={selectedPrompt}
                     versions={versions}
+                    promptTypeDefinitions={promptTypeDefinitions}
                     onCreateVersion={(note) => void createVersion(note)}
                     onRollback={(version) => {
                       if (

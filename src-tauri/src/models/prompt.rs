@@ -8,6 +8,25 @@ use serde::{Deserialize, Serialize};
 
 use super::enums::{PromptRevisionSource, PromptType, SortField, SortOrder};
 
+/// A user-defined organizational prompt type backed by a stable base format.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PromptTypeDefinition {
+    pub id: String,
+    pub name: String,
+    pub base_kind: PromptType,
+    pub created_at: String,
+}
+
+/// Immutable custom-type metadata captured with a prompt revision.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PromptTypeSnapshot {
+    pub id: String,
+    pub name: String,
+    pub base_kind: PromptType,
+}
+
 /// A single prompt record (Requirement 6).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -20,6 +39,9 @@ pub struct Prompt {
     pub description: Option<String>,
     /// Prompt kind; defaults to `text`.
     pub prompt_type: PromptType,
+    /// Optional custom organizational type. Execution still uses `prompt_type`.
+    #[serde(default)]
+    pub type_definition_id: Option<String>,
     /// Optional system prompt.
     pub system_prompt: Option<String>,
     /// User prompt (non-empty).
@@ -109,6 +131,11 @@ pub struct PromptVersion {
     pub title: String,
     pub description: Option<String>,
     pub prompt_type: PromptType,
+    #[serde(default)]
+    pub type_definition_id: Option<String>,
+    /// Immutable custom-type metadata captured with this revision.
+    #[serde(default)]
+    pub type_definition: Option<PromptTypeSnapshot>,
     pub tags: Vec<String>,
     pub folder_id: Option<String>,
     pub images: Vec<String>,

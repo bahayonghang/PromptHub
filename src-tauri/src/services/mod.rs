@@ -19,6 +19,7 @@ pub mod media;
 pub mod network_safety;
 pub mod portable;
 pub mod prompt;
+pub mod prompt_type;
 pub mod rules;
 pub mod security;
 pub mod settings;
