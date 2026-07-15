@@ -241,3 +241,37 @@ Added deterministic paging, immutable revisions, portable bundles, private promp
 ### Next Steps
 
 - None - task complete
+
+
+## Session 8: Prompt 编辑器内联创建文件夹
+
+**Date**: 2026-07-15
+**Task**: Prompt 编辑器内联创建文件夹
+**Branch**: `main`
+
+### Summary
+
+在 Prompt 创建与编辑模式中复用现有 Store action 内联创建根文件夹，成功后选择权威 ID，失败保留输入，并补齐校验、忙碌防重、焦点恢复、七语言文案、组件测试与前端规范。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `621f446` | (see git log) |
+| `1369a0a` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
