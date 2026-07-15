@@ -139,3 +139,36 @@ Added deterministic paging, immutable revisions, portable bundles, private promp
 ### Next Steps
 
 - None - task complete
+
+
+## Session 5: 完成 Prompt 评测闭环
+
+**Date**: 2026-07-15
+**Task**: 完成 Prompt 评测闭环
+**Branch**: `main`
+
+### Summary
+
+实现文本与聊天 Prompt、加密执行配置、流式 Playground、可复现运行历史、测试集与确定性评估器、可取消重试矩阵、保守缓存及 baseline/candidate 审计；just ci 和隔离 native mock 重启 smoke 通过。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c61c405` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
