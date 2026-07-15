@@ -597,6 +597,7 @@ export function PromptsView() {
                   creating={creating}
                   folders={folders}
                   knownTags={tags}
+                  onCreateFolder={createFolder}
                   onCreate={(input) => {
                     void createPrompt(input).then((created) => {
                       if (created) setCreating(false);
