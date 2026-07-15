@@ -96,6 +96,30 @@ Presentational children should keep only short-lived UI state:
 Move durable, cross-component, backend-backed, or view-wide state into the
 feature store.
 
+### Async Inline Creation
+
+When an editor creates a related entity inline, inject the existing store action
+as an async callback that returns the authoritative entity or `null`:
+
+```tsx
+onCreateFolder: (input: CreateFolderInput) => Promise<Folder | null>;
+
+const folder = await onCreateFolder({ name: name.trim(), parentId: null });
+if (!folder) return; // Keep the input open for correction.
+onChange(folder.id);
+```
+
+- Keep the temporary name, validation, busy state, and focus refs local to the
+  focused child component; do not duplicate backend-backed lists locally.
+- Mirror simple backend validation for immediate feedback, while keeping the
+  store/backend authoritative. Empty or overlong input must not call the action.
+- Disable every submit path while awaiting the callback. On `null`, retain the
+  name and existing selection; on success, select only the returned id.
+- Enter submits without bubbling to the parent form, Escape cancels, cancel
+  returns focus to the disclosure trigger, and success focuses the picker.
+- Component tests must cover validation, duplicate-submit prevention, failure
+  retention, focus restoration, and preservation of the surrounding form draft.
+
 ---
 
 ## Styling Patterns
