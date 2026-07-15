@@ -36,6 +36,15 @@ just ci
 Native smoke uses a local deterministic mock provider by default. A real-provider
 smoke is optional, explicit, and never part of unattended CI.
 
+Run the opt-in live smoke only with a user-configured public endpoint:
+
+```powershell
+$env:PROMPTHUB_LIVE_OPENAI_ENDPOINT = "https://provider.example/v1/chat/completions"
+$env:PROMPTHUB_LIVE_OPENAI_MODEL = "model-id"
+$env:PROMPTHUB_LIVE_OPENAI_API_KEY = "..." # optional for credential-free endpoints
+cargo test --manifest-path src-tauri/Cargo.toml live_openai_compatible_smoke -- --ignored --nocapture
+```
+
 ## Rollback
 
 Evaluation storage is additive. Disable/remove its navigation and command

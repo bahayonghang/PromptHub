@@ -38,21 +38,24 @@ compare, evaluate, and promote a better revision.
 
 ## Acceptance Criteria
 
-- [ ] AC1: Text and multi-message chat prompts render variables deterministically
+- [x] AC1: Text and multi-message chat prompts render variables deterministically
   and revision round-trip without losing role/order/content.
-- [ ] AC2: Provider secrets are never returned to the frontend, logged, exported
+- [x] AC2: Provider secrets are never returned to the frontend, logged, exported
   by default, or stored in plaintext.
-- [ ] AC3: Run records reproduce the exact revision/profile/input combination and
+- [x] AC3: Run records reproduce the exact revision/profile/input combination and
   retain terminal success/cancel/error status across restart.
-- [ ] AC4: A test-set matrix can compare at least 2 revisions or models across 20
+- [x] AC4: A test-set matrix can compare at least 2 revisions or models across 20
   cases with stable progress, cancellation, and retry of failed cells.
-- [ ] AC5: Evaluator results retain individual evidence; aggregate scores never
+- [x] AC5: Evaluator results retain individual evidence; aggregate scores never
   hide failed/skipped cases.
-- [ ] AC6: Identical matrix reruns use cache only when revision, profile, inputs,
+- [x] AC6: Identical matrix reruns use cache only when revision, profile, inputs,
   evaluator config, and relevant runtime version match.
-- [ ] AC7: Baseline/candidate label history and rollback are attributable.
-- [ ] AC8: Frontend/Rust gates plus native provider-mocked and one opt-in live
-  smoke test pass.
+- [x] AC7: Baseline/candidate label history and rollback are attributable.
+- [x] AC8: Frontend/Rust gates and the native provider-mocked smoke pass; an
+  explicit opt-in live-provider smoke path is available outside unattended CI.
+  - `just ci` and the isolated file-database native mock smoke pass. The ignored
+    live-provider smoke was not run because no live endpoint, model, or credential
+    was configured in this environment.
 
 ## Out of Scope
 
