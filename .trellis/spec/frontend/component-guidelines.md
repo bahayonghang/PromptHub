@@ -122,6 +122,52 @@ const selectClass =
 Icons come from `lucide-react`. Decorative icons use `aria-hidden="true"`;
 action icons need an accessible label on the button or icon.
 
+### Responsive Container Layouts
+
+Feature-internal panes and forms should respond to their content region rather
+than the full window. The checked-in Tailwind configuration does not provide a
+container-query plugin, so do not assume `@container` or `@[...]:` utility
+classes will emit CSS. Use a named native container and semantic child classes
+in `src/styles/globals.css`:
+
+```css
+.feature-workspace {
+  container: feature-workspace / inline-size;
+}
+
+@container feature-workspace (min-width: 56rem) {
+  .feature-workspace__navigation {
+    display: flex;
+  }
+}
+```
+
+Keep these override rules outside Tailwind's `components` layer when they must
+win over utilities such as `hidden`, `invisible`, `absolute`, or `w-*`.
+Component-layer rules have lower cascade priority than utilities even when they
+appear later in the source.
+
+Wrong:
+
+```tsx
+<div className="@container/workspace">
+  <aside className="hidden @[56rem]/workspace:flex" />
+</div>
+```
+
+Correct:
+
+```tsx
+<div className="feature-workspace">
+  <aside className="feature-workspace__navigation hidden" />
+</div>
+```
+
+After changing a container layout, run the production build and verify in a
+browser that `getComputedStyle(container).containerType === "inline-size"` at
+the required viewport sizes. Closed off-canvas regions must also disappear from
+the accessibility tree, not only move outside the visible canvas.
+
 ---
 
 ## Accessibility
