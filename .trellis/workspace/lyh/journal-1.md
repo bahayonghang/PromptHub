@@ -207,3 +207,37 @@ Added deterministic paging, immutable revisions, portable bundles, private promp
 ### Next Steps
 
 - None - task complete
+
+
+## Session 7: 完成提示词筛选面板
+
+**Date**: 2026-07-15
+**Task**: 完成提示词筛选面板
+**Branch**: `main`
+
+### Summary
+
+实现可翻转的 fixed portal 筛选浮层，补齐键盘、焦点、长标签、200% 文本缩放和七语言覆盖，并通过完整前端门禁。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d844f345b15d6cfaea02927f2c227889ba21b81d` | (see git log) |
+| `7da169c329c1053d9b3b7999ba6ede380c32117c` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
