@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "description": "PromptHub Desktop - Tauri application for AI prompt management",
+  "allowScripts": {
+    "esbuild@0.25.12": true
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
