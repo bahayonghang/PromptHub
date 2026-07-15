@@ -16,9 +16,9 @@ mod rules;
 mod security;
 mod settings;
 
-pub use enums::{PromptType, SortField, SortOrder, SyncStatus};
+pub use enums::{PromptRevisionSource, PromptType, SortField, SortOrder, SyncStatus};
 pub use folder::Folder;
-pub use prompt::{Prompt, PromptVersion, SearchQuery, Variable};
+pub use prompt::{Prompt, PromptPage, PromptVersion, SearchQuery, Variable};
 pub use rules::{RuleFileContent, RuleVersionSnapshot};
 pub use security::StoredMasterPassword;
 pub use settings::{SecuritySettings, Settings, SyncSettings};
@@ -118,6 +118,8 @@ mod tests {
             videos: vec![],
             is_favorite: false,
             is_pinned: false,
+            is_private: false,
+            is_locked: false,
             current_version: 0,
             usage_count: 0,
             source: None,

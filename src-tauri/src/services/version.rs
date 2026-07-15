@@ -39,7 +39,7 @@
 use rusqlite::{params, Connection, OptionalExtension};
 
 use crate::error::AppError;
-use crate::models::{Prompt, PromptVersion};
+use crate::models::{Prompt, PromptRevisionSource, PromptVersion};
 use crate::storage::mapping::{prompt_from_row, prompt_version_from_row};
 use crate::storage::time::now_millis;
 
@@ -54,6 +54,104 @@ fn db_err(context: &str, e: rusqlite::Error) -> AppError {
 /// Serializes a slice to a JSON array TEXT column value (`[]` on failure/empty).
 fn variables_json(variables: &[crate::models::Variable]) -> String {
     serde_json::to_string(variables).unwrap_or_else(|_| "[]".to_string())
+}
+
+fn json_array<T: serde::Serialize>(items: &[T]) -> String {
+    serde_json::to_string(items).unwrap_or_else(|_| "[]".to_string())
+}
+
+fn prompt_type_wire(prompt_type: crate::models::PromptType) -> &'static str {
+    match prompt_type {
+        crate::models::PromptType::Text => "text",
+        crate::models::PromptType::Image => "image",
+        crate::models::PromptType::Video => "video",
+    }
+}
+
+fn source_wire(source: PromptRevisionSource) -> &'static str {
+    match source {
+        PromptRevisionSource::Create => "create",
+        PromptRevisionSource::Save => "save",
+        PromptRevisionSource::Manual => "manual",
+        PromptRevisionSource::Rollback => "rollback",
+        PromptRevisionSource::Import => "import",
+        PromptRevisionSource::Replace => "replace",
+    }
+}
+
+/// Appends a complete immutable snapshot. The caller owns the surrounding
+/// transaction when this is part of a prompt mutation.
+pub(crate) fn append_snapshot(
+    conn: &Connection,
+    prompt: &Prompt,
+    note: Option<String>,
+    source_action: PromptRevisionSource,
+    parent_override: Option<&str>,
+) -> Result<PromptVersion, AppError> {
+    let latest: Option<(i64, String)> = conn
+        .query_row(
+            "SELECT version, id FROM prompt_versions WHERE prompt_id = ?1 ORDER BY version DESC LIMIT 1",
+            [&prompt.id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()
+        .map_err(|e| db_err("failed to read latest revision", e))?;
+    let next_version = latest.as_ref().map_or(1, |(version, _)| version + 1);
+    let parent_revision_id = if source_action == PromptRevisionSource::Create {
+        None
+    } else {
+        parent_override
+            .map(str::to_owned)
+            .or_else(|| latest.map(|(_, id)| id))
+    };
+    let id = uuid::Uuid::new_v4().to_string();
+    let now = now_millis();
+
+    conn.execute(
+        "INSERT INTO prompt_versions \
+         (id,prompt_id,version,system_prompt,user_prompt,variables,title,description,prompt_type,\
+          tags,folder_id,images,videos,is_favorite,is_pinned,is_private,source,notes,note,ai_response,\
+          source_action,parent_revision_id,created_at) \
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23)",
+        params![
+            id,
+            prompt.id,
+            next_version,
+            prompt.system_prompt,
+            prompt.user_prompt,
+            variables_json(&prompt.variables),
+            prompt.title,
+            prompt.description,
+            prompt_type_wire(prompt.prompt_type),
+            json_array(&prompt.tags),
+            prompt.folder_id,
+            json_array(&prompt.images),
+            json_array(&prompt.videos),
+            prompt.is_favorite,
+            prompt.is_pinned,
+            prompt.is_private,
+            prompt.source,
+            prompt.notes,
+            note,
+            prompt.last_ai_response,
+            source_wire(source_action),
+            parent_revision_id,
+            now,
+        ],
+    )
+    .map_err(|e| db_err("failed to insert revision", e))?;
+    conn.execute(
+        "UPDATE prompts SET current_version = ?1 WHERE id = ?2",
+        params![next_version, prompt.id],
+    )
+    .map_err(|e| db_err("failed to update current revision", e))?;
+
+    conn.query_row(
+        "SELECT * FROM prompt_versions WHERE id = ?1",
+        [id],
+        prompt_version_from_row,
+    )
+    .map_err(|e| db_err("failed to read created revision", e))
 }
 
 /// Fetches the owning prompt by identifier, returning `NOT_FOUND` when absent.
@@ -114,58 +212,14 @@ pub fn create(
         }
     }
 
-    // NOT_FOUND when the prompt does not exist; also the source of the snapshot.
-    let prompt = get_prompt(conn, prompt_id)?;
-
-    // version = highest existing version for this prompt + 1, starting at 1.
-    let max_version: i64 = conn
-        .query_row(
-            "SELECT COALESCE(MAX(version), 0) FROM prompt_versions WHERE prompt_id = ?1",
-            [prompt_id],
-            |row| row.get(0),
-        )
-        .map_err(|e| db_err("failed to compute next version", e))?;
-    let next_version = max_version + 1;
-
-    let id = uuid::Uuid::new_v4().to_string();
-    let now = now_millis();
-    let variables = variables_json(&prompt.variables);
-
     let tx = conn
         .unchecked_transaction()
         .map_err(|e| db_err("failed to begin create-version transaction", e))?;
-    tx.execute(
-        "INSERT INTO prompt_versions \
-         (id, prompt_id, version, system_prompt, user_prompt, variables, note, ai_response, created_at) \
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
-        params![
-            id,
-            prompt_id,
-            next_version,
-            prompt.system_prompt,
-            prompt.user_prompt,
-            variables,
-            note,
-            None::<String>,
-            now,
-        ],
-    )
-    .map_err(|e| db_err("failed to insert version", e))?;
-    // Keep the prompt's highest-version pointer consistent with the new snapshot.
-    tx.execute(
-        "UPDATE prompts SET current_version = ?1 WHERE id = ?2",
-        params![next_version, prompt_id],
-    )
-    .map_err(|e| db_err("failed to bump current_version", e))?;
+    let prompt = get_prompt(&tx, prompt_id)?;
+    let revision = append_snapshot(&tx, &prompt, note, PromptRevisionSource::Manual, None)?;
     tx.commit()
         .map_err(|e| db_err("failed to commit create-version transaction", e))?;
-
-    conn.query_row(
-        "SELECT * FROM prompt_versions WHERE id = ?1",
-        [id],
-        prompt_version_from_row,
-    )
-    .map_err(|e| db_err("failed to read created version", e))
+    Ok(revision)
 }
 
 /// Restores a prompt to a previous version's snapshot (Req 7.3, 7.5).
@@ -176,11 +230,11 @@ pub fn create(
 /// snapshot and `updatedAt` is refreshed to the current time; the updated prompt
 /// is returned.
 pub fn rollback(conn: &Connection, prompt_id: &str, version: i64) -> Result<Prompt, AppError> {
-    // NOT_FOUND when the prompt does not exist (prompt left unchanged).
-    get_prompt(conn, prompt_id)?;
-
-    // NOT_FOUND when the prompt has no such version (prompt left unchanged).
-    let snapshot = conn
+    let tx = conn
+        .unchecked_transaction()
+        .map_err(|e| db_err("failed to begin rollback transaction", e))?;
+    get_prompt(&tx, prompt_id)?;
+    let snapshot = tx
         .query_row(
             "SELECT * FROM prompt_versions WHERE prompt_id = ?1 AND version = ?2",
             params![prompt_id, version],
@@ -195,41 +249,43 @@ pub fn rollback(conn: &Connection, prompt_id: &str, version: i64) -> Result<Prom
         })?;
 
     let now = now_millis();
-    conn.execute(
-        "UPDATE prompts SET system_prompt = ?1, user_prompt = ?2, variables = ?3, updated_at = ?4 \
-         WHERE id = ?5",
+    tx.execute(
+        "UPDATE prompts SET title=?1,description=?2,prompt_type=?3,system_prompt=?4,user_prompt=?5,\
+         variables=?6,tags=?7,folder_id=?8,images=?9,videos=?10,is_favorite=?11,is_pinned=?12,\
+         is_private=?13,source=?14,notes=?15,last_ai_response=?16,updated_at=?17 WHERE id=?18",
         params![
+            snapshot.title,
+            snapshot.description,
+            prompt_type_wire(snapshot.prompt_type),
             snapshot.system_prompt,
             snapshot.user_prompt,
             variables_json(&snapshot.variables),
+            json_array(&snapshot.tags),
+            snapshot.folder_id,
+            json_array(&snapshot.images),
+            json_array(&snapshot.videos),
+            snapshot.is_favorite,
+            snapshot.is_pinned,
+            snapshot.is_private,
+            snapshot.source,
+            snapshot.notes,
+            snapshot.ai_response,
             now,
             prompt_id,
         ],
     )
     .map_err(|e| db_err("failed to roll back prompt", e))?;
-
+    let restored = get_prompt(&tx, prompt_id)?;
+    append_snapshot(
+        &tx,
+        &restored,
+        Some(format!("Rollback to v{version}")),
+        PromptRevisionSource::Rollback,
+        Some(&snapshot.id),
+    )?;
+    tx.commit()
+        .map_err(|e| db_err("failed to commit rollback transaction", e))?;
     get_prompt(conn, prompt_id)
-}
-
-/// Removes a single version from a prompt's history (Req 7.4, 7.7).
-///
-/// Returns `NOT_FOUND` when no matching `(prompt_id, version)` row exists,
-/// leaving the version history unchanged (Req 7.7). All other versions are left
-/// intact. The prompt's `current_version` pointer is intentionally left untouched
-/// so deleting an arbitrary version does not rewrite the prompt record.
-pub fn delete(conn: &Connection, prompt_id: &str, version: i64) -> Result<(), AppError> {
-    let affected = conn
-        .execute(
-            "DELETE FROM prompt_versions WHERE prompt_id = ?1 AND version = ?2",
-            params![prompt_id, version],
-        )
-        .map_err(|e| db_err("failed to delete version", e))?;
-    if affected == 0 {
-        return Err(AppError::not_found(format!(
-            "version `{version}` not found for prompt `{prompt_id}`"
-        )));
-    }
-    Ok(())
 }
 
 #[cfg(test)]
@@ -276,11 +332,14 @@ mod tests {
     }
 
     #[test]
-    fn list_returns_empty_when_prompt_has_no_versions() {
+    fn prompt_creation_records_initial_revision() {
         let pool = schema_pool();
         let conn = pool.get().unwrap();
         let id = seed_prompt(&conn);
-        assert!(list(&conn, &id).unwrap().is_empty());
+        let revisions = list(&conn, &id).unwrap();
+        assert_eq!(revisions.len(), 1);
+        assert_eq!(revisions[0].source_action, PromptRevisionSource::Create);
+        assert_eq!(revisions[0].title, "Versioned");
     }
 
     #[test]
@@ -303,7 +362,7 @@ mod tests {
 
         let versions = list(&conn, &id).unwrap();
         let numbers: Vec<i64> = versions.iter().map(|v| v.version).collect();
-        assert_eq!(numbers, vec![1, 2, 3]);
+        assert_eq!(numbers, vec![1, 2, 3, 4]);
     }
 
     #[test]
@@ -314,11 +373,11 @@ mod tests {
 
         let first = create(&conn, &id, None).unwrap();
         let second = create(&conn, &id, None).unwrap();
-        assert_eq!(first.version, 1);
-        assert_eq!(second.version, 2);
+        assert_eq!(first.version, 2);
+        assert_eq!(second.version, 3);
 
         // The prompt's current_version pointer tracks the latest snapshot.
-        assert_eq!(prompt::get(&conn, &id).unwrap().current_version, 2);
+        assert_eq!(prompt::get(&conn, &id).unwrap().current_version, 3);
     }
 
     #[test]
@@ -365,9 +424,9 @@ mod tests {
         let err = create(&conn, &id, Some(too_long)).unwrap_err();
         assert_eq!(err.code, ErrorCode::Validation);
 
-        // No version was created (Req 7.8), and the pointer is untouched.
-        assert!(list(&conn, &id).unwrap().is_empty());
-        assert_eq!(prompt::get(&conn, &id).unwrap().current_version, 0);
+        // No additional version was created, and the initial pointer is untouched.
+        assert_eq!(list(&conn, &id).unwrap().len(), 1);
+        assert_eq!(prompt::get(&conn, &id).unwrap().current_version, 1);
     }
 
     #[test]
@@ -454,41 +513,95 @@ mod tests {
     }
 
     #[test]
-    fn delete_removes_one_version_leaving_others_intact() {
+    fn meaningful_save_snapshots_all_fields_noop_does_not_and_rollback_appends() {
         let pool = schema_pool();
         let conn = pool.get().unwrap();
-        let id = seed_prompt(&conn);
+        let created = prompt::create(
+            &conn,
+            PromptCreate {
+                title: "Original".into(),
+                description: Some("old description".into()),
+                prompt_type: Some("image".into()),
+                system_prompt: Some("old system".into()),
+                user_prompt: "old user".into(),
+                variables: Some(vec![var("old")]),
+                tags: Some(vec!["old-tag".into()]),
+                images: Some(vec!["old.png".into()]),
+                videos: Some(vec!["old.mp4".into()]),
+                is_favorite: Some(true),
+                is_pinned: Some(true),
+                source: Some("old source".into()),
+                notes: Some("old notes".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let original = list(&conn, &created.id).unwrap()[0].clone();
 
-        create(&conn, &id, None).unwrap(); // version 1
-        create(&conn, &id, None).unwrap(); // version 2
-        create(&conn, &id, None).unwrap(); // version 3
+        let changed = prompt::update(
+            &conn,
+            &created.id,
+            PromptUpdate {
+                title: Some("Changed".into()),
+                description: Some("new description".into()),
+                prompt_type: Some("video".into()),
+                system_prompt: Some("new system".into()),
+                user_prompt: Some("new user".into()),
+                variables: Some(vec![var("new")]),
+                tags: Some(vec!["new-tag".into()]),
+                images: Some(vec!["new.png".into()]),
+                videos: Some(vec!["new.mp4".into()]),
+                is_favorite: Some(false),
+                is_pinned: Some(false),
+                source: Some("new source".into()),
+                notes: Some("new notes".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let revisions = list(&conn, &created.id).unwrap();
+        assert_eq!(revisions.len(), 2);
+        let saved = &revisions[1];
+        assert_eq!(saved.source_action, PromptRevisionSource::Save);
+        assert_eq!(saved.title, changed.title);
+        assert_eq!(saved.description, changed.description);
+        assert_eq!(saved.prompt_type, changed.prompt_type);
+        assert_eq!(saved.tags, changed.tags);
+        assert_eq!(saved.images, changed.images);
+        assert_eq!(saved.videos, changed.videos);
+        assert_eq!(saved.is_favorite, changed.is_favorite);
+        assert_eq!(saved.is_pinned, changed.is_pinned);
+        assert_eq!(saved.source, changed.source);
+        assert_eq!(saved.notes, changed.notes);
 
-        delete(&conn, &id, 2).unwrap();
+        prompt::update(
+            &conn,
+            &created.id,
+            PromptUpdate {
+                title: Some(changed.title.clone()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(list(&conn, &created.id).unwrap().len(), 2);
 
-        let remaining: Vec<i64> = list(&conn, &id)
-            .unwrap()
-            .iter()
-            .map(|v| v.version)
-            .collect();
-        assert_eq!(remaining, vec![1, 3]);
-    }
+        let restored = rollback(&conn, &created.id, original.version).unwrap();
+        assert_eq!(restored.title, original.title);
+        assert_eq!(restored.description, original.description);
+        assert_eq!(restored.prompt_type, original.prompt_type);
+        assert_eq!(restored.tags, original.tags);
+        assert_eq!(restored.images, original.images);
+        assert_eq!(restored.videos, original.videos);
+        assert_eq!(restored.is_favorite, original.is_favorite);
+        assert_eq!(restored.is_pinned, original.is_pinned);
+        assert_eq!(restored.source, original.source);
+        assert_eq!(restored.notes, original.notes);
 
-    #[test]
-    fn delete_unknown_version_returns_not_found() {
-        let pool = schema_pool();
-        let conn = pool.get().unwrap();
-        let id = seed_prompt(&conn);
-        create(&conn, &id, None).unwrap();
-
-        let err = delete(&conn, &id, 99).unwrap_err();
-        assert_eq!(err.code, ErrorCode::NotFound);
-
-        // The existing version is untouched (Req 7.7).
-        let remaining: Vec<i64> = list(&conn, &id)
-            .unwrap()
-            .iter()
-            .map(|v| v.version)
-            .collect();
-        assert_eq!(remaining, vec![1]);
+        let rollback_revision = list(&conn, &created.id).unwrap().pop().unwrap();
+        assert_eq!(
+            rollback_revision.source_action,
+            PromptRevisionSource::Rollback
+        );
+        assert_eq!(rollback_revision.parent_revision_id, Some(original.id));
     }
 }

@@ -1,12 +1,14 @@
 import { useTranslation } from "react-i18next";
-import { ImageIcon, StarIcon, VideoIcon } from "lucide-react";
+import { ImageIcon, LockIcon, StarIcon, VideoIcon } from "lucide-react";
 import type { Prompt } from "../types";
 
 interface PromptListProps {
   prompts: Prompt[];
   selectedPromptId: string | null;
+  selectedPromptIds: string[];
   loading: boolean;
   onSelect: (id: string) => void;
+  onToggleSelection: (id: string) => void;
 }
 
 /** A small type badge for image/video prompts (text prompts show none). */
@@ -28,8 +30,10 @@ function TypeBadge({ type }: { type: Prompt["promptType"] }) {
 export function PromptList({
   prompts,
   selectedPromptId,
+  selectedPromptIds,
   loading,
   onSelect,
+  onToggleSelection,
 }: PromptListProps) {
   const { t } = useTranslation();
 
@@ -60,12 +64,19 @@ export function PromptList({
         const selected = prompt.id === selectedPromptId;
         const title = prompt.title.trim() || t("promptsView.untitled");
         return (
-          <li key={prompt.id}>
+          <li key={prompt.id} className="flex items-start gap-1">
+            <input
+              type="checkbox"
+              checked={selectedPromptIds.includes(prompt.id)}
+              onChange={() => onToggleSelection(prompt.id)}
+              aria-label={t("promptsView.batch.selectPrompt", { title })}
+              className="mt-3 h-4 w-4 shrink-0 rounded border-input text-primary focus:ring-ring"
+            />
             <button
               type="button"
               onClick={() => onSelect(prompt.id)}
               aria-current={selected ? "true" : undefined}
-              className={`flex w-full flex-col gap-1 rounded-lg border px-3 py-2 text-left transition-colors ${
+              className={`flex min-w-0 flex-1 flex-col gap-1 rounded-lg border px-3 py-2 text-left transition-colors ${
                 selected
                   ? "border-primary bg-primary/10"
                   : "border-transparent hover:bg-accent"
@@ -73,6 +84,12 @@ export function PromptList({
             >
               <span className="flex items-center gap-1.5">
                 <TypeBadge type={prompt.promptType} />
+                {prompt.isPrivate && (
+                  <LockIcon
+                    className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                    aria-label={t("promptsView.privatePrompt")}
+                  />
+                )}
                 <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                   {title}
                 </span>
@@ -84,7 +101,9 @@ export function PromptList({
                 )}
               </span>
               <span className="line-clamp-2 text-xs text-muted-foreground">
-                {prompt.userPrompt}
+                {prompt.isLocked
+                  ? t("promptsView.privateLockedPreview")
+                  : prompt.userPrompt}
               </span>
               {prompt.tags.length > 0 && (
                 <span className="flex flex-wrap gap-1">

@@ -28,6 +28,7 @@ interface Draft {
   videos: string[];
   source: string;
   notes: string;
+  isPrivate: boolean;
 }
 
 /** Builds a fresh draft from a saved prompt, or a blank draft for creation. */
@@ -45,6 +46,7 @@ function toDraft(prompt: Prompt | null): Draft {
     videos: prompt?.videos ?? [],
     source: prompt?.source ?? "",
     notes: prompt?.notes ?? "",
+    isPrivate: prompt?.isPrivate ?? false,
   };
 }
 
@@ -135,6 +137,7 @@ export function PromptEditor({
         videos: draft.videos,
         source: draft.source || undefined,
         notes: draft.notes || undefined,
+        isPrivate: draft.isPrivate,
       };
       onCreate(input);
     } else if (prompt) {
@@ -151,6 +154,7 @@ export function PromptEditor({
         videos: draft.videos,
         source: draft.source,
         notes: draft.notes,
+        isPrivate: draft.isPrivate,
       };
       onSave(prompt.id, patch);
     }
@@ -169,6 +173,21 @@ export function PromptEditor({
       }}
     >
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <label className="flex items-center gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            checked={draft.isPrivate}
+            onChange={(event) => update("isPrivate", event.target.checked)}
+            className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
+          />
+          <span>
+            {t("promptsView.editor.privatePrompt")}
+            <span className="block text-xs text-muted-foreground">
+              {t("promptsView.editor.privatePromptHint")}
+            </span>
+          </span>
+        </label>
+
         {/* Title */}
         <div className="flex flex-col gap-1">
           <label className={labelClass} htmlFor="prompt-title">

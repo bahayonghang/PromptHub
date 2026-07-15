@@ -28,6 +28,10 @@ describe("createPromptApi command contract (Req 3.1)", () => {
     await api.createPrompt({ title: "T", userPrompt: "U" });
     await api.updatePrompt("p1", { title: "T2" });
     await api.deletePrompt("p1");
+    await api.duplicatePrompt("p1");
+    await api.batchMove(["p1", "p2"], "f1");
+    await api.batchTag(["p1"], ["shared"]);
+    await api.batchDelete(["p2"]);
     await api.copyPrompt("p1", { a: "b" });
 
     expect(invoke).toHaveBeenCalledWith("prompt.list");
@@ -43,6 +47,16 @@ describe("createPromptApi command contract (Req 3.1)", () => {
       patch: { title: "T2" },
     });
     expect(invoke).toHaveBeenCalledWith("prompt.delete", { id: "p1" });
+    expect(invoke).toHaveBeenCalledWith("prompt.duplicate", { id: "p1" });
+    expect(invoke).toHaveBeenCalledWith("prompt.batchMove", {
+      ids: ["p1", "p2"],
+      folderId: "f1",
+    });
+    expect(invoke).toHaveBeenCalledWith("prompt.batchTag", {
+      ids: ["p1"],
+      tags: ["shared"],
+    });
+    expect(invoke).toHaveBeenCalledWith("prompt.batchDelete", { ids: ["p2"] });
     expect(invoke).toHaveBeenCalledWith("prompt.copy", {
       id: "p1",
       values: { a: "b" },
@@ -80,7 +94,6 @@ describe("createPromptApi command contract (Req 3.1)", () => {
     await api.listVersions("p1");
     await api.createVersion("p1", "note");
     await api.rollbackVersion("p1", 3);
-    await api.deleteVersion("v1");
 
     expect(invoke).toHaveBeenCalledWith("version.list", { promptId: "p1" });
     expect(invoke).toHaveBeenCalledWith("version.create", {
@@ -91,12 +104,33 @@ describe("createPromptApi command contract (Req 3.1)", () => {
       promptId: "p1",
       version: 3,
     });
-    expect(invoke).toHaveBeenCalledWith("version.delete", { id: "v1" });
   });
 
-  it("routes tag.list through the bridge (Req 6.8)", async () => {
+  it("routes tag and portable bundle commands through the bridge", async () => {
     const { bridge, invoke } = makeBridge([]);
-    await createPromptApi(bridge).listTags();
+    const api = createPromptApi(bridge);
+    await api.listTags();
+    await api.renameTag("old", "new");
+    await api.deleteTag("stale");
+    await api.exportBundle("D:/bundle.prompthub");
+    await api.previewBundle("D:/bundle.prompthub");
+    await api.importBundle("D:/bundle.prompthub", "replace");
+
     expect(invoke).toHaveBeenCalledWith("tag.list");
+    expect(invoke).toHaveBeenCalledWith("tag.rename", {
+      old: "old",
+      new: "new",
+    });
+    expect(invoke).toHaveBeenCalledWith("tag.delete", { tag: "stale" });
+    expect(invoke).toHaveBeenCalledWith("prompt.bundleExport", {
+      destination: "D:/bundle.prompthub",
+    });
+    expect(invoke).toHaveBeenCalledWith("prompt.bundlePreview", {
+      filePath: "D:/bundle.prompthub",
+    });
+    expect(invoke).toHaveBeenCalledWith("prompt.bundleImport", {
+      filePath: "D:/bundle.prompthub",
+      policy: "replace",
+    });
   });
 });

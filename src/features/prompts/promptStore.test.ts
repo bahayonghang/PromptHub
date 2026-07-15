@@ -2,12 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildSearchQuery,
   DEFAULT_FILTERS,
+  PROMPT_PAGE_SIZE,
   selectSelectedPrompt,
   usePromptStore,
   type PromptFilters,
 } from "./promptStore";
 import type { PromptApi } from "./api";
-import type { Folder, Prompt, PromptVersion } from "./types";
+import type { Folder, Prompt, PromptPage, PromptVersion } from "./types";
 
 function makePrompt(partial: Partial<Prompt> & { id: string }): Prompt {
   return {
@@ -20,6 +21,8 @@ function makePrompt(partial: Partial<Prompt> & { id: string }): Prompt {
     videos: [],
     isFavorite: false,
     isPinned: false,
+    isPrivate: false,
+    isLocked: false,
     currentVersion: 0,
     usageCount: 0,
     createdAt: "2024-01-01T00:00:00.000Z",
@@ -39,33 +42,84 @@ function makeFolder(id: string): Folder {
   };
 }
 
+function makePage(items: Prompt[], total = items.length, offset = 0): PromptPage {
+  return {
+    items,
+    total,
+    limit: PROMPT_PAGE_SIZE,
+    offset,
+    hasMore: offset + items.length < total,
+  };
+}
+
+function makeVersion(partial: Partial<PromptVersion> = {}): PromptVersion {
+  return {
+    id: "v1",
+    promptId: "p1",
+    version: 1,
+    title: "p1",
+    promptType: "text",
+    userPrompt: "body",
+    variables: [],
+    tags: [],
+    images: [],
+    videos: [],
+    isFavorite: false,
+    isPinned: false,
+    isPrivate: false,
+    sourceAction: "create",
+    createdAt: "2024-01-01T00:00:00.000Z",
+    ...partial,
+  };
+}
+
 /** A controllable fake PromptApi. Each method is a vi mock with a default. */
 function makeApi(overrides: Partial<PromptApi> = {}): PromptApi {
   return {
     listPrompts: vi.fn(async () => []),
     getPrompt: vi.fn(async () => makePrompt({ id: "p1" })),
-    searchPrompts: vi.fn(async () => []),
+    searchPrompts: vi.fn(async () => makePage([])),
     createPrompt: vi.fn(async () => makePrompt({ id: "new" })),
     updatePrompt: vi.fn(async () => makePrompt({ id: "p1" })),
     deletePrompt: vi.fn(async () => undefined),
+    duplicatePrompt: vi.fn(async () => makePrompt({ id: "copy" })),
+    batchMove: vi.fn(async () => undefined),
+    batchTag: vi.fn(async () => undefined),
+    batchDelete: vi.fn(async () => undefined),
     copyPrompt: vi.fn(async () => "copied"),
     listTags: vi.fn(async () => []),
+    renameTag: vi.fn(async () => undefined),
+    deleteTag: vi.fn(async () => undefined),
+    exportBundle: vi.fn(async () => ({
+      filePath: "bundle.prompthub",
+      prompts: 0,
+      revisions: 0,
+      mediaFiles: 0,
+    })),
+    previewBundle: vi.fn(async () => ({
+      formatVersion: 1,
+      prompts: 0,
+      revisions: 0,
+      folders: 0,
+      mediaFiles: 0,
+      additions: 0,
+      conflicts: 0,
+      privatePrompts: 0,
+    })),
+    importBundle: vi.fn(async () => ({
+      added: 0,
+      skipped: 0,
+      replaced: 0,
+      backupId: "backup-1",
+    })),
     listFolders: vi.fn(async () => []),
     createFolder: vi.fn(async () => makeFolder("f1")),
     updateFolder: vi.fn(async () => makeFolder("f1")),
     deleteFolder: vi.fn(async () => undefined),
     reorderFolders: vi.fn(async () => undefined),
     listVersions: vi.fn(async () => [] as PromptVersion[]),
-    createVersion: vi.fn(async () => ({
-      id: "v1",
-      promptId: "p1",
-      version: 1,
-      userPrompt: "body",
-      variables: [],
-      createdAt: "2024-01-01T00:00:00.000Z",
-    })),
+    createVersion: vi.fn(async () => makeVersion()),
     rollbackVersion: vi.fn(async () => makePrompt({ id: "p1" })),
-    deleteVersion: vi.fn(async () => undefined),
     ...overrides,
   };
 }
@@ -75,9 +129,12 @@ function resetStore(api: PromptApi) {
     api,
     folders: [],
     prompts: [],
+    total: 0,
+    offset: 0,
     tags: [],
     filters: { ...DEFAULT_FILTERS },
     selectedPromptId: null,
+    selectedPrompt: null,
     versions: [],
     loading: false,
     error: null,
@@ -127,7 +184,7 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
     const api = makeApi({
       listFolders: vi.fn(async () => [makeFolder("f1")]),
       listTags: vi.fn(async () => ["t1"]),
-      searchPrompts: vi.fn(async () => [makePrompt({ id: "p1" })]),
+      searchPrompts: vi.fn(async () => makePage([makePrompt({ id: "p1" })])),
     });
     resetStore(api);
 
@@ -138,12 +195,16 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
     expect(state.tags).toEqual(["t1"]);
     expect(state.prompts.map((p) => p.id)).toEqual(["p1"]);
     expect(api.searchPrompts).toHaveBeenCalledWith(
-      buildSearchQuery(DEFAULT_FILTERS),
+      {
+        ...buildSearchQuery(DEFAULT_FILTERS),
+        limit: PROMPT_PAGE_SIZE,
+        offset: 0,
+      },
     );
   });
 
   it("setFilters() updates filters and re-runs the search (Req 5.4)", async () => {
-    const search = vi.fn(async () => [] as Prompt[]);
+    const search = vi.fn(async () => makePage([]));
     resetStore(makeApi({ searchPrompts: search }));
 
     await usePromptStore.getState().setFilters({ keyword: "hi" });
@@ -163,16 +224,7 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
   });
 
   it("selectPrompt() loads the prompt's version history (Req 7.1)", async () => {
-    const versions: PromptVersion[] = [
-      {
-        id: "v1",
-        promptId: "p1",
-        version: 1,
-        userPrompt: "body",
-        variables: [],
-        createdAt: "2024-01-01T00:00:00.000Z",
-      },
-    ];
+    const versions: PromptVersion[] = [makeVersion()];
     resetStore(makeApi({ listVersions: vi.fn(async () => versions) }));
 
     await usePromptStore.getState().selectPrompt("p1");
@@ -186,7 +238,8 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
     resetStore(
       makeApi({
         createPrompt: vi.fn(async () => created),
-        searchPrompts: vi.fn(async () => [created]),
+        searchPrompts: vi.fn(async () => makePage([created])),
+        getPrompt: vi.fn(async () => created),
       }),
     );
 
@@ -226,7 +279,7 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
   });
 
   it("deleteFolder() resets the folder filter when it pointed at the deleted folder (Req 8.4)", async () => {
-    const search = vi.fn(async () => [] as Prompt[]);
+    const search = vi.fn(async () => makePage([]));
     resetStore(makeApi({ searchPrompts: search }));
     usePromptStore.setState({ filters: { ...DEFAULT_FILTERS, folderId: "f1" } });
 
@@ -260,7 +313,11 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
   it("selectSelectedPrompt() resolves the open prompt from the list", () => {
     resetStore(makeApi());
     const p1 = makePrompt({ id: "p1" });
-    usePromptStore.setState({ prompts: [p1], selectedPromptId: "p1" });
+    usePromptStore.setState({
+      prompts: [p1],
+      selectedPromptId: "p1",
+      selectedPrompt: p1,
+    });
     expect(selectSelectedPrompt(usePromptStore.getState())).toEqual(p1);
     usePromptStore.setState({ selectedPromptId: "missing" });
     expect(selectSelectedPrompt(usePromptStore.getState())).toBeNull();

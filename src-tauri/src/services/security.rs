@@ -69,6 +69,10 @@ const MIN_PASSWORD_LEN: usize = 8;
 /// Inclusive upper bound for master-password length (characters).
 const MAX_PASSWORD_LEN: usize = 128;
 
+pub(crate) fn is_encrypted_value(value: &str) -> bool {
+    value.starts_with(ENC_PREFIX)
+}
+
 /// Security status reported to the Frontend (Requirement 15.1).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -140,10 +144,8 @@ pub fn set_master_password(
 /// re-keyed data update atomically (preserving access to previously encrypted
 /// data per 15.4).
 ///
-/// The set of encrypted prompt fields is not wired yet; re-keying currently
-/// covers `ENC::` values held in the `settings` table. When encrypted prompt
-/// fields are introduced, they are re-keyed here via the same [`rekey_value`]
-/// helper.
+/// Prompt and revision content fields are re-keyed together with encrypted
+/// settings so the verifier and every protected value stay consistent.
 pub fn change_master_password(
     conn: &Connection,
     encryption: &Mutex<EncryptionState>,
@@ -178,6 +180,7 @@ pub fn change_master_password(
         .unchecked_transaction()
         .map_err(|e| AppError::internal(format!("failed to begin transaction: {e}")))?;
     rekey_settings(&tx, &old_key, &new_key)?;
+    rekey_prompt_fields(&tx, &old_key, &new_key)?;
     save_stored(&tx, &new_stored)?;
     tx.commit()
         .map_err(|e| AppError::internal(format!("failed to commit re-key: {e}")))?;
@@ -216,6 +219,18 @@ pub fn lock(encryption: &Mutex<EncryptionState>) -> Result<(), AppError> {
     enc.derived_key = None;
     enc.locked = true;
     Ok(())
+}
+
+/// Returns a copy of the cached key, or `None` while locked.
+pub(crate) fn unlocked_key(
+    encryption: &Mutex<EncryptionState>,
+) -> Result<Option<Vec<u8>>, AppError> {
+    let enc = lock_state(encryption)?;
+    if enc.is_unlocked() {
+        Ok(enc.derived_key.clone())
+    } else {
+        Ok(None)
+    }
 }
 
 /// Encrypts `plaintext` with `key` using AES-256-GCM, returning the
@@ -402,6 +417,62 @@ fn rekey_settings(conn: &Connection, old_key: &[u8], new_key: &[u8]) -> Result<(
                 params![key, reencrypted],
             )
             .map_err(|e| AppError::internal(format!("failed to update re-keyed value: {e}")))?;
+        }
+    }
+    Ok(())
+}
+
+fn rekey_prompt_fields(conn: &Connection, old_key: &[u8], new_key: &[u8]) -> Result<(), AppError> {
+    for column in [
+        "description",
+        "system_prompt",
+        "user_prompt",
+        "source",
+        "notes",
+        "last_ai_response",
+    ] {
+        rekey_column(conn, "prompts", column, old_key, new_key)?;
+    }
+    for column in [
+        "description",
+        "system_prompt",
+        "user_prompt",
+        "source",
+        "notes",
+        "ai_response",
+    ] {
+        rekey_column(conn, "prompt_versions", column, old_key, new_key)?;
+    }
+    Ok(())
+}
+
+fn rekey_column(
+    conn: &Connection,
+    table: &str,
+    column: &str,
+    old_key: &[u8],
+    new_key: &[u8],
+) -> Result<(), AppError> {
+    let select = format!("SELECT id, {column} FROM {table} WHERE is_private = 1");
+    let rows: Vec<(String, Option<String>)> = {
+        let mut stmt = conn
+            .prepare(&select)
+            .map_err(|e| AppError::internal(format!("failed to prepare private re-key: {e}")))?;
+        let mapped = stmt
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+            .map_err(|e| AppError::internal(format!("failed to scan private values: {e}")))?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| AppError::internal(format!("failed to read private value: {e}")))?;
+        mapped
+    };
+    let update = format!("UPDATE {table} SET {column} = ?1 WHERE id = ?2");
+    for (id, value) in rows {
+        if let Some(value) = value.filter(|value| value.starts_with(ENC_PREFIX)) {
+            let reencrypted = rekey_value(&value, old_key, new_key)?;
+            conn.execute(&update, params![reencrypted, id])
+                .map_err(|e| {
+                    AppError::internal(format!("failed to update private re-keyed value: {e}"))
+                })?;
         }
     }
     Ok(())

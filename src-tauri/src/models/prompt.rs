@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::enums::{PromptType, SortField, SortOrder};
+use super::enums::{PromptRevisionSource, PromptType, SortField, SortOrder};
 
 /// A single prompt record (Requirement 6).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -38,6 +38,10 @@ pub struct Prompt {
     pub is_favorite: bool,
     /// Pinned flag.
     pub is_pinned: bool,
+    /// Whether content fields are encrypted at rest.
+    pub is_private: bool,
+    /// Whether private content is unavailable because no key is cached.
+    pub is_locked: bool,
     /// Highest stored version number (0 when none).
     pub current_version: i64,
     /// Number of times the prompt has been used/copied.
@@ -88,10 +92,24 @@ pub struct PromptVersion {
     pub user_prompt: String,
     /// Snapshot of the variables.
     pub variables: Vec<Variable>,
+    pub title: String,
+    pub description: Option<String>,
+    pub prompt_type: PromptType,
+    pub tags: Vec<String>,
+    pub folder_id: Option<String>,
+    pub images: Vec<String>,
+    pub videos: Vec<String>,
+    pub is_favorite: bool,
+    pub is_pinned: bool,
+    pub is_private: bool,
+    pub source: Option<String>,
+    pub notes: Option<String>,
     /// Optional note (≤1000 characters).
     pub note: Option<String>,
     /// AI test response captured with this version, if any.
     pub ai_response: Option<String>,
+    pub source_action: PromptRevisionSource,
+    pub parent_revision_id: Option<String>,
     /// Creation time as an ISO_8601 string.
     pub created_at: String,
 }
@@ -120,4 +138,23 @@ pub struct SearchQuery {
     pub limit: Option<u32>,
     /// Result offset; `>= 0`, default 0.
     pub offset: Option<u32>,
+}
+
+/// A deterministic page returned by `prompt.search`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PromptPage {
+    pub items: Vec<Prompt>,
+    pub total: u64,
+    pub limit: u32,
+    pub offset: u32,
+    pub has_more: bool,
+}
+
+impl std::ops::Deref for PromptPage {
+    type Target = [Prompt];
+
+    fn deref(&self) -> &Self::Target {
+        &self.items
+    }
 }

@@ -48,6 +48,8 @@ export interface Prompt {
   videos: string[];
   isFavorite: boolean;
   isPinned: boolean;
+  isPrivate: boolean;
+  isLocked: boolean;
   currentVersion: number;
   usageCount: number;
   source?: string | null;
@@ -57,7 +59,16 @@ export interface Prompt {
   updatedAt: string;
 }
 
-/** A version snapshot returned by `version.list` (Req 7.1, 7.2). */
+/** Provenance recorded for an immutable prompt revision. */
+export type PromptRevisionSource =
+  | "create"
+  | "save"
+  | "manual"
+  | "rollback"
+  | "import"
+  | "replace";
+
+/** A complete revision snapshot returned by `version.list`. */
 export interface PromptVersion {
   id: string;
   promptId: string;
@@ -65,8 +76,22 @@ export interface PromptVersion {
   systemPrompt?: string | null;
   userPrompt: string;
   variables: Variable[];
+  title: string;
+  description?: string | null;
+  promptType: PromptType;
+  tags: string[];
+  folderId?: string | null;
+  images: string[];
+  videos: string[];
+  isFavorite: boolean;
+  isPinned: boolean;
+  isPrivate: boolean;
+  source?: string | null;
+  notes?: string | null;
   note?: string | null;
   aiResponse?: string | null;
+  sourceAction: PromptRevisionSource;
+  parentRevisionId?: string | null;
   createdAt: string;
 }
 
@@ -98,6 +123,7 @@ export interface CreatePromptInput {
   videos?: string[];
   source?: string;
   notes?: string;
+  isPrivate?: boolean;
 }
 
 /** Partial patch for `prompt.update`; only supplied fields change (Req 6.4). */
@@ -114,6 +140,7 @@ export interface UpdatePromptInput {
   videos?: string[];
   isFavorite?: boolean;
   isPinned?: boolean;
+  isPrivate?: boolean;
   source?: string;
   notes?: string;
 }
@@ -134,6 +161,42 @@ export interface SearchQuery {
   sortOrder?: SortOrder;
   limit?: number;
   offset?: number;
+}
+
+/** Counted deterministic page returned by `prompt.search`. */
+export interface PromptPage {
+  items: Prompt[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+}
+
+export type ImportConflictPolicy = "skip" | "duplicate" | "replace";
+
+export interface BundlePreview {
+  formatVersion: number;
+  prompts: number;
+  revisions: number;
+  folders: number;
+  mediaFiles: number;
+  additions: number;
+  conflicts: number;
+  privatePrompts: number;
+}
+
+export interface PortableExportResult {
+  filePath: string;
+  prompts: number;
+  revisions: number;
+  mediaFiles: number;
+}
+
+export interface PortableImportResult {
+  added: number;
+  skipped: number;
+  replaced: number;
+  backupId: string;
 }
 
 /** Arguments for `folder.create` (Req 8.1). */

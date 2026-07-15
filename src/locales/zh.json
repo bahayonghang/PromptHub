@@ -1538,5 +1538,18 @@
       "prompt": "Prompt",
       "folder": "文件夹"
     }
+  },
+  "promptsView": {
+    "pagination": { "summary": "第 {{from}}-{{to}} 条，共 {{total}} 条", "previous": "上一页", "next": "下一页" },
+    "pin": "置顶 Prompt", "unpin": "取消置顶", "duplicatePrompt": "复制 Prompt",
+    "privatePrompt": "私密 Prompt", "privateLockedPreview": "私密内容已锁定", "privateLockedTitle": "私密 Prompt 已锁定", "privateLockedHint": "请在设置中解锁 Prompt 库后查看或编辑内容。",
+    "editor": { "privatePrompt": "加密 Prompt 内容", "privatePromptHint": "需要已解锁的主密码。" },
+    "bundle": {
+      "export": "导出 Prompt 包", "import": "导入 Prompt 包", "exported": "已导出到 {{path}}", "path": "Prompt 包路径", "pathPlaceholder": ".prompthub 文件路径", "conflictPolicy": "冲突策略", "skip": "跳过已有 Prompt", "duplicate": "导入为副本", "replace": "替换并新增修订", "preview": "预览", "previewSummary": "{{prompts}} 个 Prompt、{{revisions}} 个修订、{{conflicts}} 个冲突、{{mediaFiles}} 个媒体文件", "privateKeyWarning": "其中 {{count}} 个私密 Prompt 仅能在使用该包原加密密钥解锁后导入。", "confirmImport": "导入", "imported": "已导入 {{added}} 个、替换 {{replaced}} 个、跳过 {{skipped}} 个。安全备份：{{backupId}}"
+    },
+    "batch": {
+      "selectPrompt": "选择 {{title}}", "selected": "已选择 {{count}} 个", "selectPage": "选择本页", "clear": "清除选择", "folder": "目标文件夹", "move": "移动所选 Prompt", "tagPlaceholder": "为所选 Prompt 添加标签", "addTag": "添加标签", "delete": "删除所选 Prompt", "deleteConfirm": "删除所选 Prompt 及其修订历史？"
+    },
+    "tags": { "manage": "管理标签", "rename": "重命名标签", "renameValue": "新标签名称", "delete": "删除标签", "deleteConfirm": "从所有 Prompt 中删除标签 {{tag}}？" }
   }
 }

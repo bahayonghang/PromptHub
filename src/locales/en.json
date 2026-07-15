@@ -1303,6 +1303,11 @@
     }
   },
   "promptsView": {
+    "pagination": {
+      "summary": "{{from}}-{{to}} of {{total}}",
+      "previous": "Previous page",
+      "next": "Next page"
+    },
     "searchPlaceholder": "Search prompts...",
     "newPrompt": "New Prompt",
     "filters": "Filters",
@@ -1334,9 +1339,53 @@
     "untitled": "Untitled prompt",
     "favorite": "Favorite",
     "unfavorite": "Remove from favorites",
+    "pin": "Pin prompt",
+    "unpin": "Unpin prompt",
+    "duplicatePrompt": "Duplicate prompt",
     "deletePrompt": "Delete prompt",
     "deletePromptConfirm": "Delete this prompt? Its version history will be removed too.",
+    "privatePrompt": "Private prompt",
+    "privateLockedPreview": "Private content is locked",
+    "privateLockedTitle": "Private prompt locked",
+    "privateLockedHint": "Unlock the prompt library in Settings to view or edit this content.",
+    "bundle": {
+      "export": "Export prompt bundle",
+      "import": "Import prompt bundle",
+      "exported": "Exported to {{path}}",
+      "path": "Prompt bundle path",
+      "pathPlaceholder": "Path to a .prompthub bundle",
+      "conflictPolicy": "Conflict policy",
+      "skip": "Skip existing prompts",
+      "duplicate": "Import as copies",
+      "replace": "Replace with a new revision",
+      "preview": "Preview",
+      "previewSummary": "{{prompts}} prompts, {{revisions}} revisions, {{conflicts}} conflicts, {{mediaFiles}} media files",
+      "privateKeyWarning": "{{count}} private prompts require this library to be unlocked with the same encryption key used by the bundle.",
+      "confirmImport": "Import bundle",
+      "imported": "Imported {{added}}, replaced {{replaced}}, skipped {{skipped}}. Safety backup: {{backupId}}"
+    },
+    "batch": {
+      "selectPrompt": "Select {{title}}",
+      "selected": "{{count}} selected",
+      "selectPage": "Select this page",
+      "clear": "Clear selection",
+      "folder": "Destination folder",
+      "move": "Move selected prompts",
+      "tagPlaceholder": "Tag selected prompts",
+      "addTag": "Add tag to selected prompts",
+      "delete": "Delete selected prompts",
+      "deleteConfirm": "Delete the selected prompts and their revision histories?"
+    },
+    "tags": {
+      "manage": "Manage tags",
+      "rename": "Rename tag",
+      "renameValue": "New tag name",
+      "delete": "Delete tag",
+      "deleteConfirm": "Delete tag {{tag}} from every prompt?"
+    },
     "editor": {
+      "privatePrompt": "Encrypt prompt content",
+      "privatePromptHint": "Requires an unlocked master password.",
       "title": "Title",
       "titlePlaceholder": "Name your prompt",
       "titleRequired": "Title is required",
@@ -1393,8 +1442,34 @@
       "versionLabel": "v{{version}}",
       "restore": "Restore",
       "restoreConfirm": "Restore v{{version}}? The current prompt will be overwritten.",
-      "delete": "Delete version",
-      "deleteConfirm": "Delete v{{version}} from history?"
+      "showDiff": "Compare revision with current prompt",
+      "noDiff": "This revision matches the current prompt.",
+      "sources": {
+        "create": "Created",
+        "save": "Saved",
+        "manual": "Manual snapshot",
+        "rollback": "Rollback",
+        "import": "Imported",
+        "replace": "Replaced"
+      },
+      "fields": {
+        "title": "Title",
+        "description": "Description",
+        "promptType": "Type",
+        "systemPrompt": "System prompt",
+        "userPrompt": "User prompt",
+        "variables": "Variables",
+        "tags": "Tags",
+        "folder": "Folder",
+        "images": "Images",
+        "videos": "Videos",
+        "favorite": "Favorite",
+        "pinned": "Pinned",
+        "private": "Private",
+        "source": "Source",
+        "notes": "Notes",
+        "aiResponse": "AI response"
+      }
     }
   },
   "settingsView": {

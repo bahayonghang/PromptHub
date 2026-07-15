@@ -1502,5 +1502,14 @@
       "prompt": "Prompt",
       "folder": "Dossier"
     }
+  },
+  "promptsView": {
+    "pagination": { "summary": "{{from}}-{{to}} sur {{total}}", "previous": "Page precedente", "next": "Page suivante" },
+    "pin": "Epingler le prompt", "unpin": "Desepingler le prompt", "duplicatePrompt": "Dupliquer le prompt",
+    "privatePrompt": "Prompt prive", "privateLockedPreview": "Contenu prive verrouille", "privateLockedTitle": "Prompt prive verrouille", "privateLockedHint": "Deverrouillez la bibliotheque dans les reglages pour afficher ce contenu.",
+    "editor": { "privatePrompt": "Chiffrer le contenu", "privatePromptHint": "Necessite un mot de passe principal deverrouille." },
+    "bundle": { "export": "Exporter le lot de prompts", "import": "Importer un lot de prompts", "exported": "Exporte vers {{path}}", "path": "Chemin du lot", "pathPlaceholder": "Chemin du fichier .prompthub", "conflictPolicy": "Gestion des conflits", "skip": "Ignorer les prompts existants", "duplicate": "Importer comme copies", "replace": "Remplacer avec une nouvelle revision", "preview": "Apercu", "previewSummary": "{{prompts}} prompts, {{revisions}} revisions, {{conflicts}} conflits, {{mediaFiles}} medias", "privateKeyWarning": "{{count}} prompts prives exigent que la bibliotheque soit deverrouillee avec la meme cle de chiffrement que le lot.", "confirmImport": "Importer", "imported": "{{added}} ajoutes, {{replaced}} remplaces, {{skipped}} ignores. Sauvegarde : {{backupId}}" },
+    "batch": { "selectPrompt": "Selectionner {{title}}", "selected": "{{count}} selectionnes", "selectPage": "Selectionner cette page", "clear": "Effacer la selection", "folder": "Dossier cible", "move": "Deplacer la selection", "tagPlaceholder": "Ajouter une etiquette", "addTag": "Ajouter l'etiquette", "delete": "Supprimer la selection", "deleteConfirm": "Supprimer les prompts selectionnes et leurs revisions ?" },
+    "tags": { "manage": "Gerer les etiquettes", "rename": "Renommer l'etiquette", "renameValue": "Nouveau nom", "delete": "Supprimer l'etiquette", "deleteConfirm": "Supprimer l'etiquette {{tag}} de tous les prompts ?" }
   }
 }

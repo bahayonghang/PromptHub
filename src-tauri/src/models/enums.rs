@@ -61,3 +61,15 @@ pub enum SyncStatus {
     /// Sync could not be evaluated due to an error.
     SyncError,
 }
+
+/// Provenance for an immutable prompt revision.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PromptRevisionSource {
+    Create,
+    Save,
+    Manual,
+    Rollback,
+    Import,
+    Replace,
+}

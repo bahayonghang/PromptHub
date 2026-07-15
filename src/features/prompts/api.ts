@@ -9,8 +9,13 @@ import type {
   CreateFolderInput,
   CreatePromptInput,
   Folder,
+  BundlePreview,
+  ImportConflictPolicy,
   Prompt,
+  PromptPage,
   PromptVersion,
+  PortableExportResult,
+  PortableImportResult,
   SearchQuery,
   UpdateFolderInput,
   UpdatePromptInput,
@@ -20,13 +25,26 @@ import type {
 export interface PromptApi {
   listPrompts(): Promise<Prompt[]>;
   getPrompt(id: string): Promise<Prompt>;
-  searchPrompts(query: SearchQuery): Promise<Prompt[]>;
+  searchPrompts(query: SearchQuery): Promise<PromptPage>;
   createPrompt(input: CreatePromptInput): Promise<Prompt>;
   updatePrompt(id: string, patch: UpdatePromptInput): Promise<Prompt>;
   deletePrompt(id: string): Promise<void>;
+  duplicatePrompt(id: string): Promise<Prompt>;
+  batchMove(ids: string[], folderId: string | null): Promise<void>;
+  batchTag(ids: string[], tags: string[]): Promise<void>;
+  batchDelete(ids: string[]): Promise<void>;
   copyPrompt(id: string, values: Record<string, string>): Promise<string>;
 
   listTags(): Promise<string[]>;
+  renameTag(old: string, next: string): Promise<void>;
+  deleteTag(tag: string): Promise<void>;
+
+  exportBundle(destination?: string): Promise<PortableExportResult>;
+  previewBundle(filePath: string): Promise<BundlePreview>;
+  importBundle(
+    filePath: string,
+    policy: ImportConflictPolicy,
+  ): Promise<PortableImportResult>;
 
   listFolders(): Promise<Folder[]>;
   createFolder(input: CreateFolderInput): Promise<Folder>;
@@ -37,7 +55,6 @@ export interface PromptApi {
   listVersions(promptId: string): Promise<PromptVersion[]>;
   createVersion(promptId: string, note?: string): Promise<PromptVersion>;
   rollbackVersion(promptId: string, version: number): Promise<Prompt>;
-  deleteVersion(versionId: string): Promise<void>;
 }
 
 /**
@@ -48,15 +65,34 @@ export function createPromptApi(bridge: RuntimeBridge = runtime): PromptApi {
   return {
     listPrompts: () => bridge.invoke<Prompt[]>("prompt.list"),
     getPrompt: (id) => bridge.invoke<Prompt>("prompt.get", { id }),
-    searchPrompts: (query) => bridge.invoke<Prompt[]>("prompt.search", { query }),
+    searchPrompts: (query) => bridge.invoke<PromptPage>("prompt.search", { query }),
     createPrompt: (input) => bridge.invoke<Prompt>("prompt.create", { input }),
     updatePrompt: (id, patch) =>
       bridge.invoke<Prompt>("prompt.update", { id, patch }),
     deletePrompt: (id) => bridge.invoke<void>("prompt.delete", { id }),
+    duplicatePrompt: (id) => bridge.invoke<Prompt>("prompt.duplicate", { id }),
+    batchMove: (ids, folderId) =>
+      bridge.invoke<void>("prompt.batchMove", { ids, folderId }),
+    batchTag: (ids, tags) =>
+      bridge.invoke<void>("prompt.batchTag", { ids, tags }),
+    batchDelete: (ids) => bridge.invoke<void>("prompt.batchDelete", { ids }),
     copyPrompt: (id, values) =>
       bridge.invoke<string>("prompt.copy", { id, values }),
 
     listTags: () => bridge.invoke<string[]>("tag.list"),
+    renameTag: (old, next) =>
+      bridge.invoke<void>("tag.rename", { old, new: next }),
+    deleteTag: (tag) => bridge.invoke<void>("tag.delete", { tag }),
+
+    exportBundle: (destination) =>
+      bridge.invoke<PortableExportResult>("prompt.bundleExport", { destination }),
+    previewBundle: (filePath) =>
+      bridge.invoke<BundlePreview>("prompt.bundlePreview", { filePath }),
+    importBundle: (filePath, policy) =>
+      bridge.invoke<PortableImportResult>("prompt.bundleImport", {
+        filePath,
+        policy,
+      }),
 
     listFolders: () => bridge.invoke<Folder[]>("folder.list"),
     createFolder: (input) => bridge.invoke<Folder>("folder.create", { input }),
@@ -72,8 +108,6 @@ export function createPromptApi(bridge: RuntimeBridge = runtime): PromptApi {
       bridge.invoke<PromptVersion>("version.create", { promptId, note }),
     rollbackVersion: (promptId, version) =>
       bridge.invoke<Prompt>("version.rollback", { promptId, version }),
-    deleteVersion: (versionId) =>
-      bridge.invoke<void>("version.delete", { id: versionId }),
   };
 }
 

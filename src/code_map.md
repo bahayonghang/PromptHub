@@ -30,6 +30,9 @@ Runtime Bridge through which all backend access flows.
 - `store/appStore.ts` — `initialize()` and init-failure subscription.
 - `features/<name>/api.ts` — that feature's typed bridge calls.
 - `features/<name>/<name>Store.ts` — that feature's Zustand store.
+- `features/prompts/PromptsView.tsx` — prompt paging, portable bundle controls,
+  tag management, and batch-action orchestration.
+- `features/prompts/versionDiff.ts` — structured immutable-revision diffing.
 
 ## Upstream and Downstream Boundaries
 
@@ -46,6 +49,8 @@ Runtime Bridge through which all backend access flows.
 - `useTranslation` / `t(` — i18n usage.
 - `i18nKeys.test` — per-feature locale-key coverage tests.
 - `create(` (Zustand) — store definitions.
+- `prompt.bundle` — portable bundle preview/export/import bridge calls.
+- `PromptPage` — counted prompt paging contract and store pagination state.
 
 ## Generated or Ignored Local Paths
 

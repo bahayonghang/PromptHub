@@ -23,7 +23,8 @@ use rusqlite::{params, Connection};
 use serde::Serialize;
 
 use crate::models::{
-    Folder, Prompt, PromptType, PromptVersion, SecuritySettings, Settings, SyncSettings, Variable,
+    Folder, Prompt, PromptRevisionSource, PromptType, PromptVersion, SecuritySettings, Settings,
+    SyncSettings, Variable,
 };
 use crate::storage::mapping;
 use crate::storage::time::{iso8601_to_millis, millis_to_iso8601};
@@ -177,6 +178,8 @@ fn prompt_strategy() -> impl Strategy<Value = Prompt> {
             videos,
             is_favorite,
             is_pinned,
+            is_private: false,
+            is_locked: false,
             current_version,
             usage_count,
             source,
@@ -219,8 +222,22 @@ fn prompt_version_strategy() -> impl Strategy<Value = PromptVersion> {
                 system_prompt,
                 user_prompt,
                 variables,
+                title: "Revision title".into(),
+                description: Some("Revision description".into()),
+                prompt_type: PromptType::Text,
+                tags: vec!["tag".into()],
+                folder_id: None,
+                images: vec!["image.png".into()],
+                videos: Vec::new(),
+                is_favorite: true,
+                is_pinned: false,
+                is_private: false,
+                source: Some("source".into()),
+                notes: Some("notes".into()),
                 note,
                 ai_response,
+                source_action: PromptRevisionSource::Manual,
+                parent_revision_id: None,
                 created_at,
             },
         )
@@ -449,8 +466,10 @@ fn insert_prompt_version(conn: &Connection, v: &PromptVersion) {
     insert_min_prompt(conn, &v.prompt_id);
     conn.execute(
         "INSERT INTO prompt_versions \
-         (id,prompt_id,version,system_prompt,user_prompt,variables,note,ai_response,created_at) \
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+         (id,prompt_id,version,system_prompt,user_prompt,variables,title,description,prompt_type,\
+          tags,folder_id,images,videos,is_favorite,is_pinned,source,notes,note,ai_response,\
+          source_action,parent_revision_id,created_at) \
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22)",
         params![
             v.id,
             v.prompt_id,
@@ -458,8 +477,21 @@ fn insert_prompt_version(conn: &Connection, v: &PromptVersion) {
             v.system_prompt,
             v.user_prompt,
             serde_json::to_string(&v.variables).unwrap(),
+            v.title,
+            v.description,
+            enum_wire(&v.prompt_type),
+            serde_json::to_string(&v.tags).unwrap(),
+            v.folder_id,
+            serde_json::to_string(&v.images).unwrap(),
+            serde_json::to_string(&v.videos).unwrap(),
+            v.is_favorite,
+            v.is_pinned,
+            v.source,
+            v.notes,
             v.note,
             v.ai_response,
+            enum_wire(&v.source_action),
+            v.parent_revision_id,
             to_millis(&v.created_at),
         ],
     )

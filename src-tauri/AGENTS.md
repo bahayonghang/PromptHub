@@ -45,9 +45,10 @@ Run from `src-tauri/`:
 
 ## Data and External Services
 
-- The schema (`SCHEMA_SQL` in `storage/mod.rs`) is created idempotently with
-  `IF NOT EXISTS`. There is no migration system and no Electron-data migration;
-  treat schema edits as a deliberate, reviewed change.
+- Fresh databases use `SCHEMA_SQL` in `storage/mod.rs`; existing databases use
+  the ordered transactional `MIGRATIONS` list and SQLite `user_version` after a
+  required startup safety backup. There is still no Electron-data migration;
+  treat schema edits as deliberate, reviewed changes with upgrade tests.
 - Outbound HTTP (AI client, media download, sync) uses
   reqwest + rustls and must enforce the SSRF policy (`SSRF_BLOCKED`); redirects
   are re-checked per hop. Do not weaken these checks.

@@ -1500,5 +1500,14 @@
       "prompt": "Prompt",
       "folder": "Carpeta"
     }
+  },
+  "promptsView": {
+    "pagination": { "summary": "{{from}}-{{to}} de {{total}}", "previous": "Pagina anterior", "next": "Pagina siguiente" },
+    "pin": "Fijar prompt", "unpin": "Desfijar prompt", "duplicatePrompt": "Duplicar prompt",
+    "privatePrompt": "Prompt privado", "privateLockedPreview": "Contenido privado bloqueado", "privateLockedTitle": "Prompt privado bloqueado", "privateLockedHint": "Desbloquee la biblioteca en Ajustes para ver o editar el contenido.",
+    "editor": { "privatePrompt": "Cifrar el contenido", "privatePromptHint": "Requiere la contrasena maestra desbloqueada." },
+    "bundle": { "export": "Exportar paquete de prompts", "import": "Importar paquete de prompts", "exported": "Exportado a {{path}}", "path": "Ruta del paquete", "pathPlaceholder": "Ruta a un archivo .prompthub", "conflictPolicy": "Politica de conflictos", "skip": "Omitir prompts existentes", "duplicate": "Importar como copias", "replace": "Reemplazar con una revision nueva", "preview": "Vista previa", "previewSummary": "{{prompts}} prompts, {{revisions}} revisiones, {{conflicts}} conflictos, {{mediaFiles}} archivos", "privateKeyWarning": "{{count}} prompts privados requieren que la biblioteca este desbloqueada con la misma clave de cifrado usada por el paquete.", "confirmImport": "Importar", "imported": "{{added}} anadidos, {{replaced}} reemplazados, {{skipped}} omitidos. Copia: {{backupId}}" },
+    "batch": { "selectPrompt": "Seleccionar {{title}}", "selected": "{{count}} seleccionados", "selectPage": "Seleccionar esta pagina", "clear": "Limpiar seleccion", "folder": "Carpeta de destino", "move": "Mover seleccion", "tagPlaceholder": "Anadir etiqueta", "addTag": "Anadir etiqueta", "delete": "Eliminar seleccion", "deleteConfirm": "Eliminar los prompts seleccionados y sus revisiones?" },
+    "tags": { "manage": "Gestionar etiquetas", "rename": "Renombrar etiqueta", "renameValue": "Nombre nuevo", "delete": "Eliminar etiqueta", "deleteConfirm": "Eliminar la etiqueta {{tag}} de todos los prompts?" }
   }
 }

@@ -44,6 +44,62 @@ pub type DbPool = Pool<SqliteConnectionManager>;
 /// under WAL.
 const BUSY_TIMEOUT_MS: u64 = 5_000;
 
+/// Latest ordered schema migration understood by this binary.
+pub const CURRENT_SCHEMA_VERSION: u32 = 3;
+
+struct Migration {
+    version: u32,
+    sql: &'static str,
+}
+
+const MIGRATIONS: &[Migration] = &[
+    Migration {
+        version: 1,
+        // Version 1 adopts the pre-migration desktop schema as the baseline.
+        sql: "",
+    },
+    Migration {
+        version: 2,
+        sql: r#"
+ALTER TABLE prompt_versions ADD COLUMN title TEXT NOT NULL DEFAULT '';
+ALTER TABLE prompt_versions ADD COLUMN description TEXT;
+ALTER TABLE prompt_versions ADD COLUMN prompt_type TEXT NOT NULL DEFAULT 'text';
+ALTER TABLE prompt_versions ADD COLUMN tags TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE prompt_versions ADD COLUMN folder_id TEXT;
+ALTER TABLE prompt_versions ADD COLUMN images TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE prompt_versions ADD COLUMN videos TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE prompt_versions ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE prompt_versions ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE prompt_versions ADD COLUMN source TEXT;
+ALTER TABLE prompt_versions ADD COLUMN notes TEXT;
+ALTER TABLE prompt_versions ADD COLUMN source_action TEXT NOT NULL DEFAULT 'manual';
+ALTER TABLE prompt_versions ADD COLUMN parent_revision_id TEXT;
+
+UPDATE prompt_versions
+SET title = COALESCE((SELECT title FROM prompts WHERE prompts.id = prompt_versions.prompt_id), ''),
+    description = (SELECT description FROM prompts WHERE prompts.id = prompt_versions.prompt_id),
+    prompt_type = COALESCE((SELECT prompt_type FROM prompts WHERE prompts.id = prompt_versions.prompt_id), 'text'),
+    tags = COALESCE((SELECT tags FROM prompts WHERE prompts.id = prompt_versions.prompt_id), '[]'),
+    folder_id = (SELECT folder_id FROM prompts WHERE prompts.id = prompt_versions.prompt_id),
+    images = COALESCE((SELECT images FROM prompts WHERE prompts.id = prompt_versions.prompt_id), '[]'),
+    videos = COALESCE((SELECT videos FROM prompts WHERE prompts.id = prompt_versions.prompt_id), '[]'),
+    is_favorite = COALESCE((SELECT is_favorite FROM prompts WHERE prompts.id = prompt_versions.prompt_id), 0),
+    is_pinned = COALESCE((SELECT is_pinned FROM prompts WHERE prompts.id = prompt_versions.prompt_id), 0),
+    source = (SELECT source FROM prompts WHERE prompts.id = prompt_versions.prompt_id),
+    notes = (SELECT notes FROM prompts WHERE prompts.id = prompt_versions.prompt_id);
+
+CREATE INDEX IF NOT EXISTS idx_versions_parent ON prompt_versions(parent_revision_id);
+        "#,
+    },
+    Migration {
+        version: 3,
+        sql: r#"
+ALTER TABLE prompts ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE prompt_versions ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0;
+"#,
+    },
+];
+
 /// Marker note for the Search_Engine wiring (task 2.2).
 ///
 /// The `prompts_fts` FTS5 virtual table and the `prompts_ai`/`prompts_ad`/
@@ -131,8 +187,86 @@ fn build_pool(manager: SqliteConnectionManager) -> Result<DbPool, AppError> {
 /// The FTS5 virtual table and its sync triggers are intentionally *not* created
 /// here; see [`FTS_EXTENSION_POINT`].
 pub fn init_schema(conn: &Connection) -> Result<(), AppError> {
-    conn.execute_batch(SCHEMA_SQL)
-        .map_err(|e| AppError::internal(format!("failed to initialize schema: {e}")))
+    if schema_version(conn)? == 0 && !table_exists(conn, "prompts")? {
+        let tx = conn
+            .unchecked_transaction()
+            .map_err(|e| AppError::internal(format!("failed to start schema creation: {e}")))?;
+        tx.execute_batch(SCHEMA_SQL)
+            .map_err(|e| AppError::internal(format!("failed to create schema: {e}")))?;
+        tx.pragma_update(None, "user_version", CURRENT_SCHEMA_VERSION)
+            .map_err(|e| AppError::internal(format!("failed to record schema version: {e}")))?;
+        tx.commit()
+            .map_err(|e| AppError::internal(format!("failed to commit schema creation: {e}")))?;
+        return Ok(());
+    }
+    run_migrations(conn, MIGRATIONS)
+}
+
+fn table_exists(conn: &Connection, name: &str) -> Result<bool, AppError> {
+    conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?1)",
+        [name],
+        |row| row.get(0),
+    )
+    .map_err(|e| AppError::internal(format!("failed to inspect schema tables: {e}")))
+}
+
+/// Returns the migration version recorded in SQLite's `user_version` pragma.
+pub fn schema_version(conn: &Connection) -> Result<u32, AppError> {
+    conn.query_row("PRAGMA user_version", [], |row| row.get(0))
+        .map_err(|e| AppError::internal(format!("failed to read schema version: {e}")))
+}
+
+/// Reports whether an existing database must be upgraded before use.
+pub fn needs_migration(conn: &Connection) -> Result<bool, AppError> {
+    Ok(schema_version(conn)? < CURRENT_SCHEMA_VERSION)
+}
+
+fn run_migrations(conn: &Connection, migrations: &[Migration]) -> Result<(), AppError> {
+    let mut current = schema_version(conn)?;
+    if current > CURRENT_SCHEMA_VERSION {
+        return Err(AppError::validation(format!(
+            "database schema version {current} is newer than supported version {CURRENT_SCHEMA_VERSION}"
+        )));
+    }
+
+    for migration in migrations {
+        if migration.version <= current {
+            continue;
+        }
+        if migration.version != current + 1 {
+            return Err(AppError::internal(format!(
+                "schema migration sequence jumps from {current} to {}",
+                migration.version
+            )));
+        }
+
+        let tx = conn
+            .unchecked_transaction()
+            .map_err(|e| AppError::internal(format!("failed to start schema migration: {e}")))?;
+        tx.execute_batch(migration.sql).map_err(|e| {
+            AppError::internal(format!(
+                "failed to apply schema migration {}: {e}",
+                migration.version
+            ))
+        })?;
+        tx.pragma_update(None, "user_version", migration.version)
+            .map_err(|e| {
+                AppError::internal(format!(
+                    "failed to record schema migration {}: {e}",
+                    migration.version
+                ))
+            })?;
+        tx.commit().map_err(|e| {
+            AppError::internal(format!(
+                "failed to commit schema migration {}: {e}",
+                migration.version
+            ))
+        })?;
+        current = migration.version;
+    }
+
+    Ok(())
 }
 
 /// Acquires a connection from the pool and runs [`init_schema`] on it.
@@ -156,8 +290,6 @@ pub fn init_schema_with_pool(pool: &DbPool) -> Result<(), AppError> {
 /// `ON DELETE CASCADE` so deleting the parent removes history (Requirements 4.4,
 /// 4.5). The FTS virtual table/triggers live in the Search_Engine module.
 const SCHEMA_SQL: &str = r#"
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS folders (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -182,6 +314,7 @@ CREATE TABLE IF NOT EXISTS prompts (
   videos TEXT NOT NULL DEFAULT '[]',
   is_favorite INTEGER NOT NULL DEFAULT 0,
   is_pinned INTEGER NOT NULL DEFAULT 0,
+  is_private INTEGER NOT NULL DEFAULT 0,
   current_version INTEGER NOT NULL DEFAULT 0,
   usage_count INTEGER NOT NULL DEFAULT 0,
   source TEXT,
@@ -198,8 +331,22 @@ CREATE TABLE IF NOT EXISTS prompt_versions (
   system_prompt TEXT,
   user_prompt TEXT NOT NULL,
   variables TEXT NOT NULL DEFAULT '[]',
+  title TEXT NOT NULL DEFAULT '',
+  description TEXT,
+  prompt_type TEXT NOT NULL DEFAULT 'text' CHECK(prompt_type IN ('text','image','video')),
+  tags TEXT NOT NULL DEFAULT '[]',
+  folder_id TEXT,
+  images TEXT NOT NULL DEFAULT '[]',
+  videos TEXT NOT NULL DEFAULT '[]',
+  is_favorite INTEGER NOT NULL DEFAULT 0,
+  is_pinned INTEGER NOT NULL DEFAULT 0,
+  is_private INTEGER NOT NULL DEFAULT 0,
+  source TEXT,
+  notes TEXT,
   note TEXT,
   ai_response TEXT,
+  source_action TEXT NOT NULL DEFAULT 'manual',
+  parent_revision_id TEXT,
   created_at INTEGER NOT NULL,
   UNIQUE(prompt_id, version)
 );
@@ -245,13 +392,13 @@ CREATE INDEX IF NOT EXISTS idx_prompts_pinned   ON prompts(is_pinned);
 CREATE INDEX IF NOT EXISTS idx_prompts_created  ON prompts(created_at);
 CREATE INDEX IF NOT EXISTS idx_prompts_usage    ON prompts(usage_count);
 CREATE INDEX IF NOT EXISTS idx_versions_prompt  ON prompt_versions(prompt_id);
+CREATE INDEX IF NOT EXISTS idx_versions_parent  ON prompt_versions(parent_revision_id);
 CREATE INDEX IF NOT EXISTS idx_folders_parent   ON folders(parent_id);
 CREATE INDEX IF NOT EXISTS idx_folders_sort     ON folders(sort_order);
 CREATE INDEX IF NOT EXISTS idx_rules_scope      ON rules(scope);
 CREATE INDEX IF NOT EXISTS idx_rules_platform   ON rules(platform_id);
 CREATE INDEX IF NOT EXISTS idx_rule_versions_rule ON rule_versions(rule_id);
 
-COMMIT;
 "#;
 
 #[cfg(test)]
@@ -277,6 +424,7 @@ mod tests {
         "idx_prompts_created",
         "idx_prompts_usage",
         "idx_versions_prompt",
+        "idx_versions_parent",
         "idx_folders_parent",
         "idx_folders_sort",
         "idx_rules_scope",
@@ -447,6 +595,43 @@ mod tests {
 
         let tables = names_of_type(&conn, "table");
         assert!(tables.iter().any(|t| t == "prompts"));
+        assert_eq!(schema_version(&conn).unwrap(), CURRENT_SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn migration_failure_rolls_back_step_and_preserves_existing_data() {
+        let pool = create_memory_pool().unwrap();
+        let conn = pool.get().unwrap();
+        init_schema(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES ('kept', 'value')",
+            [],
+        )
+        .unwrap();
+
+        let failing = Migration {
+            version: CURRENT_SCHEMA_VERSION + 1,
+            sql: "CREATE TABLE should_roll_back (id TEXT); THIS IS INVALID SQL;",
+        };
+        let err = run_migrations(&conn, &[failing]).unwrap_err();
+        assert!(err.message.contains("failed to apply schema migration"));
+        assert_eq!(schema_version(&conn).unwrap(), CURRENT_SCHEMA_VERSION);
+        assert_eq!(
+            conn.query_row("SELECT value FROM settings WHERE key = 'kept'", [], |row| {
+                row.get::<_, String>(0)
+            })
+            .unwrap(),
+            "value"
+        );
+        assert_eq!(
+            conn.query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'should_roll_back'",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+            .unwrap(),
+            0
+        );
     }
 
     #[test]

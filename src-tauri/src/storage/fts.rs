@@ -78,24 +78,32 @@ CREATE VIRTUAL TABLE IF NOT EXISTS prompts_fts USING fts5(
   content='prompts', content_rowid='rowid'
 );
 
+DROP TRIGGER IF EXISTS prompts_ai;
+DROP TRIGGER IF EXISTS prompts_ad;
+DROP TRIGGER IF EXISTS prompts_au;
+
 -- AFTER INSERT: index the new prompt row.
-CREATE TRIGGER IF NOT EXISTS prompts_ai AFTER INSERT ON prompts BEGIN
+CREATE TRIGGER prompts_ai AFTER INSERT ON prompts BEGIN
   INSERT INTO prompts_fts(rowid, title, description, system_prompt, user_prompt, tags)
-  VALUES (NEW.rowid, NEW.title, NEW.description, NEW.system_prompt, NEW.user_prompt, NEW.tags);
+  SELECT NEW.rowid, NEW.title, NEW.description, NEW.system_prompt, NEW.user_prompt, NEW.tags
+  WHERE NEW.is_private = 0;
 END;
 
 -- AFTER DELETE: remove the prompt row from the index (external-content 'delete').
-CREATE TRIGGER IF NOT EXISTS prompts_ad AFTER DELETE ON prompts BEGIN
+CREATE TRIGGER prompts_ad AFTER DELETE ON prompts BEGIN
   INSERT INTO prompts_fts(prompts_fts, rowid, title, description, system_prompt, user_prompt, tags)
-  VALUES ('delete', OLD.rowid, OLD.title, OLD.description, OLD.system_prompt, OLD.user_prompt, OLD.tags);
+  SELECT 'delete', OLD.rowid, OLD.title, OLD.description, OLD.system_prompt, OLD.user_prompt, OLD.tags
+  WHERE OLD.is_private = 0;
 END;
 
 -- AFTER UPDATE: remove the old indexed values, then index the new ones.
-CREATE TRIGGER IF NOT EXISTS prompts_au AFTER UPDATE ON prompts BEGIN
+CREATE TRIGGER prompts_au AFTER UPDATE ON prompts BEGIN
   INSERT INTO prompts_fts(prompts_fts, rowid, title, description, system_prompt, user_prompt, tags)
-  VALUES ('delete', OLD.rowid, OLD.title, OLD.description, OLD.system_prompt, OLD.user_prompt, OLD.tags);
+  SELECT 'delete', OLD.rowid, OLD.title, OLD.description, OLD.system_prompt, OLD.user_prompt, OLD.tags
+  WHERE OLD.is_private = 0;
   INSERT INTO prompts_fts(rowid, title, description, system_prompt, user_prompt, tags)
-  VALUES (NEW.rowid, NEW.title, NEW.description, NEW.system_prompt, NEW.user_prompt, NEW.tags);
+  SELECT NEW.rowid, NEW.title, NEW.description, NEW.system_prompt, NEW.user_prompt, NEW.tags
+  WHERE NEW.is_private = 0;
 END;
 
 COMMIT;

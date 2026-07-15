@@ -1504,5 +1504,18 @@
       "prompt": "Prompt",
       "folder": "資料夾"
     }
+  },
+  "promptsView": {
+    "pagination": { "summary": "第 {{from}}-{{to}} 筆，共 {{total}} 筆", "previous": "上一頁", "next": "下一頁" },
+    "pin": "置頂 Prompt", "unpin": "取消置頂", "duplicatePrompt": "複製 Prompt",
+    "privatePrompt": "私密 Prompt", "privateLockedPreview": "私密內容已鎖定", "privateLockedTitle": "私密 Prompt 已鎖定", "privateLockedHint": "請在設定中解鎖 Prompt 資料庫後查看或編輯內容。",
+    "editor": { "privatePrompt": "加密 Prompt 內容", "privatePromptHint": "需要已解鎖的主密碼。" },
+    "bundle": {
+      "export": "匯出 Prompt 套件", "import": "匯入 Prompt 套件", "exported": "已匯出至 {{path}}", "path": "Prompt 套件路徑", "pathPlaceholder": ".prompthub 檔案路徑", "conflictPolicy": "衝突策略", "skip": "略過現有 Prompt", "duplicate": "匯入為副本", "replace": "取代並新增修訂", "preview": "預覽", "previewSummary": "{{prompts}} 個 Prompt、{{revisions}} 個修訂、{{conflicts}} 個衝突、{{mediaFiles}} 個媒體檔案", "privateKeyWarning": "其中 {{count}} 個私密 Prompt 僅能在使用該套件原加密金鑰解鎖後匯入。", "confirmImport": "匯入", "imported": "已匯入 {{added}} 個、取代 {{replaced}} 個、略過 {{skipped}} 個。安全備份：{{backupId}}"
+    },
+    "batch": {
+      "selectPrompt": "選取 {{title}}", "selected": "已選取 {{count}} 個", "selectPage": "選取本頁", "clear": "清除選取", "folder": "目標資料夾", "move": "移動所選 Prompt", "tagPlaceholder": "為所選 Prompt 加上標籤", "addTag": "加入標籤", "delete": "刪除所選 Prompt", "deleteConfirm": "刪除所選 Prompt 及其修訂歷史？"
+    },
+    "tags": { "manage": "管理標籤", "rename": "重新命名標籤", "renameValue": "新標籤名稱", "delete": "刪除標籤", "deleteConfirm": "從所有 Prompt 中刪除標籤 {{tag}}？" }
   }
 }

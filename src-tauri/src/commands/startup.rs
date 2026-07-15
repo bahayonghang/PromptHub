@@ -35,6 +35,7 @@
 
 use crate::error::AppError;
 use crate::services::data_path;
+use crate::services::sync;
 use crate::state::AppState;
 use crate::storage::{self, DbPool};
 
@@ -49,7 +50,28 @@ pub use crate::services::data_path::{database_path, ensure_directories, resolve_
 /// the schema statements are `CREATE ... IF NOT EXISTS`, any existing database is
 /// left unchanged (Requirement 4.7).
 pub fn initialize_storage(paths: &crate::state::RuntimePaths) -> Result<DbPool, AppError> {
-    let pool = storage::create_pool(data_path::database_path(paths))?;
+    let db_path = data_path::database_path(paths);
+    if db_path.is_file()
+        && std::fs::metadata(&db_path)
+            .map_err(|e| AppError::io(format!("failed to inspect database before migration: {e}")))?
+            .len()
+            > 0
+    {
+        let needs_migration = {
+            let conn = rusqlite::Connection::open(&db_path)
+                .map_err(|e| AppError::io(format!("failed to inspect database version: {e}")))?;
+            storage::needs_migration(&conn)?
+        };
+        if needs_migration {
+            sync::backup_create(&paths.data, &paths.backup).map_err(|error| {
+                AppError::io(format!(
+                    "schema migration requires a safety backup: {error}"
+                ))
+            })?;
+        }
+    }
+
+    let pool = storage::create_pool(&db_path)?;
     {
         let conn = pool
             .get()
@@ -111,6 +133,72 @@ mod tests {
             )
             .unwrap();
         assert_eq!(count, 2);
+        assert_eq!(
+            storage::schema_version(&conn).unwrap(),
+            storage::CURRENT_SCHEMA_VERSION
+        );
+        assert!(sync::backup_list(&paths.backup).unwrap().is_empty());
+    }
+
+    #[test]
+    fn initialize_storage_backs_up_existing_database_before_migration() {
+        let tmp = TempDir::new().unwrap();
+        let paths = resolve_runtime_paths(tmp.path());
+        ensure_directories(&paths).unwrap();
+
+        {
+            let conn = rusqlite::Connection::open(database_path(&paths)).unwrap();
+            conn.execute_batch(
+                r#"
+                CREATE TABLE prompts (
+                  id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT,
+                  prompt_type TEXT NOT NULL DEFAULT 'text', system_prompt TEXT,
+                  user_prompt TEXT NOT NULL, variables TEXT NOT NULL DEFAULT '[]',
+                  tags TEXT NOT NULL DEFAULT '[]', folder_id TEXT,
+                  images TEXT NOT NULL DEFAULT '[]', videos TEXT NOT NULL DEFAULT '[]',
+                  is_favorite INTEGER NOT NULL DEFAULT 0, is_pinned INTEGER NOT NULL DEFAULT 0,
+                  current_version INTEGER NOT NULL DEFAULT 0, usage_count INTEGER NOT NULL DEFAULT 0,
+                  source TEXT, notes TEXT, last_ai_response TEXT,
+                  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+                );
+                CREATE TABLE prompt_versions (
+                  id TEXT PRIMARY KEY, prompt_id TEXT NOT NULL, version INTEGER NOT NULL,
+                  system_prompt TEXT, user_prompt TEXT NOT NULL,
+                  variables TEXT NOT NULL DEFAULT '[]', note TEXT, ai_response TEXT,
+                  created_at INTEGER NOT NULL, UNIQUE(prompt_id, version)
+                );
+                INSERT INTO prompts (id,title,user_prompt,created_at,updated_at)
+                  VALUES ('p1','T','U',0,0);
+                INSERT INTO prompt_versions
+                  (id,prompt_id,version,user_prompt,created_at)
+                  VALUES ('v1','p1',1,'U',0);
+                "#,
+            )
+            .unwrap();
+        }
+
+        let pool = initialize_storage(&paths).unwrap();
+        let conn = pool.get().unwrap();
+        assert_eq!(
+            storage::schema_version(&conn).unwrap(),
+            storage::CURRENT_SCHEMA_VERSION
+        );
+        assert_eq!(
+            conn.query_row("SELECT title FROM prompts WHERE id = 'p1'", [], |row| {
+                row.get::<_, String>(0)
+            })
+            .unwrap(),
+            "T"
+        );
+        assert_eq!(sync::backup_list(&paths.backup).unwrap().len(), 1);
+        let revision_title: String = conn
+            .query_row(
+                "SELECT title FROM prompt_versions WHERE id = 'v1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(revision_title, "T");
     }
 
     #[test]

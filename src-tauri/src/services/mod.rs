@@ -16,6 +16,7 @@ pub mod data_path;
 pub mod folder;
 pub mod media;
 pub mod network_safety;
+pub mod portable;
 pub mod prompt;
 pub mod rules;
 pub mod security;

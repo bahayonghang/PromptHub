@@ -33,12 +33,17 @@
 //! through [`crate::storage::mapping::prompt_from_row`] (Requirement 4.9).
 #![allow(dead_code)]
 
+use std::sync::Mutex;
+
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
-use crate::models::{Prompt, PromptType, Variable};
+use crate::models::{
+    Prompt, PromptPage, PromptRevisionSource, PromptType, PromptVersion, Variable,
+};
 use crate::models::{SearchQuery, SortField, SortOrder};
+use crate::state::EncryptionState;
 use crate::storage::mapping::prompt_from_row;
 use crate::storage::time::now_millis;
 
@@ -75,6 +80,8 @@ pub struct PromptCreate {
     pub is_favorite: Option<bool>,
     /// Pinned flag (default `false`).
     pub is_pinned: Option<bool>,
+    /// Encrypt content fields at rest (requires an unlocked master key).
+    pub is_private: Option<bool>,
     /// Initial usage count (default `0`).
     pub usage_count: Option<i64>,
     /// Optional source URL or reference.
@@ -115,6 +122,8 @@ pub struct PromptUpdate {
     pub is_favorite: Option<bool>,
     /// Replacement pinned flag.
     pub is_pinned: Option<bool>,
+    /// Replacement private-content flag.
+    pub is_private: Option<bool>,
     /// Replacement usage count.
     pub usage_count: Option<i64>,
     /// Replacement source.
@@ -183,12 +192,15 @@ pub fn create(conn: &Connection, input: PromptCreate) -> Result<Prompt, AppError
     let images = json_array(&input.images.unwrap_or_default());
     let videos = json_array(&input.videos.unwrap_or_default());
 
-    conn.execute(
+    let tx = conn
+        .unchecked_transaction()
+        .map_err(|e| db_err("failed to begin create-prompt transaction", e))?;
+    tx.execute(
         "INSERT INTO prompts \
          (id, title, description, prompt_type, system_prompt, user_prompt, variables, tags, \
-          folder_id, images, videos, is_favorite, is_pinned, current_version, usage_count, \
+          folder_id, images, videos, is_favorite, is_pinned, is_private, current_version, usage_count, \
           source, notes, last_ai_response, created_at, updated_at) \
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20)",
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21)",
         params![
             id,
             input.title,
@@ -203,6 +215,7 @@ pub fn create(conn: &Connection, input: PromptCreate) -> Result<Prompt, AppError
             videos,
             input.is_favorite.unwrap_or(false),
             input.is_pinned.unwrap_or(false),
+            input.is_private.unwrap_or(false),
             0_i64,
             input.usage_count.unwrap_or(0),
             input.source,
@@ -213,7 +226,16 @@ pub fn create(conn: &Connection, input: PromptCreate) -> Result<Prompt, AppError
         ],
     )
     .map_err(|e| db_err("failed to insert prompt", e))?;
-
+    let created = get(&tx, &id)?;
+    crate::services::version::append_snapshot(
+        &tx,
+        &created,
+        None,
+        PromptRevisionSource::Create,
+        None,
+    )?;
+    tx.commit()
+        .map_err(|e| db_err("failed to commit create-prompt transaction", e))?;
     get(conn, &id)
 }
 
@@ -257,44 +279,77 @@ pub fn update(conn: &Connection, id: &str, patch: PromptUpdate) -> Result<Prompt
     // NOT_FOUND when the prompt does not exist; also the base for preserved fields.
     let existing = get(conn, id)?;
 
-    let title = patch.title.unwrap_or(existing.title);
-    let description = patch.description.or(existing.description);
+    let title = patch.title.unwrap_or_else(|| existing.title.clone());
+    let description = patch.description.or_else(|| existing.description.clone());
     let prompt_type = new_prompt_type.unwrap_or(existing.prompt_type);
-    let system_prompt = patch.system_prompt.or(existing.system_prompt);
-    let user_prompt = patch.user_prompt.unwrap_or(existing.user_prompt);
-    let variables = json_array(&patch.variables.unwrap_or(existing.variables));
-    let tags = json_array(&patch.tags.unwrap_or(existing.tags));
-    let folder_id = patch.folder_id.or(existing.folder_id);
-    let images = json_array(&patch.images.unwrap_or(existing.images));
-    let videos = json_array(&patch.videos.unwrap_or(existing.videos));
+    let system_prompt = patch
+        .system_prompt
+        .or_else(|| existing.system_prompt.clone());
+    let user_prompt = patch
+        .user_prompt
+        .unwrap_or_else(|| existing.user_prompt.clone());
+    let variables = patch
+        .variables
+        .unwrap_or_else(|| existing.variables.clone());
+    let tags = patch.tags.unwrap_or_else(|| existing.tags.clone());
+    let folder_id = patch.folder_id.or_else(|| existing.folder_id.clone());
+    let images = patch.images.unwrap_or_else(|| existing.images.clone());
+    let videos = patch.videos.unwrap_or_else(|| existing.videos.clone());
     let is_favorite = patch.is_favorite.unwrap_or(existing.is_favorite);
     let is_pinned = patch.is_pinned.unwrap_or(existing.is_pinned);
+    let is_private = patch.is_private.unwrap_or(existing.is_private);
     let usage_count = patch.usage_count.unwrap_or(existing.usage_count);
-    let source = patch.source.or(existing.source);
-    let notes = patch.notes.or(existing.notes);
-    let last_ai_response = patch.last_ai_response.or(existing.last_ai_response);
-    let now = now_millis();
+    let source = patch.source.or_else(|| existing.source.clone());
+    let notes = patch.notes.or_else(|| existing.notes.clone());
+    let last_ai_response = patch
+        .last_ai_response
+        .or_else(|| existing.last_ai_response.clone());
 
-    conn.execute(
+    let revision_changed = title != existing.title
+        || description != existing.description
+        || prompt_type != existing.prompt_type
+        || system_prompt != existing.system_prompt
+        || user_prompt != existing.user_prompt
+        || variables != existing.variables
+        || tags != existing.tags
+        || folder_id != existing.folder_id
+        || images != existing.images
+        || videos != existing.videos
+        || is_favorite != existing.is_favorite
+        || is_pinned != existing.is_pinned
+        || is_private != existing.is_private
+        || source != existing.source
+        || notes != existing.notes
+        || last_ai_response != existing.last_ai_response;
+    if !revision_changed && usage_count == existing.usage_count {
+        return Ok(existing);
+    }
+
+    let now = now_millis();
+    let tx = conn
+        .unchecked_transaction()
+        .map_err(|e| db_err("failed to begin update-prompt transaction", e))?;
+    tx.execute(
         "UPDATE prompts SET \
          title=?1, description=?2, prompt_type=?3, system_prompt=?4, user_prompt=?5, \
          variables=?6, tags=?7, folder_id=?8, images=?9, videos=?10, is_favorite=?11, \
-         is_pinned=?12, usage_count=?13, source=?14, notes=?15, last_ai_response=?16, \
-         updated_at=?17 \
-         WHERE id=?18",
+         is_pinned=?12, is_private=?13, usage_count=?14, source=?15, notes=?16, last_ai_response=?17, \
+         updated_at=?18 \
+         WHERE id=?19",
         params![
             title,
             description,
             prompt_type_wire(prompt_type),
             system_prompt,
             user_prompt,
-            variables,
-            tags,
+            json_array(&variables),
+            json_array(&tags),
             folder_id,
-            images,
-            videos,
+            json_array(&images),
+            json_array(&videos),
             is_favorite,
             is_pinned,
+            is_private,
             usage_count,
             source,
             notes,
@@ -304,8 +359,219 @@ pub fn update(conn: &Connection, id: &str, patch: PromptUpdate) -> Result<Prompt
         ],
     )
     .map_err(|e| db_err("failed to update prompt", e))?;
-
+    let updated = get(&tx, id)?;
+    if revision_changed {
+        crate::services::version::append_snapshot(
+            &tx,
+            &updated,
+            None,
+            PromptRevisionSource::Save,
+            None,
+        )?;
+    }
+    tx.commit()
+        .map_err(|e| db_err("failed to commit update-prompt transaction", e))?;
     get(conn, id)
+}
+
+fn required_private_key(encryption: &Mutex<EncryptionState>) -> Result<Vec<u8>, AppError> {
+    crate::services::security::unlocked_key(encryption)?.ok_or_else(|| {
+        AppError::unauthorized("unlock the prompt library to access private content")
+    })
+}
+
+fn encrypt_optional(value: Option<String>, key: &[u8]) -> Result<Option<String>, AppError> {
+    value
+        .map(|value| crate::services::security::encrypt(&value, key))
+        .transpose()
+}
+
+fn decrypt_optional(value: Option<String>, key: &[u8]) -> Result<Option<String>, AppError> {
+    value
+        .map(|value| crate::services::security::decrypt(&value, key))
+        .transpose()
+}
+
+pub(crate) fn present_prompt(mut prompt: Prompt, key: Option<&[u8]>) -> Result<Prompt, AppError> {
+    if !prompt.is_private {
+        return Ok(prompt);
+    }
+    let Some(key) = key else {
+        prompt.description = None;
+        prompt.system_prompt = None;
+        prompt.user_prompt.clear();
+        prompt.source = None;
+        prompt.notes = None;
+        prompt.last_ai_response = None;
+        prompt.is_locked = true;
+        return Ok(prompt);
+    };
+
+    prompt.description = decrypt_optional(prompt.description, key)?;
+    prompt.system_prompt = decrypt_optional(prompt.system_prompt, key)?;
+    prompt.user_prompt = crate::services::security::decrypt(&prompt.user_prompt, key)?;
+    prompt.source = decrypt_optional(prompt.source, key)?;
+    prompt.notes = decrypt_optional(prompt.notes, key)?;
+    prompt.last_ai_response = decrypt_optional(prompt.last_ai_response, key)?;
+    prompt.is_locked = false;
+    Ok(prompt)
+}
+
+pub(crate) fn present_version(
+    mut version: PromptVersion,
+    key: Option<&[u8]>,
+) -> Result<PromptVersion, AppError> {
+    if !version.is_private {
+        return Ok(version);
+    }
+    let Some(key) = key else {
+        version.description = None;
+        version.system_prompt = None;
+        version.user_prompt.clear();
+        version.source = None;
+        version.notes = None;
+        version.ai_response = None;
+        return Ok(version);
+    };
+
+    version.description = decrypt_optional(version.description, key)?;
+    version.system_prompt = decrypt_optional(version.system_prompt, key)?;
+    version.user_prompt = crate::services::security::decrypt(&version.user_prompt, key)?;
+    version.source = decrypt_optional(version.source, key)?;
+    version.notes = decrypt_optional(version.notes, key)?;
+    version.ai_response = decrypt_optional(version.ai_response, key)?;
+    Ok(version)
+}
+
+pub fn create_secure(
+    conn: &Connection,
+    encryption: &Mutex<EncryptionState>,
+    mut input: PromptCreate,
+) -> Result<Prompt, AppError> {
+    if input.is_private.unwrap_or(false) {
+        let key = required_private_key(encryption)?;
+        input.description = encrypt_optional(input.description, &key)?;
+        input.system_prompt = encrypt_optional(input.system_prompt, &key)?;
+        input.user_prompt = crate::services::security::encrypt(&input.user_prompt, &key)?;
+        input.source = encrypt_optional(input.source, &key)?;
+        input.notes = encrypt_optional(input.notes, &key)?;
+    }
+    let stored = create(conn, input)?;
+    let key = crate::services::security::unlocked_key(encryption)?;
+    present_prompt(stored, key.as_deref())
+}
+
+pub fn update_secure(
+    conn: &Connection,
+    encryption: &Mutex<EncryptionState>,
+    id: &str,
+    mut patch: PromptUpdate,
+) -> Result<Prompt, AppError> {
+    let existing = get(conn, id)?;
+    let desired_private = patch.is_private.unwrap_or(existing.is_private);
+
+    match (existing.is_private, desired_private) {
+        (false, true) => {
+            let key = required_private_key(encryption)?;
+            patch.description = encrypt_optional(
+                patch.description.take().or(existing.description.clone()),
+                &key,
+            )?;
+            patch.system_prompt = encrypt_optional(
+                patch
+                    .system_prompt
+                    .take()
+                    .or(existing.system_prompt.clone()),
+                &key,
+            )?;
+            patch.user_prompt = Some(crate::services::security::encrypt(
+                patch
+                    .user_prompt
+                    .as_deref()
+                    .unwrap_or(&existing.user_prompt),
+                &key,
+            )?);
+            patch.source = encrypt_optional(patch.source.take().or(existing.source.clone()), &key)?;
+            patch.notes = encrypt_optional(patch.notes.take().or(existing.notes.clone()), &key)?;
+            patch.last_ai_response = encrypt_optional(
+                patch
+                    .last_ai_response
+                    .take()
+                    .or(existing.last_ai_response.clone()),
+                &key,
+            )?;
+        }
+        (true, false) => {
+            let key = required_private_key(encryption)?;
+            let current = present_prompt(existing.clone(), Some(&key))?;
+            patch.description = patch.description.or(current.description);
+            patch.system_prompt = patch.system_prompt.or(current.system_prompt);
+            patch.user_prompt = Some(patch.user_prompt.unwrap_or(current.user_prompt));
+            patch.source = patch.source.or(current.source);
+            patch.notes = patch.notes.or(current.notes);
+            patch.last_ai_response = patch.last_ai_response.or(current.last_ai_response);
+        }
+        (true, true) => {
+            let touches_content = patch.description.is_some()
+                || patch.system_prompt.is_some()
+                || patch.user_prompt.is_some()
+                || patch.source.is_some()
+                || patch.notes.is_some()
+                || patch.last_ai_response.is_some();
+            if touches_content {
+                let key = required_private_key(encryption)?;
+                patch.description = encrypt_optional(patch.description, &key)?;
+                patch.system_prompt = encrypt_optional(patch.system_prompt, &key)?;
+                patch.user_prompt = patch
+                    .user_prompt
+                    .map(|value| crate::services::security::encrypt(&value, &key))
+                    .transpose()?;
+                patch.source = encrypt_optional(patch.source, &key)?;
+                patch.notes = encrypt_optional(patch.notes, &key)?;
+                patch.last_ai_response = encrypt_optional(patch.last_ai_response, &key)?;
+            }
+        }
+        (false, false) => {}
+    }
+
+    let stored = update(conn, id, patch)?;
+    let key = crate::services::security::unlocked_key(encryption)?;
+    present_prompt(stored, key.as_deref())
+}
+
+pub fn get_secure(
+    conn: &Connection,
+    encryption: &Mutex<EncryptionState>,
+    id: &str,
+) -> Result<Prompt, AppError> {
+    let key = crate::services::security::unlocked_key(encryption)?;
+    present_prompt(get(conn, id)?, key.as_deref())
+}
+
+pub fn list_secure(
+    conn: &Connection,
+    encryption: &Mutex<EncryptionState>,
+) -> Result<Vec<Prompt>, AppError> {
+    let key = crate::services::security::unlocked_key(encryption)?;
+    list(conn)?
+        .into_iter()
+        .map(|prompt| present_prompt(prompt, key.as_deref()))
+        .collect()
+}
+
+pub fn search_secure(
+    conn: &Connection,
+    encryption: &Mutex<EncryptionState>,
+    query: SearchQuery,
+) -> Result<PromptPage, AppError> {
+    let key = crate::services::security::unlocked_key(encryption)?;
+    let mut page = search(conn, query)?;
+    page.items = page
+        .items
+        .into_iter()
+        .map(|prompt| present_prompt(prompt, key.as_deref()))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(page)
 }
 
 /// Deletes a prompt by identifier (Req 6.5).
@@ -321,6 +587,145 @@ pub fn delete(conn: &Connection, id: &str) -> Result<(), AppError> {
         return Err(AppError::not_found(format!("prompt `{id}` not found")));
     }
     Ok(())
+}
+
+/// Clones a prompt, preserving private ciphertext and starting new revision history.
+pub fn duplicate(conn: &Connection, id: &str) -> Result<Prompt, AppError> {
+    let source = get(conn, id)?;
+    let duplicate_id = uuid::Uuid::new_v4().to_string();
+    let now = now_millis();
+    let title = format!("{} copy", source.title);
+    let tx = conn
+        .unchecked_transaction()
+        .map_err(|error| db_err("failed to begin duplicate transaction", error))?;
+    tx.execute(
+        "INSERT INTO prompts (id,title,description,prompt_type,system_prompt,user_prompt,variables,tags,folder_id,images,videos,is_favorite,is_pinned,is_private,current_version,usage_count,source,notes,last_ai_response,created_at,updated_at) \
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,0,0,?15,?16,?17,?18,?18)",
+        params![
+            duplicate_id,
+            title,
+            source.description,
+            prompt_type_wire(source.prompt_type),
+            source.system_prompt,
+            source.user_prompt,
+            json_array(&source.variables),
+            json_array(&source.tags),
+            source.folder_id,
+            json_array(&source.images),
+            json_array(&source.videos),
+            source.is_favorite,
+            source.is_pinned,
+            source.is_private,
+            source.source,
+            source.notes,
+            source.last_ai_response,
+            now,
+        ],
+    )
+    .map_err(|error| db_err("failed to duplicate prompt", error))?;
+    let duplicated = get(&tx, &duplicate_id)?;
+    crate::services::version::append_snapshot(
+        &tx,
+        &duplicated,
+        Some(format!("Duplicated from {}", source.id)),
+        PromptRevisionSource::Create,
+        None,
+    )?;
+    tx.commit()
+        .map_err(|error| db_err("failed to commit duplicate transaction", error))?;
+    get(conn, &duplicate_id)
+}
+
+fn validate_batch(conn: &Connection, ids: &[String]) -> Result<Vec<Prompt>, AppError> {
+    let mut unique = std::collections::HashSet::new();
+    let mut prompts = Vec::new();
+    for id in ids {
+        if unique.insert(id) {
+            prompts.push(get(conn, id)?);
+        }
+    }
+    Ok(prompts)
+}
+
+pub fn batch_move(
+    conn: &Connection,
+    ids: &[String],
+    folder_id: Option<&str>,
+) -> Result<(), AppError> {
+    let prompts = validate_batch(conn, ids)?;
+    let tx = conn
+        .unchecked_transaction()
+        .map_err(|error| db_err("failed to begin batch move", error))?;
+    for prompt in prompts {
+        if prompt.folder_id.as_deref() == folder_id {
+            continue;
+        }
+        tx.execute(
+            "UPDATE prompts SET folder_id = ?1, updated_at = ?2 WHERE id = ?3",
+            params![folder_id, now_millis(), prompt.id],
+        )
+        .map_err(|error| db_err("failed to move prompt", error))?;
+        let updated = get(&tx, &prompt.id)?;
+        crate::services::version::append_snapshot(
+            &tx,
+            &updated,
+            Some("Batch folder move".into()),
+            PromptRevisionSource::Save,
+            None,
+        )?;
+    }
+    tx.commit()
+        .map_err(|error| db_err("failed to commit batch move", error))
+}
+
+pub fn batch_tag(conn: &Connection, ids: &[String], tags: &[String]) -> Result<(), AppError> {
+    let prompts = validate_batch(conn, ids)?;
+    let tx = conn
+        .unchecked_transaction()
+        .map_err(|error| db_err("failed to begin batch tag", error))?;
+    for prompt in prompts {
+        let mut next = prompt.tags.clone();
+        for tag in tags
+            .iter()
+            .map(|tag| tag.trim())
+            .filter(|tag| !tag.is_empty())
+        {
+            if !next.iter().any(|existing| existing == tag) {
+                next.push(tag.to_string());
+            }
+        }
+        if next == prompt.tags {
+            continue;
+        }
+        tx.execute(
+            "UPDATE prompts SET tags = ?1, updated_at = ?2 WHERE id = ?3",
+            params![json_array(&next), now_millis(), prompt.id],
+        )
+        .map_err(|error| db_err("failed to tag prompt", error))?;
+        let updated = get(&tx, &prompt.id)?;
+        crate::services::version::append_snapshot(
+            &tx,
+            &updated,
+            Some("Batch tag update".into()),
+            PromptRevisionSource::Save,
+            None,
+        )?;
+    }
+    tx.commit()
+        .map_err(|error| db_err("failed to commit batch tag", error))
+}
+
+pub fn batch_delete(conn: &Connection, ids: &[String]) -> Result<(), AppError> {
+    let prompts = validate_batch(conn, ids)?;
+    let tx = conn
+        .unchecked_transaction()
+        .map_err(|error| db_err("failed to begin batch delete", error))?;
+    for prompt in prompts {
+        tx.execute("DELETE FROM prompts WHERE id = ?1", [&prompt.id])
+            .map_err(|error| db_err("failed to delete prompt", error))?;
+    }
+    tx.commit()
+        .map_err(|error| db_err("failed to commit batch delete", error))
 }
 
 // --- search (task 4.3; Req 5.3–5.10) ---------------------------------------
@@ -390,16 +795,16 @@ fn sort_direction(order: SortOrder) -> &'static str {
 ///
 /// All values are bound as SQL parameters; only the `ORDER BY` column/direction
 /// (from a closed whitelist) are assembled into the statement text.
-pub fn search(conn: &Connection, query: SearchQuery) -> Result<Vec<Prompt>, AppError> {
+pub fn search(conn: &Connection, query: SearchQuery) -> Result<PromptPage, AppError> {
     let match_expr = query.keyword.as_deref().and_then(build_fts_match);
     let has_keyword = match_expr.is_some();
 
     let limit = query.limit.map(|l| l.clamp(1, 100)).unwrap_or(50);
     let offset = query.offset.unwrap_or(0);
 
-    let mut sql = String::from("SELECT prompts.* FROM prompts");
+    let mut from_sql = String::from(" FROM prompts");
     if has_keyword {
-        sql.push_str(" JOIN prompts_fts ON prompts_fts.rowid = prompts.rowid");
+        from_sql.push_str(" JOIN prompts_fts ON prompts_fts.rowid = prompts.rowid");
     }
 
     let mut clauses: Vec<&str> = Vec::new();
@@ -426,12 +831,28 @@ pub fn search(conn: &Connection, query: SearchQuery) -> Result<Vec<Prompt>, AppE
         params.push(rusqlite::types::Value::Integer(i64::from(is_favorite)));
     }
     if !clauses.is_empty() {
-        sql.push_str(" WHERE ");
-        sql.push_str(&clauses.join(" AND "));
+        from_sql.push_str(" WHERE ");
+        from_sql.push_str(&clauses.join(" AND "));
     }
+
+    let count_sql = format!("SELECT COUNT(*){from_sql}");
+    let total: i64 = conn
+        .query_row(
+            &count_sql,
+            rusqlite::params_from_iter(params.iter()),
+            |row| row.get(0),
+        )
+        .map_err(|e| {
+            if has_keyword {
+                AppError::parse(format!("search keyword could not be parsed: {e}"))
+            } else {
+                db_err("failed to count search results", e)
+            }
+        })?;
 
     let field = query.sort_by.unwrap_or_default();
     let order = query.sort_order.unwrap_or_default();
+    let mut sql = format!("SELECT prompts.*{from_sql}");
     // `prompts.id` is a stable secondary key so equal sort values order
     // deterministically.
     sql.push_str(&format!(
@@ -467,7 +888,16 @@ pub fn search(conn: &Connection, query: SearchQuery) -> Result<Vec<Prompt>, AppE
             Err(e) => return Err(db_err("failed to read search results", e)),
         }
     }
-    Ok(out)
+    let total =
+        u64::try_from(total).map_err(|_| AppError::internal("search result count was negative"))?;
+    let has_more = u64::from(offset) + (out.len() as u64) < total;
+    Ok(PromptPage {
+        items: out,
+        total,
+        limit,
+        offset,
+        has_more,
+    })
 }
 
 // --- copy + tag operations (task 4.2; Req 6.8–6.11) ------------------------
@@ -545,6 +975,27 @@ pub fn copy(
     values: &std::collections::HashMap<String, String>,
 ) -> Result<PromptCopy, AppError> {
     let prompt = get(conn, id)?;
+    Ok(PromptCopy {
+        system_prompt: prompt
+            .system_prompt
+            .as_deref()
+            .map(|text| substitute_placeholders(text, values)),
+        user_prompt: substitute_placeholders(&prompt.user_prompt, values),
+    })
+}
+
+pub fn copy_secure(
+    conn: &Connection,
+    encryption: &Mutex<EncryptionState>,
+    id: &str,
+    values: &std::collections::HashMap<String, String>,
+) -> Result<PromptCopy, AppError> {
+    let prompt = get_secure(conn, encryption, id)?;
+    if prompt.is_locked {
+        return Err(AppError::unauthorized(
+            "unlock the prompt library to copy private content",
+        ));
+    }
     Ok(PromptCopy {
         system_prompt: prompt
             .system_prompt
@@ -636,6 +1087,14 @@ pub fn tag_rename(conn: &Connection, old: &str, new: &str) -> Result<(), AppErro
             params![json_array(&updated), now, id],
         )
         .map_err(|e| db_err("failed to rename tag on prompt", e))?;
+        let prompt = get(&tx, &id)?;
+        crate::services::version::append_snapshot(
+            &tx,
+            &prompt,
+            Some(format!("Renamed tag {old} to {new}")),
+            PromptRevisionSource::Save,
+            None,
+        )?;
     }
 
     tx.commit()
@@ -664,6 +1123,14 @@ pub fn tag_delete(conn: &Connection, tag: &str) -> Result<(), AppError> {
             params![json_array(&updated), now, id],
         )
         .map_err(|e| db_err("failed to delete tag on prompt", e))?;
+        let prompt = get(&tx, &id)?;
+        crate::services::version::append_snapshot(
+            &tx,
+            &prompt,
+            Some(format!("Deleted tag {tag}")),
+            PromptRevisionSource::Save,
+            None,
+        )?;
     }
 
     tx.commit()
@@ -706,6 +1173,7 @@ mod tests {
             videos: Some(vec![]),
             is_favorite: Some(true),
             is_pinned: Some(false),
+            is_private: Some(false),
             usage_count: Some(3),
             source: Some("https://example.com".into()),
             notes: Some("note".into()),
@@ -739,7 +1207,7 @@ mod tests {
         assert_eq!(created.usage_count, 3);
         assert_eq!(created.source.as_deref(), Some("https://example.com"));
         assert_eq!(created.notes.as_deref(), Some("note"));
-        assert_eq!(created.current_version, 0);
+        assert_eq!(created.current_version, 1);
 
         // get by id returns an equal record (Req 6.2).
         let fetched = get(&conn, &created.id).unwrap();
@@ -958,13 +1426,7 @@ mod tests {
         let conn = pool.get().unwrap();
         let created = create(&conn, sample_create()).unwrap();
 
-        // Insert a version row directly (Version_Service is a later task).
-        conn.execute(
-            "INSERT INTO prompt_versions (id, prompt_id, version, user_prompt, created_at) \
-             VALUES ('v1', ?1, 1, 'U', 0)",
-            params![created.id],
-        )
-        .unwrap();
+        // Creation records the first immutable revision automatically.
         let before: i64 = conn
             .query_row(
                 "SELECT COUNT(*) FROM prompt_versions WHERE prompt_id = ?1",
@@ -980,6 +1442,59 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM prompt_versions", [], |row| row.get(0))
             .unwrap();
         assert_eq!(after, 0, "deleting a prompt should cascade to its versions");
+    }
+
+    #[test]
+    fn duplicate_and_batch_operations_are_atomic_and_revisioned() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let first = create(&conn, sample_create()).unwrap();
+        let second = create(
+            &conn,
+            PromptCreate {
+                title: "Second".into(),
+                user_prompt: "body".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO folders (id,name,created_at) VALUES ('folder','Folder',0)",
+            [],
+        )
+        .unwrap();
+
+        let copy = duplicate(&conn, &first.id).unwrap();
+        assert_ne!(copy.id, first.id);
+        assert_eq!(copy.title, format!("{} copy", first.title));
+        assert_eq!(
+            crate::services::version::list(&conn, &copy.id)
+                .unwrap()
+                .len(),
+            1
+        );
+
+        let ids = vec![first.id.clone(), second.id.clone()];
+        batch_move(&conn, &ids, Some("folder")).unwrap();
+        batch_tag(&conn, &ids, &["shared".into()]).unwrap();
+        for id in &ids {
+            let prompt = get(&conn, id).unwrap();
+            assert_eq!(prompt.folder_id.as_deref(), Some("folder"));
+            assert!(prompt.tags.contains(&"shared".into()));
+            assert_eq!(crate::services::version::list(&conn, id).unwrap().len(), 3);
+        }
+
+        let before = get(&conn, &first.id).unwrap();
+        let err = batch_move(&conn, &[first.id.clone(), "missing".into()], None).unwrap_err();
+        assert_eq!(err.code, ErrorCode::NotFound);
+        assert_eq!(get(&conn, &first.id).unwrap(), before);
+
+        batch_delete(&conn, &ids).unwrap();
+        assert_eq!(get(&conn, &first.id).unwrap_err().code, ErrorCode::NotFound);
+        assert_eq!(
+            get(&conn, &second.id).unwrap_err().code,
+            ErrorCode::NotFound
+        );
     }
 
     // --- copy + tag operation tests (task 4.2; Req 6.8–6.11) ---------------
@@ -1529,6 +2044,39 @@ mod tests {
         }
         let results = search(&conn, SearchQuery::default()).unwrap();
         assert_eq!(results.len(), 50);
+        assert_eq!(results.total, 51);
+        assert!(results.has_more);
+    }
+
+    #[test]
+    fn search_pages_reach_all_250_prompts_without_duplicates() {
+        let pool = search_pool();
+        let conn = pool.get().unwrap();
+        for i in 0..250 {
+            create_full(&conn, &format!("Prompt {i:03}"), &[], None, false, 0);
+        }
+
+        let mut ids = std::collections::HashSet::new();
+        for offset in [0, 100, 200] {
+            let page = search(
+                &conn,
+                SearchQuery {
+                    sort_by: Some(SortField::Title),
+                    sort_order: Some(SortOrder::Asc),
+                    limit: Some(100),
+                    offset: Some(offset),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            assert_eq!(page.total, 250);
+            assert_eq!(page.offset, offset);
+            assert_eq!(page.has_more, offset < 200);
+            for prompt in page.items {
+                assert!(ids.insert(prompt.id), "duplicate prompt across pages");
+            }
+        }
+        assert_eq!(ids.len(), 250);
     }
 
     #[test]
@@ -1605,5 +2153,75 @@ mod tests {
         )
         .unwrap();
         assert!(gone.is_empty());
+    }
+
+    #[test]
+    fn private_prompt_is_encrypted_redacted_unsearchable_and_rekeyed() {
+        let pool = search_pool();
+        let conn = pool.get().unwrap();
+        let encryption = Mutex::new(crate::state::EncryptionState::default());
+        crate::services::security::set_master_password(&conn, &encryption, "old-password").unwrap();
+
+        let created = create_secure(
+            &conn,
+            &encryption,
+            PromptCreate {
+                title: "Private metadata".into(),
+                description: Some("classified description".into()),
+                system_prompt: Some("classified system".into()),
+                user_prompt: "classified body".into(),
+                source: Some("classified source".into()),
+                notes: Some("classified notes".into()),
+                is_private: Some(true),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(created.user_prompt, "classified body");
+        assert!(created.is_private);
+        assert!(!created.is_locked);
+
+        let stored = get(&conn, &created.id).unwrap();
+        assert!(stored.user_prompt.starts_with("ENC::"));
+        assert!(!stored.user_prompt.contains("classified"));
+        let stored_revision = crate::services::version::list(&conn, &created.id).unwrap();
+        assert!(stored_revision[0].user_prompt.starts_with("ENC::"));
+
+        let found = search_secure(
+            &conn,
+            &encryption,
+            SearchQuery {
+                keyword: Some("classified".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(found.total, 0);
+
+        crate::services::security::lock(&encryption).unwrap();
+        let locked = get_secure(&conn, &encryption, &created.id).unwrap();
+        assert!(locked.is_locked);
+        assert!(locked.user_prompt.is_empty());
+        assert!(locked.description.is_none());
+        assert_eq!(
+            copy_secure(&conn, &encryption, &created.id, &Default::default())
+                .unwrap_err()
+                .code,
+            ErrorCode::Unauthorized
+        );
+
+        crate::services::security::unlock(&conn, &encryption, "old-password").unwrap();
+        crate::services::security::change_master_password(
+            &conn,
+            &encryption,
+            "old-password",
+            "new-password",
+        )
+        .unwrap();
+        crate::services::security::lock(&encryption).unwrap();
+        crate::services::security::unlock(&conn, &encryption, "new-password").unwrap();
+        let rekeyed = get_secure(&conn, &encryption, &created.id).unwrap();
+        assert_eq!(rekeyed.user_prompt, "classified body");
+        assert_eq!(rekeyed.notes.as_deref(), Some("classified notes"));
     }
 }

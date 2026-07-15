@@ -1499,5 +1499,14 @@
       "prompt": "Prompt",
       "folder": "Ordner"
     }
+  },
+  "promptsView": {
+    "pagination": { "summary": "{{from}}-{{to}} von {{total}}", "previous": "Vorherige Seite", "next": "Nachste Seite" },
+    "pin": "Prompt anheften", "unpin": "Prompt losen", "duplicatePrompt": "Prompt duplizieren",
+    "privatePrompt": "Privater Prompt", "privateLockedPreview": "Privater Inhalt ist gesperrt", "privateLockedTitle": "Privater Prompt ist gesperrt", "privateLockedHint": "Entsperren Sie die Prompt-Bibliothek in den Einstellungen.",
+    "editor": { "privatePrompt": "Prompt-Inhalt verschlusseln", "privatePromptHint": "Ein entsperrtes Master-Passwort ist erforderlich." },
+    "bundle": { "export": "Prompt-Paket exportieren", "import": "Prompt-Paket importieren", "exported": "Exportiert nach {{path}}", "path": "Pfad zum Prompt-Paket", "pathPlaceholder": "Pfad zu einer .prompthub-Datei", "conflictPolicy": "Konfliktregel", "skip": "Vorhandene Prompts uberspringen", "duplicate": "Als Kopien importieren", "replace": "Mit neuer Revision ersetzen", "preview": "Vorschau", "previewSummary": "{{prompts}} Prompts, {{revisions}} Revisionen, {{conflicts}} Konflikte, {{mediaFiles}} Medien", "privateKeyWarning": "{{count}} private Prompts erfordern, dass die Bibliothek mit demselben Verschlusselungsschlussel wie das Paket entsperrt ist.", "confirmImport": "Importieren", "imported": "{{added}} hinzugefugt, {{replaced}} ersetzt, {{skipped}} ubersprungen. Backup: {{backupId}}" },
+    "batch": { "selectPrompt": "{{title}} auswahlen", "selected": "{{count}} ausgewahlt", "selectPage": "Diese Seite auswahlen", "clear": "Auswahl leeren", "folder": "Zielordner", "move": "Auswahl verschieben", "tagPlaceholder": "Tag hinzufugen", "addTag": "Tag hinzufugen", "delete": "Auswahl loschen", "deleteConfirm": "Ausgewahlte Prompts und ihre Revisionen loschen?" },
+    "tags": { "manage": "Tags verwalten", "rename": "Tag umbenennen", "renameValue": "Neuer Tag-Name", "delete": "Tag loschen", "deleteConfirm": "Tag {{tag}} aus allen Prompts loschen?" }
   }
 }

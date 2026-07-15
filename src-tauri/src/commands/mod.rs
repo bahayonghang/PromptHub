@@ -5,6 +5,7 @@ pub mod data_path;
 pub mod events;
 pub mod folder;
 pub mod media;
+pub mod portable;
 pub mod prompt;
 pub mod rules;
 pub mod security;

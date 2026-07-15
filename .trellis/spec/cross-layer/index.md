@@ -8,5 +8,6 @@ Bridge, Tauri commands/services, and persistent storage.
 | Guide | Description | Status |
 |-------|-------------|--------|
 | [Domain Retirement](./domain-retirement.md) | Non-destructive removal of an application-managed domain | Filled |
+| [Prompt Library Foundations](./prompt-library-foundations.md) | Paging, migrations, immutable revisions, portable bundles, and private prompts | Filled |
 
 All documentation and comments in this repository are written in English.

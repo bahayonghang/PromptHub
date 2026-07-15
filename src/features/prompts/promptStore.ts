@@ -8,7 +8,11 @@
 import { create } from "zustand";
 import { promptApi, type PromptApi } from "./api";
 import type {
+  BundlePreview,
   Folder,
+  ImportConflictPolicy,
+  PortableExportResult,
+  PortableImportResult,
   Prompt,
   PromptVersion,
   SearchQuery,
@@ -50,6 +54,8 @@ export const DEFAULT_FILTERS: PromptFilters = {
   sortOrder: "desc",
 };
 
+export const PROMPT_PAGE_SIZE = 50;
+
 /**
  * Builds the {@link SearchQuery} sent to `prompt.search` from the view filters
  * (Req 5.3–5.5). Omits empty keyword/tag/folder/favorite fields so the backend
@@ -74,11 +80,15 @@ interface PromptStoreState {
 
   folders: Folder[];
   prompts: Prompt[];
+  total: number;
+  offset: number;
   tags: string[];
   filters: PromptFilters;
 
   /** The id of the prompt open in the editor, or `null` when none is selected. */
   selectedPromptId: string | null;
+  selectedPrompt: Prompt | null;
+  selectedPromptIds: string[];
   /** Version history of the selected prompt (Req 7.1), ascending by version. */
   versions: PromptVersion[];
 
@@ -93,6 +103,8 @@ interface PromptStoreState {
   setFilters: (patch: Partial<PromptFilters>) => Promise<void>;
   /** Toggles a tag in the conjunctive tag filter (Req 5.4). */
   toggleTagFilter: (tag: string) => Promise<void>;
+  loadPreviousPage: () => Promise<void>;
+  loadNextPage: () => Promise<void>;
 
   /** Selects a prompt and loads its version history (Req 7.1). */
   selectPrompt: (id: string | null) => Promise<void>;
@@ -108,6 +120,21 @@ interface PromptStoreState {
   ) => Promise<Prompt | null>;
   /** Deletes a prompt and clears the selection if it was selected (Req 6.5). */
   deletePrompt: (id: string) => Promise<void>;
+  duplicatePrompt: (id: string) => Promise<Prompt | null>;
+  togglePromptSelection: (id: string) => void;
+  selectPage: () => void;
+  clearPromptSelection: () => void;
+  batchMove: (folderId: string | null) => Promise<void>;
+  batchTag: (tags: string[]) => Promise<void>;
+  batchDelete: () => Promise<void>;
+  renameTag: (old: string, next: string) => Promise<void>;
+  deleteTag: (tag: string) => Promise<void>;
+  exportBundle: () => Promise<PortableExportResult | null>;
+  previewBundle: (filePath: string) => Promise<BundlePreview | null>;
+  importBundle: (
+    filePath: string,
+    policy: ImportConflictPolicy,
+  ) => Promise<PortableImportResult | null>;
 
   /** Creates a folder and refreshes the folder list (Req 8.1). */
   createFolder: (
@@ -127,8 +154,6 @@ interface PromptStoreState {
   createVersion: (note?: string) => Promise<void>;
   /** Rolls the selected prompt back to a version (Req 7.3). */
   rollbackVersion: (version: number) => Promise<void>;
-  /** Deletes a single version from history (Req 7.4). */
-  deleteVersion: (versionId: string) => Promise<void>;
 }
 
 export const usePromptStore = create<PromptStoreState>((set, get) => ({
@@ -136,42 +161,70 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
 
   folders: [],
   prompts: [],
+  total: 0,
+  offset: 0,
   tags: [],
   filters: { ...DEFAULT_FILTERS },
 
   selectedPromptId: null,
+  selectedPrompt: null,
+  selectedPromptIds: [],
   versions: [],
 
   loading: false,
   error: null,
 
   load: async () => {
-    const { api, filters } = get();
+    const { api, filters, offset } = get();
     set({ loading: true, error: null });
     try {
-      const [folders, tags, prompts] = await Promise.all([
+      const [folders, tags, page] = await Promise.all([
         api.listFolders(),
         api.listTags(),
-        api.searchPrompts(buildSearchQuery(filters)),
+        api.searchPrompts({
+          ...buildSearchQuery(filters),
+          limit: PROMPT_PAGE_SIZE,
+          offset,
+        }),
       ]);
-      set({ folders, tags, prompts, loading: false });
+      set({
+        folders,
+        tags,
+        prompts: page.items,
+        total: page.total,
+        offset: page.offset,
+        loading: false,
+      });
     } catch (err) {
       set({ error: errorMessage(err), loading: false });
     }
   },
 
   refreshPrompts: async () => {
-    const { api, filters } = get();
+    const { api, filters, offset } = get();
     try {
-      const prompts = await api.searchPrompts(buildSearchQuery(filters));
-      set({ prompts });
+      let page = await api.searchPrompts({
+        ...buildSearchQuery(filters),
+        limit: PROMPT_PAGE_SIZE,
+        offset,
+      });
+      if (page.items.length === 0 && page.total > 0 && page.offset > 0) {
+        const lastOffset =
+          Math.floor((page.total - 1) / PROMPT_PAGE_SIZE) * PROMPT_PAGE_SIZE;
+        page = await api.searchPrompts({
+          ...buildSearchQuery(filters),
+          limit: PROMPT_PAGE_SIZE,
+          offset: lastOffset,
+        });
+      }
+      set({ prompts: page.items, total: page.total, offset: page.offset });
     } catch (err) {
       set({ error: errorMessage(err) });
     }
   },
 
   setFilters: async (patch) => {
-    set({ filters: { ...get().filters, ...patch } });
+    set({ filters: { ...get().filters, ...patch }, offset: 0 });
     await get().refreshPrompts();
   },
 
@@ -183,13 +236,31 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
     await get().setFilters({ tags });
   },
 
+  loadPreviousPage: async () => {
+    const offset = Math.max(0, get().offset - PROMPT_PAGE_SIZE);
+    if (offset === get().offset) return;
+    set({ offset });
+    await get().refreshPrompts();
+  },
+
+  loadNextPage: async () => {
+    const { offset, total } = get();
+    const nextOffset = offset + PROMPT_PAGE_SIZE;
+    if (nextOffset >= total) return;
+    set({ offset: nextOffset });
+    await get().refreshPrompts();
+  },
+
   selectPrompt: async (id) => {
-    set({ selectedPromptId: id, versions: [] });
+    set({ selectedPromptId: id, selectedPrompt: null, versions: [] });
     if (id == null) return;
     try {
-      const versions = await get().api.listVersions(id);
+      const [selectedPrompt, versions] = await Promise.all([
+        get().api.getPrompt(id),
+        get().api.listVersions(id),
+      ]);
       // Ignore the result if the selection changed while loading.
-      if (get().selectedPromptId === id) set({ versions });
+      if (get().selectedPromptId === id) set({ selectedPrompt, versions });
     } catch (err) {
       set({ error: errorMessage(err) });
     }
@@ -214,6 +285,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
     set({ error: null });
     try {
       const prompt = await api.updatePrompt(id, patch);
+      if (get().selectedPromptId === id) set({ selectedPrompt: prompt });
       await get().refreshPrompts();
       // Refresh tags too: an edit may have introduced or removed a tag.
       try {
@@ -234,11 +306,145 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
     try {
       await api.deletePrompt(id);
       if (get().selectedPromptId === id) {
-        set({ selectedPromptId: null, versions: [] });
+        set({ selectedPromptId: null, selectedPrompt: null, versions: [] });
       }
+      set({
+        selectedPromptIds: get().selectedPromptIds.filter(
+          (selectedId) => selectedId !== id,
+        ),
+      });
       await get().refreshPrompts();
     } catch (err) {
       set({ error: errorMessage(err) });
+    }
+  },
+
+  duplicatePrompt: async (id) => {
+    set({ error: null });
+    try {
+      const prompt = await get().api.duplicatePrompt(id);
+      set({ offset: 0 });
+      await get().refreshPrompts();
+      await get().selectPrompt(prompt.id);
+      return prompt;
+    } catch (err) {
+      set({ error: errorMessage(err) });
+      return null;
+    }
+  },
+
+  togglePromptSelection: (id) => {
+    const selected = get().selectedPromptIds;
+    set({
+      selectedPromptIds: selected.includes(id)
+        ? selected.filter((selectedId) => selectedId !== id)
+        : [...selected, id],
+    });
+  },
+
+  selectPage: () => {
+    set({ selectedPromptIds: get().prompts.map((prompt) => prompt.id) });
+  },
+
+  clearPromptSelection: () => set({ selectedPromptIds: [] }),
+
+  batchMove: async (folderId) => {
+    const ids = get().selectedPromptIds;
+    if (ids.length === 0) return;
+    set({ error: null });
+    try {
+      await get().api.batchMove(ids, folderId);
+      await get().refreshPrompts();
+      set({ selectedPromptIds: [] });
+    } catch (err) {
+      set({ error: errorMessage(err) });
+    }
+  },
+
+  batchTag: async (tags) => {
+    const ids = get().selectedPromptIds;
+    if (ids.length === 0) return;
+    set({ error: null });
+    try {
+      await get().api.batchTag(ids, tags);
+      await get().refreshPrompts();
+      set({ tags: await get().api.listTags(), selectedPromptIds: [] });
+    } catch (err) {
+      set({ error: errorMessage(err) });
+    }
+  },
+
+  batchDelete: async () => {
+    const ids = get().selectedPromptIds;
+    if (ids.length === 0) return;
+    set({ error: null });
+    try {
+      await get().api.batchDelete(ids);
+      const selectedPromptId = get().selectedPromptId;
+      if (selectedPromptId != null && ids.includes(selectedPromptId)) {
+        set({ selectedPromptId: null, selectedPrompt: null, versions: [] });
+      }
+      set({ selectedPromptIds: [] });
+      await get().refreshPrompts();
+    } catch (err) {
+      set({ error: errorMessage(err) });
+    }
+  },
+
+  renameTag: async (old, next) => {
+    set({ error: null });
+    try {
+      await get().api.renameTag(old, next);
+      set({ tags: await get().api.listTags() });
+      await get().refreshPrompts();
+    } catch (err) {
+      set({ error: errorMessage(err) });
+    }
+  },
+
+  deleteTag: async (tag) => {
+    set({ error: null });
+    try {
+      await get().api.deleteTag(tag);
+      set({ tags: await get().api.listTags() });
+      await get().setFilters({
+        tags: get().filters.tags.filter((selected) => selected !== tag),
+      });
+    } catch (err) {
+      set({ error: errorMessage(err) });
+    }
+  },
+
+  exportBundle: async () => {
+    set({ error: null });
+    try {
+      return await get().api.exportBundle();
+    } catch (err) {
+      set({ error: errorMessage(err) });
+      return null;
+    }
+  },
+
+  previewBundle: async (filePath) => {
+    set({ error: null });
+    try {
+      return await get().api.previewBundle(filePath);
+    } catch (err) {
+      set({ error: errorMessage(err) });
+      return null;
+    }
+  },
+
+  importBundle: async (filePath, policy) => {
+    set({ error: null });
+    try {
+      const result = await get().api.importBundle(filePath, policy);
+      set({ offset: 0, selectedPromptIds: [] });
+      await get().load();
+      return result;
+    } catch (err) {
+      set({ error: errorMessage(err) });
+      return null;
     }
   },
 
@@ -311,7 +517,8 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
     if (selectedPromptId == null) return;
     set({ error: null });
     try {
-      await api.rollbackVersion(selectedPromptId, version);
+      const selectedPrompt = await api.rollbackVersion(selectedPromptId, version);
+      set({ selectedPrompt });
       await get().refreshPrompts();
       set({ versions: await api.listVersions(selectedPromptId) });
     } catch (err) {
@@ -319,22 +526,12 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
     }
   },
 
-  deleteVersion: async (versionId) => {
-    const { api, selectedPromptId } = get();
-    set({ error: null });
-    try {
-      await api.deleteVersion(versionId);
-      if (selectedPromptId != null) {
-        set({ versions: await api.listVersions(selectedPromptId) });
-      }
-    } catch (err) {
-      set({ error: errorMessage(err) });
-    }
-  },
 }));
 
 /** Selects the currently open prompt from the loaded list, or `null`. */
 export function selectSelectedPrompt(state: PromptStoreState): Prompt | null {
   if (state.selectedPromptId == null) return null;
-  return state.prompts.find((p) => p.id === state.selectedPromptId) ?? null;
+  return state.selectedPrompt?.id === state.selectedPromptId
+    ? state.selectedPrompt
+    : null;
 }

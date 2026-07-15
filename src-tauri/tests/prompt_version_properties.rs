@@ -306,8 +306,6 @@ enum FailingOp {
     RollbackMissingPrompt,
     /// rollback to a missing version on an existing prompt (NOT_FOUND).
     RollbackMissingVersion,
-    /// delete a missing version (NOT_FOUND).
-    VersionDeleteMissing,
 }
 
 fn failing_op_strat() -> impl Strategy<Value = FailingOp> {
@@ -326,7 +324,6 @@ fn failing_op_strat() -> impl Strategy<Value = FailingOp> {
         Just(FailingOp::VersionCreateLongNote),
         Just(FailingOp::RollbackMissingPrompt),
         Just(FailingOp::RollbackMissingVersion),
-        Just(FailingOp::VersionDeleteMissing),
     ]
 }
 
@@ -397,9 +394,6 @@ proptest! {
             FailingOp::RollbackMissingVersion => {
                 version::rollback(&conn, &existing_id, 9999).unwrap_err()
             }
-            FailingOp::VersionDeleteMissing => {
-                version::delete(&conn, &existing_id, 9999).unwrap_err()
-            }
         };
 
         // Structured error: a stable code and a non-empty message.
@@ -439,17 +433,18 @@ proptest! {
             .map(|_| version::create(&conn, &id, None).unwrap().version)
             .collect();
 
-        let expected: Vec<i64> = (1..=n as i64).collect();
-        prop_assert_eq!(&assigned, &expected, "create returned non-monotonic versions");
+        let assigned_expected: Vec<i64> = (2..=n as i64 + 1).collect();
+        prop_assert_eq!(&assigned, &assigned_expected, "create returned non-monotonic versions");
 
         let listed: Vec<i64> = version::list(&conn, &id)
             .unwrap()
             .into_iter()
             .map(|v| v.version)
             .collect();
-        prop_assert_eq!(&listed, &expected, "list disagrees with assigned versions");
+        let listed_expected: Vec<i64> = (1..=n as i64 + 1).collect();
+        prop_assert_eq!(&listed, &listed_expected, "list disagrees with assigned versions");
 
-        prop_assert_eq!(prompt::get(&conn, &id).unwrap().current_version, n as i64);
+        prop_assert_eq!(prompt::get(&conn, &id).unwrap().current_version, n as i64 + 1);
     }
 
     /// **Property 20: Version note length validation.**
@@ -473,12 +468,12 @@ proptest! {
             Ok(v) => {
                 prop_assert!(valid, "accepted a note of {len} chars");
                 prop_assert_eq!(v.note.as_deref(), Some(note.as_str()));
-                prop_assert_eq!(version::list(&conn, &id).unwrap().len(), 1);
+                prop_assert_eq!(version::list(&conn, &id).unwrap().len(), 2);
             }
             Err(err) => {
                 prop_assert!(!valid, "rejected a note of {len} chars");
                 prop_assert_eq!(err.code, ErrorCode::Validation);
-                prop_assert!(version::list(&conn, &id).unwrap().is_empty(), "no version on reject");
+                prop_assert_eq!(version::list(&conn, &id).unwrap().len(), 1, "no additional version on reject");
             }
         }
     }
@@ -644,6 +639,7 @@ proptest! {
             videos: None,
             is_favorite: p_fav,
             is_pinned: p_pin,
+            is_private: None,
             usage_count: p_usage,
             source: p_source.clone(),
             notes: p_notes.clone(),

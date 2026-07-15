@@ -30,7 +30,10 @@ everything the original Electron main process did.
 - `src/commands/mod.rs` — shared command helpers: `conn`, `ensure_ready`,
   `into_command`, `CommandRuntimeState`, `app_status`.
 - `src/commands/events.rs` — event channel names + payloads and the AI/updater sinks.
-- `src/storage/mod.rs` — `create_pool`, `init_schema`, and `SCHEMA_SQL` (full DDL).
+- `src/storage/mod.rs` — `create_pool`, ordered `MIGRATIONS`, `init_schema`, and
+  `SCHEMA_SQL` (fresh-install DDL).
+- `src/services/portable.rs` — versioned prompt bundle validation, preview,
+  export/import, media staging, and import rollback cleanup.
 - `Cargo.toml` — dependencies, each annotated with the requirement it serves.
 - `tauri.conf.json` — window/bundle/updater config.
 
@@ -40,6 +43,11 @@ Each domain typically has a matching `commands/<d>.rs` + `services/<d>.rs` pair:
 `prompt`, `folder`, `version` (prompt versions), `rules`, `settings`, `security`,
 `data_path`, `sync`, `ai`, `media`, `window`, `updater`. Shared network address
 validation for untrusted downloads lives in `services/network_safety.rs`.
+
+Prompt-library persistence also uses `commands/portable.rs` +
+`services/portable.rs`. Private prompt content is encrypted by
+`services/security.rs`; immutable snapshots and rollback-as-new-revision live in
+`services/version.rs`.
 
 ## Upstream and Downstream Boundaries
 
@@ -53,6 +61,8 @@ validation for untrusted downloads lives in `services/network_safety.rs`.
 - `#[tauri::command` / `rename = "` — command definitions and their wire names.
 - `invoke_handler!` (in `lib.rs`) — the complete registered command set.
 - `SCHEMA_SQL` — the SQLite DDL.
+- `CURRENT_SCHEMA_VERSION` / `MIGRATIONS` — ordered database upgrades.
+- `FORMAT_VERSION` / `PromptBundleManifest` — portable bundle contract.
 - `EVENT_` (in `events.rs`) — event channel name constants.
 - `AppError::` / `ErrorCode::` — error construction and the code taxonomy.
 - `EventSink` / `UpdaterEventSink` — the streaming/progress injection points.
