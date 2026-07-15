@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  ArrowLeftIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CopyIcon,
@@ -9,6 +10,7 @@ import {
   FlaskConicalIcon,
   HistoryIcon,
   LockIcon,
+  PanelLeftOpenIcon,
   PinIcon,
   PlusIcon,
   StarIcon,
@@ -29,6 +31,9 @@ import { PromptEditor } from "./components/PromptEditor";
 import { VersionHistory } from "./components/VersionHistory";
 import { BatchToolbar } from "./components/BatchToolbar";
 import { TagManager } from "./components/TagManager";
+
+const iconButtonClass =
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40";
 
 /**
  * The prompt-editing view (Req 22.3). Lays out a folder tree (Req 8), a
@@ -81,6 +86,8 @@ export function PromptsView() {
   const rollbackVersion = usePromptStore((s) => s.rollbackVersion);
 
   const [creating, setCreating] = useState(false);
+  const [compactPane, setCompactPane] = useState<"list" | "detail">("list");
+  const [showFolders, setShowFolders] = useState(false);
   const [workspaceMode, setWorkspaceMode] = useState<"editor" | "evaluation">("editor");
   const [showHistory, setShowHistory] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -96,6 +103,7 @@ export function PromptsView() {
 
   const startCreate = () => {
     setCreating(true);
+    setCompactPane("detail");
     void selectPrompt(null);
   };
 
@@ -116,15 +124,47 @@ export function PromptsView() {
   };
 
   const editorActive = creating || selectedPrompt != null;
+  const navigationVisible = workspaceMode !== "evaluation" || !selectedPrompt;
+  const folderPaneClass = navigationVisible
+    ? `prompt-workspace__folders absolute inset-y-0 left-0 z-30 flex w-64 shrink-0 flex-col border-r border-border bg-card py-2 shadow-lg transition-transform duration-200 ${
+         showFolders
+           ? "visible translate-x-0 pointer-events-auto"
+           : "invisible -translate-x-full pointer-events-none"
+       }`
+    : "hidden";
+  const discoveryPaneClass = navigationVisible
+    ? `prompt-workspace__discovery min-w-0 w-full shrink-0 flex-col border-r border-border ${
+        compactPane === "list" ? "flex" : "hidden"
+      }`
+    : "hidden";
+  const detailPaneClass = `prompt-workspace__detail min-w-0 flex-1 flex-col ${
+    compactPane === "detail" || !navigationVisible ? "flex" : "hidden"
+  }`;
 
   return (
-    <div className="flex h-full w-full">
+    <div className="prompt-workspace relative flex h-full min-h-0 w-full overflow-hidden">
+      {navigationVisible && showFolders && (
+        <button
+          type="button"
+          aria-label={t("common.close")}
+          onClick={() => setShowFolders(false)}
+          className="prompt-workspace__compact-control absolute inset-0 z-20 bg-foreground/15"
+        />
+      )}
+
       {/* Folder tree */}
-      <aside className={workspaceMode === "evaluation" && selectedPrompt ? "hidden" : "flex w-56 shrink-0 flex-col border-r border-border bg-card/40 py-2"}>
+      <aside
+        id="prompt-folder-navigation"
+        aria-label={t("promptsView.folders")}
+        className={folderPaneClass}
+      >
         <FolderTree
           folders={folders}
           selectedFolderId={filters.folderId}
-          onSelectFolder={(folderId) => void setFilters({ folderId })}
+          onSelectFolder={(folderId) => {
+            setShowFolders(false);
+            void setFilters({ folderId });
+          }}
           onCreateFolder={(name, parentId) =>
             void createFolder({ name, parentId })
           }
@@ -136,13 +176,29 @@ export function PromptsView() {
       </aside>
 
       {/* Prompt list + search */}
-      <section className={workspaceMode === "evaluation" && selectedPrompt ? "hidden" : "flex w-80 shrink-0 flex-col border-r border-border"}>
+      <section
+        aria-label={t("common.prompts")}
+        className={discoveryPaneClass}
+      >
         <div className="flex flex-col gap-2 border-b border-border p-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">
-              {t("common.prompts")}
-            </h2>
-            <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <button
+                type="button"
+                aria-label={t("promptsView.folders")}
+                aria-expanded={showFolders}
+                aria-controls="prompt-folder-navigation"
+                onClick={() => setShowFolders(true)}
+                className="prompt-workspace__compact-control flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-input px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <PanelLeftOpenIcon className="h-4 w-4" aria-hidden="true" />
+                {t("promptsView.folders")}
+              </button>
+              <h2 className="truncate text-sm font-semibold text-foreground">
+                {t("common.prompts")}
+              </h2>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
               <button
                 type="button"
                 title={t("promptsView.bundle.export")}
@@ -158,7 +214,7 @@ export function PromptsView() {
                     }
                   })
                 }
-                className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                className={iconButtonClass}
               >
                 <DownloadIcon className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -168,18 +224,18 @@ export function PromptsView() {
                 aria-label={t("promptsView.bundle.import")}
                 aria-pressed={showImport}
                 onClick={() => setShowImport((open) => !open)}
-                className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                className={iconButtonClass}
               >
                 <UploadIcon className="h-4 w-4" aria-hidden="true" />
               </button>
-            <button
-              type="button"
-              onClick={startCreate}
-              className="flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground"
-            >
-              <PlusIcon className="h-3.5 w-3.5" aria-hidden="true" />
-              {t("promptsView.newPrompt")}
-            </button>
+              <button
+                type="button"
+                onClick={startCreate}
+                className="flex h-8 items-center gap-1.5 rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <PlusIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                {t("promptsView.newPrompt")}
+              </button>
             </div>
           </div>
           <SearchBar
@@ -311,6 +367,7 @@ export function PromptsView() {
             onToggleSelection={togglePromptSelection}
             onSelect={(id) => {
               setCreating(false);
+              setCompactPane("detail");
               void selectPrompt(id);
             }}
           />
@@ -330,7 +387,7 @@ export function PromptsView() {
               aria-label={t("promptsView.pagination.previous")}
               disabled={loading || offset === 0}
               onClick={() => void loadPreviousPage()}
-              className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+              className={iconButtonClass}
             >
               <ChevronLeftIcon className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -342,7 +399,7 @@ export function PromptsView() {
                 loading || offset + PROMPT_PAGE_SIZE >= total
               }
               onClick={() => void loadNextPage()}
-              className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+              className={iconButtonClass}
             >
               <ChevronRightIcon className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -351,7 +408,10 @@ export function PromptsView() {
       </section>
 
       {/* Editor + version history */}
-      <section className="flex min-w-0 flex-1 flex-col">
+      <section
+        aria-label={t("evaluation.workspaceMode")}
+        className={detailPaneClass}
+      >
         {error && (
           <div
             role="alert"
@@ -363,53 +423,100 @@ export function PromptsView() {
 
         {editorActive ? (
           <>
-            <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2">
-              <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+            <div className="prompt-workspace__detail-header flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-3 py-2">
+              {navigationVisible && (
+                <button
+                  type="button"
+                  onClick={() => setCompactPane("list")}
+                  className="prompt-workspace__compact-control flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-input px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" />
+                  {t("common.prompts")}
+                </button>
+              )}
+              <span className="prompt-workspace__detail-title min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                 {creating
                   ? t("promptsView.editor.create")
                   : selectedPrompt?.title || t("promptsView.untitled")}
               </span>
               {!creating && selectedPrompt && (
                 <>
-                  <div role="tablist" aria-label={t("evaluation.workspaceMode")} className="mr-1 flex rounded border border-input p-0.5">
-                    <button type="button" role="tab" aria-selected={workspaceMode === "editor"} onClick={() => setWorkspaceMode("editor")} className={`rounded px-2 py-1 text-xs ${workspaceMode === "editor" ? "bg-accent text-foreground" : "text-muted-foreground"}`}>{t("evaluation.editorTab")}</button>
-                    <button type="button" role="tab" aria-selected={workspaceMode === "evaluation"} onClick={() => { setWorkspaceMode("evaluation"); setShowHistory(false); }} className={`flex items-center gap-1 rounded px-2 py-1 text-xs ${workspaceMode === "evaluation" ? "bg-accent text-foreground" : "text-muted-foreground"}`}><FlaskConicalIcon className="h-3.5 w-3.5" aria-hidden="true" />{t("evaluation.evaluationTab")}</button>
-                  </div>
-                  {workspaceMode === "editor" && <button
-                    type="button"
-                    title={
-                      selectedPrompt.isPinned
-                        ? t("promptsView.unpin")
-                        : t("promptsView.pin")
-                    }
-                    aria-label={
-                      selectedPrompt.isPinned
-                        ? t("promptsView.unpin")
-                        : t("promptsView.pin")
-                    }
-                    aria-pressed={selectedPrompt.isPinned}
-                    onClick={() =>
-                      void savePrompt(selectedPrompt.id, {
-                        isPinned: !selectedPrompt.isPinned,
-                      })
-                    }
-                    className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                  <div
+                    role="tablist"
+                    aria-label={t("evaluation.workspaceMode")}
+                    className="mr-1 flex rounded-md border border-input p-0.5"
                   >
-                    <PinIcon
-                      className={`h-4 w-4 ${
-                        selectedPrompt.isPinned
-                          ? "fill-current text-primary"
-                          : ""
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={workspaceMode === "editor"}
+                      onClick={() => setWorkspaceMode("editor")}
+                      className={`min-h-8 rounded px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        workspaceMode === "editor"
+                          ? "bg-accent text-foreground"
+                          : "text-muted-foreground"
                       }`}
-                      aria-hidden="true"
-                    />
-                  </button>}
+                    >
+                      {t("evaluation.editorTab")}
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={workspaceMode === "evaluation"}
+                      onClick={() => {
+                        setWorkspaceMode("evaluation");
+                        setShowHistory(false);
+                      }}
+                      className={`flex min-h-8 items-center gap-1 rounded px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        workspaceMode === "evaluation"
+                          ? "bg-accent text-foreground"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      <FlaskConicalIcon
+                        className="h-3.5 w-3.5"
+                        aria-hidden="true"
+                      />
+                      {t("evaluation.evaluationTab")}
+                    </button>
+                  </div>
+                  {workspaceMode === "editor" && (
+                    <button
+                      type="button"
+                      title={
+                        selectedPrompt.isPinned
+                          ? t("promptsView.unpin")
+                          : t("promptsView.pin")
+                      }
+                      aria-label={
+                        selectedPrompt.isPinned
+                          ? t("promptsView.unpin")
+                          : t("promptsView.pin")
+                      }
+                      aria-pressed={selectedPrompt.isPinned}
+                      onClick={() =>
+                        void savePrompt(selectedPrompt.id, {
+                          isPinned: !selectedPrompt.isPinned,
+                        })
+                      }
+                      className={iconButtonClass}
+                    >
+                      <PinIcon
+                        className={`h-4 w-4 ${
+                          selectedPrompt.isPinned
+                            ? "fill-current text-primary"
+                            : ""
+                        }`}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  )}
                   <button
                     type="button"
                     title={t("promptsView.duplicatePrompt")}
                     aria-label={t("promptsView.duplicatePrompt")}
                     onClick={() => void duplicatePrompt(selectedPrompt.id)}
-                    className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                    className={iconButtonClass}
                   >
                     <CopyIcon className="h-4 w-4" aria-hidden="true" />
                   </button>
@@ -431,7 +538,7 @@ export function PromptsView() {
                         isFavorite: !selectedPrompt.isFavorite,
                       })
                     }
-                    className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                    className={iconButtonClass}
                   >
                     <StarIcon
                       className={`h-4 w-4 ${
@@ -440,26 +547,26 @@ export function PromptsView() {
                       aria-hidden="true"
                     />
                   </button>
-                  {workspaceMode === "editor" && <button
-                    type="button"
-                    title={t("promptsView.history.title")}
-                    aria-label={t("promptsView.history.title")}
-                    aria-pressed={showHistory}
-                    onClick={() => setShowHistory((v) => !v)}
-                    className={`rounded p-1.5 transition-colors ${
-                      showHistory
-                        ? "bg-primary/15 text-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                    }`}
-                  >
-                    <HistoryIcon className="h-4 w-4" aria-hidden="true" />
-                  </button>}
+                  {workspaceMode === "editor" && (
+                    <button
+                      type="button"
+                      title={t("promptsView.history.title")}
+                      aria-label={t("promptsView.history.title")}
+                      aria-pressed={showHistory}
+                      onClick={() => setShowHistory((v) => !v)}
+                      className={`${iconButtonClass} transition-colors ${
+                        showHistory ? "bg-primary/15 text-foreground" : ""
+                      }`}
+                    >
+                      <HistoryIcon className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     title={t("promptsView.deletePrompt")}
                     aria-label={t("promptsView.deletePrompt")}
                     onClick={() => handleDeletePrompt(selectedPrompt.id)}
-                    className="rounded p-1.5 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
+                    className={`${iconButtonClass} hover:bg-destructive/15 hover:text-destructive`}
                   >
                     <Trash2Icon className="h-4 w-4" aria-hidden="true" />
                   </button>
@@ -467,7 +574,7 @@ export function PromptsView() {
               )}
             </div>
 
-            <div className="flex min-h-0 flex-1">
+            <div className="relative flex min-h-0 flex-1 overflow-hidden">
               <div className="min-w-0 flex-1">
                 {selectedPrompt?.isLocked ? (
                   <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
@@ -501,7 +608,10 @@ export function PromptsView() {
                 )}
               </div>
               {!creating && workspaceMode === "editor" && showHistory && selectedPrompt && (
-                <aside className="w-72 shrink-0 border-l border-border bg-card/40">
+                <aside
+                  aria-label={t("promptsView.history.title")}
+                  className="prompt-workspace__history absolute inset-y-0 right-0 z-10 w-[min(20rem,100%)] shrink-0 border-l border-border bg-card shadow-lg"
+                >
                   <VersionHistory
                     prompt={selectedPrompt}
                     versions={versions}
@@ -522,6 +632,16 @@ export function PromptsView() {
           </>
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
+            {navigationVisible && (
+              <button
+                type="button"
+                onClick={() => setCompactPane("list")}
+                className="prompt-workspace__compact-control absolute left-3 top-3 flex h-8 items-center gap-1.5 rounded-md border border-input px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" />
+                {t("common.prompts")}
+              </button>
+            )}
             <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
               <CommandIcon className="h-7 w-7" aria-hidden="true" />
             </span>

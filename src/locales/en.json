@@ -1384,6 +1384,12 @@
       "deleteConfirm": "Delete tag {{tag}} from every prompt?"
     },
     "editor": {
+      "sections": {
+        "identity": "Basics",
+        "definition": "Prompt definition",
+        "organization": "Organization",
+        "references": "Supporting details"
+      },
       "privatePrompt": "Encrypt prompt content",
       "privatePromptHint": "Requires an unlocked master password.",
       "title": "Title",

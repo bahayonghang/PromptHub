@@ -229,409 +229,519 @@ export function PromptEditor({
 
   const labelClass = "text-xs font-medium text-muted-foreground";
   const inputClass =
-    "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring";
+    "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   return (
     <form
-      className="flex h-full flex-col"
+      className="prompt-editor flex h-full min-h-0 flex-col"
       onSubmit={(e) => {
         e.preventDefault();
         submit();
       }}
     >
-      <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
-        <label className="flex items-center gap-2 text-sm text-foreground">
-          <input
-            type="checkbox"
-            checked={draft.isPrivate}
-            onChange={(event) => update("isPrivate", event.target.checked)}
-            className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
-          />
-          <span>
-            {t("promptsView.editor.privatePrompt")}
-            <span className="block text-xs text-muted-foreground">
-              {t("promptsView.editor.privatePromptHint")}
-            </span>
-          </span>
-        </label>
-
-        {/* Title */}
-        <div className="flex flex-col gap-1">
-          <label className={labelClass} htmlFor="prompt-title">
-            {t("promptsView.editor.title")}
-          </label>
-          <input
-            id="prompt-title"
-            value={draft.title}
-            placeholder={t("promptsView.editor.titlePlaceholder")}
-            onChange={(e) => update("title", e.target.value)}
-            className={inputClass}
-          />
-          {!titleValid && (
-            <span className="text-xs text-destructive">
-              {t("promptsView.editor.titleRequired")}
-            </span>
-          )}
-        </div>
-
-        {/* Type + Folder */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1">
-            <label className={labelClass} htmlFor="prompt-type">
-              {t("promptsView.editor.type")}
-            </label>
-            <select
-              id="prompt-type"
-              value={draft.promptType}
-              onChange={(e) => update("promptType", e.target.value as PromptType)}
-              className={inputClass}
+      <div className="prompt-editor__body min-h-0 flex-1 overflow-y-auto px-4 py-5">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+          <section aria-labelledby="prompt-editor-basics">
+            <h3
+              id="prompt-editor-basics"
+              className="text-sm font-semibold text-foreground"
             >
-              {PROMPT_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {t(`promptsView.editor.type${type[0].toUpperCase()}${type.slice(1)}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className={labelClass} htmlFor="prompt-folder">
-              {t("promptsView.editor.folder")}
-            </label>
-            <select
-              id="prompt-folder"
-              value={draft.folderId ?? ""}
-              onChange={(e) => update("folderId", e.target.value || null)}
-              className={inputClass}
-            >
-              <option value="">{t("promptsView.editor.noFolder")}</option>
-              {folders.map((folder) => (
-                <option key={folder.id} value={folder.id}>
-                  {folder.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Description */}
-        <div className="flex flex-col gap-1">
-          <label className={labelClass} htmlFor="prompt-description">
-            {t("promptsView.editor.description")}
-          </label>
-          <input
-            id="prompt-description"
-            value={draft.description}
-            placeholder={t("promptsView.editor.descriptionPlaceholder")}
-            onChange={(e) => update("description", e.target.value)}
-            className={inputClass}
-          />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <span className={labelClass}>{t("evaluation.definitionMode")}</span>
-          <div
-            role="group"
-            aria-label={t("evaluation.definitionMode")}
-            className="flex rounded-md border border-input p-0.5"
-          >
-            <button
-              type="button"
-              aria-pressed={!chatMode}
-              onClick={() => setChatMode(false)}
-              className={`flex items-center gap-1.5 rounded px-2 py-1 text-xs ${
-                !chatMode ? "bg-accent text-foreground" : "text-muted-foreground"
-              }`}
-            >
-              <TextIcon className="h-3.5 w-3.5" aria-hidden="true" />
-              {t("evaluation.textMode")}
-            </button>
-            <button
-              type="button"
-              aria-pressed={chatMode}
-              onClick={() => setChatMode(true)}
-              className={`flex items-center gap-1.5 rounded px-2 py-1 text-xs ${
-                chatMode ? "bg-accent text-foreground" : "text-muted-foreground"
-              }`}
-            >
-              <MessageSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
-              {t("evaluation.chatMode")}
-            </button>
-          </div>
-        </div>
-
-        {chatMode ? (
-          <div className="flex flex-col gap-2">
-            {draft.messages.map((message, index) => (
-              <div
-                key={`${index}-${message.role}`}
-                className="grid grid-cols-[8rem_minmax(0,1fr)_auto] items-start gap-2 rounded border border-border p-2"
-              >
-                <select
-                  value={message.role}
-                  aria-label={t("evaluation.messageRole", { index: index + 1 })}
-                  onChange={(event) => {
-                    const next = [...draft.messages];
-                    next[index] = {
-                      ...message,
-                      role: event.target.value as PromptMessageRole,
-                    };
-                    updateMessages(next);
-                  }}
-                  className="rounded border border-input bg-background px-2 py-1.5 text-xs text-foreground"
-                >
-                  <option value="system">{t("evaluation.roleSystem")}</option>
-                  <option value="user">{t("evaluation.roleUser")}</option>
-                  <option value="assistant">{t("evaluation.roleAssistant")}</option>
-                </select>
-                <textarea
-                  value={message.content}
-                  aria-label={t("evaluation.messageContent", { index: index + 1 })}
-                  onChange={(event) => {
-                    const next = [...draft.messages];
-                    next[index] = { ...message, content: event.target.value };
-                    updateMessages(next);
-                  }}
-                  rows={3}
-                  className={`${inputClass} resize-y font-mono`}
-                />
-                <div className="flex flex-col gap-1">
-                  {[ArrowUpIcon, ArrowDownIcon, Trash2Icon].map((Icon, action) => (
-                    <button
-                      key={action}
-                      type="button"
-                      disabled={
-                        (action === 0 && index === 0) ||
-                        (action === 1 && index === draft.messages.length - 1) ||
-                        (action === 2 && draft.messages.length === 1)
-                      }
-                      title={t(
-                        action === 0
-                          ? "evaluation.moveMessageUp"
-                          : action === 1
-                            ? "evaluation.moveMessageDown"
-                            : "evaluation.removeMessage",
-                      )}
-                      aria-label={t(
-                        action === 0
-                          ? "evaluation.moveMessageUp"
-                          : action === 1
-                            ? "evaluation.moveMessageDown"
-                            : "evaluation.removeMessage",
-                      )}
-                      onClick={() => {
-                        const next = [...draft.messages];
-                        if (action === 2) next.splice(index, 1);
-                        else {
-                          const target = action === 0 ? index - 1 : index + 1;
-                          [next[index], next[target]] = [next[target], next[index]];
-                        }
-                        updateMessages(next);
-                      }}
-                      className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
-                    >
-                      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() =>
-                updateMessages([...draft.messages, { role: "user", content: "" }])
-              }
-              className="flex w-fit items-center gap-1.5 rounded border border-input px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
-              <PlusIcon className="h-3.5 w-3.5" aria-hidden="true" />
-              {t("evaluation.addMessage")}
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="flex flex-col gap-1">
-              <label className={labelClass} htmlFor="prompt-system">
-                {t("promptsView.editor.systemPrompt")}
-              </label>
-              <textarea
-                id="prompt-system"
-                value={draft.systemPrompt}
-                placeholder={t("promptsView.editor.systemPromptPlaceholder")}
-                onChange={(e) => updateText("systemPrompt", e.target.value)}
-                rows={3}
-                className={`${inputClass} resize-y`}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className={labelClass} htmlFor="prompt-user">
-                {t("promptsView.editor.userPrompt")}
-              </label>
-              <textarea
-                id="prompt-user"
-                value={draft.userPrompt}
-                placeholder={t("promptsView.editor.userPromptPlaceholder")}
-                onChange={(e) => updateText("userPrompt", e.target.value)}
-                rows={6}
-                className={`${inputClass} resize-y font-mono`}
-              />
-            </div>
-          </>
-        )}
-        {!userPromptValid && (
-          <span className="text-xs text-destructive">
-            {t("promptsView.editor.userPromptRequired")}
-          </span>
-        )}
-
-        {/* Variables */}
-        <VariableEditor
-          variables={draft.variables}
-          onChange={(variables) => update("variables", variables)}
-        />
-
-        {/* Preview */}
-        {draft.variables.length > 0 && (
-          <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3">
-            <span className={labelClass}>{t("promptsView.editor.preview")}</span>
-            <div className="grid grid-cols-2 gap-2">
-              {draft.variables.map((variable) => (
+              {t("promptsView.editor.sections.identity")}
+            </h3>
+            <div className="prompt-editor__two-column mt-3 grid grid-cols-1 gap-4">
+              <div className="flex flex-col gap-1">
+                <label className={labelClass} htmlFor="prompt-title">
+                  {t("promptsView.editor.title")}
+                </label>
                 <input
-                  key={variable.name}
-                  value={previewValues[variable.name] ?? ""}
-                  placeholder={variable.label || variable.name}
-                  onChange={(e) =>
-                    setPreviewValues((v) => ({
-                      ...v,
-                      [variable.name]: e.target.value,
-                    }))
-                  }
-                  className="rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground outline-none focus:ring-1 focus:ring-ring"
+                  id="prompt-title"
+                  value={draft.title}
+                  placeholder={t("promptsView.editor.titlePlaceholder")}
+                  onChange={(e) => update("title", e.target.value)}
+                  className={inputClass}
                 />
-              ))}
-            </div>
-            <pre className="whitespace-pre-wrap rounded-md bg-muted p-2 text-xs text-foreground">
-              {previewText}
-            </pre>
-          </div>
-        )}
+                {!titleValid && (
+                  <span className="text-xs text-destructive">
+                    {t("promptsView.editor.titleRequired")}
+                  </span>
+                )}
+              </div>
 
-        {/* Tags */}
-        <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>{t("promptsView.editor.tags")}</label>
-          {draft.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {draft.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-foreground"
+              <div className="flex flex-col gap-1">
+                <label className={labelClass} htmlFor="prompt-description">
+                  {t("promptsView.editor.description")}
+                </label>
+                <input
+                  id="prompt-description"
+                  value={draft.description}
+                  placeholder={t("promptsView.editor.descriptionPlaceholder")}
+                  onChange={(e) => update("description", e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className={labelClass} htmlFor="prompt-type">
+                  {t("promptsView.editor.type")}
+                </label>
+                <select
+                  id="prompt-type"
+                  value={draft.promptType}
+                  onChange={(e) =>
+                    update("promptType", e.target.value as PromptType)
+                  }
+                  className={inputClass}
                 >
-                  {tag}
+                  {PROMPT_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {t(
+                        `promptsView.editor.type${type[0].toUpperCase()}${type.slice(1)}`,
+                      )}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <label className="flex items-center gap-2 self-end py-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={draft.isPrivate}
+                  onChange={(event) =>
+                    update("isPrivate", event.target.checked)
+                  }
+                  className="h-4 w-4 shrink-0 rounded border-input text-primary focus:ring-ring"
+                />
+                <span>
+                  {t("promptsView.editor.privatePrompt")}
+                  <span className="block text-xs text-muted-foreground">
+                    {t("promptsView.editor.privatePromptHint")}
+                  </span>
+                </span>
+              </label>
+            </div>
+          </section>
+
+          <section
+            aria-labelledby="prompt-editor-definition"
+            className="border-t border-border pt-5"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3
+                id="prompt-editor-definition"
+                className="text-sm font-semibold text-foreground"
+              >
+                {t("promptsView.editor.sections.definition")}
+              </h3>
+              <div
+                role="group"
+                aria-label={t("evaluation.definitionMode")}
+                className="flex rounded-md border border-input p-0.5"
+              >
+                <button
+                  type="button"
+                  aria-pressed={!chatMode}
+                  onClick={() => setChatMode(false)}
+                  className={`flex min-h-8 items-center gap-1.5 rounded px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    !chatMode
+                      ? "bg-accent text-foreground"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  <TextIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                  {t("evaluation.textMode")}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={chatMode}
+                  onClick={() => setChatMode(true)}
+                  className={`flex min-h-8 items-center gap-1.5 rounded px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    chatMode
+                      ? "bg-accent text-foreground"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  <MessageSquareIcon
+                    className="h-3.5 w-3.5"
+                    aria-hidden="true"
+                  />
+                  {t("evaluation.chatMode")}
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-col gap-4">
+              {chatMode ? (
+                <div className="flex flex-col gap-2">
+                  {draft.messages.map((message, index) => (
+                    <div
+                      key={`${index}-${message.role}`}
+                      className="prompt-editor__message grid grid-cols-1 items-start gap-2 border-b border-border py-3 last:border-b-0"
+                    >
+                      <select
+                        value={message.role}
+                        aria-label={t("evaluation.messageRole", {
+                          index: index + 1,
+                        })}
+                        onChange={(event) => {
+                          const next = [...draft.messages];
+                          next[index] = {
+                            ...message,
+                            role: event.target.value as PromptMessageRole,
+                          };
+                          updateMessages(next);
+                        }}
+                        className="w-full rounded-md border border-input bg-background px-2 py-2 text-xs text-foreground"
+                      >
+                        <option value="system">
+                          {t("evaluation.roleSystem")}
+                        </option>
+                        <option value="user">{t("evaluation.roleUser")}</option>
+                        <option value="assistant">
+                          {t("evaluation.roleAssistant")}
+                        </option>
+                      </select>
+                      <textarea
+                        value={message.content}
+                        aria-label={t("evaluation.messageContent", {
+                          index: index + 1,
+                        })}
+                        onChange={(event) => {
+                          const next = [...draft.messages];
+                          next[index] = {
+                            ...message,
+                            content: event.target.value,
+                          };
+                          updateMessages(next);
+                        }}
+                        rows={4}
+                        className={`${inputClass} resize-y font-mono`}
+                      />
+                      <div className="prompt-editor__message-actions flex gap-1">
+                        {[ArrowUpIcon, ArrowDownIcon, Trash2Icon].map(
+                          (Icon, action) => (
+                            <button
+                              key={action}
+                              type="button"
+                              disabled={
+                                (action === 0 && index === 0) ||
+                                (action === 1 &&
+                                  index === draft.messages.length - 1) ||
+                                (action === 2 && draft.messages.length === 1)
+                              }
+                              title={t(
+                                action === 0
+                                  ? "evaluation.moveMessageUp"
+                                  : action === 1
+                                    ? "evaluation.moveMessageDown"
+                                    : "evaluation.removeMessage",
+                              )}
+                              aria-label={t(
+                                action === 0
+                                  ? "evaluation.moveMessageUp"
+                                  : action === 1
+                                    ? "evaluation.moveMessageDown"
+                                    : "evaluation.removeMessage",
+                              )}
+                              onClick={() => {
+                                const next = [...draft.messages];
+                                if (action === 2) next.splice(index, 1);
+                                else {
+                                  const target =
+                                    action === 0 ? index - 1 : index + 1;
+                                  [next[index], next[target]] = [
+                                    next[target],
+                                    next[index],
+                                  ];
+                                }
+                                updateMessages(next);
+                              }}
+                              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30"
+                            >
+                              <Icon
+                                className="h-3.5 w-3.5"
+                                aria-hidden="true"
+                              />
+                            </button>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  ))}
                   <button
                     type="button"
-                    aria-label={t("common.cancel")}
                     onClick={() =>
-                      update(
-                        "tags",
-                        draft.tags.filter((x) => x !== tag),
-                      )
+                      updateMessages([
+                        ...draft.messages,
+                        { role: "user", content: "" },
+                      ])
                     }
-                    className="text-muted-foreground hover:text-foreground"
+                    className="flex min-h-8 w-fit items-center gap-1.5 rounded-md border border-input px-2.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <XIcon className="h-3 w-3" aria-hidden="true" />
+                    <PlusIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t("evaluation.addMessage")}
                   </button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-1">
+                    <label className={labelClass} htmlFor="prompt-system">
+                      {t("promptsView.editor.systemPrompt")}
+                    </label>
+                    <textarea
+                      id="prompt-system"
+                      value={draft.systemPrompt}
+                      placeholder={t(
+                        "promptsView.editor.systemPromptPlaceholder",
+                      )}
+                      onChange={(e) =>
+                        updateText("systemPrompt", e.target.value)
+                      }
+                      rows={4}
+                      className={`${inputClass} resize-y`}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className={labelClass} htmlFor="prompt-user">
+                      {t("promptsView.editor.userPrompt")}
+                    </label>
+                    <textarea
+                      id="prompt-user"
+                      value={draft.userPrompt}
+                      placeholder={t(
+                        "promptsView.editor.userPromptPlaceholder",
+                      )}
+                      onChange={(e) => updateText("userPrompt", e.target.value)}
+                      rows={8}
+                      className={`${inputClass} resize-y font-mono`}
+                    />
+                  </div>
+                </>
+              )}
+              {!userPromptValid && (
+                <span className="text-xs text-destructive">
+                  {t("promptsView.editor.userPromptRequired")}
                 </span>
-              ))}
+              )}
+
+              <VariableEditor
+                variables={draft.variables}
+                onChange={(variables) => update("variables", variables)}
+              />
+
+              {draft.variables.length > 0 && (
+                <div className="flex flex-col gap-3 border-y border-border bg-muted/30 py-3">
+                  <span className={labelClass}>
+                    {t("promptsView.editor.preview")}
+                  </span>
+                  <div className="prompt-editor__preview-grid grid grid-cols-1 gap-2">
+                    {draft.variables.map((variable) => (
+                      <input
+                        key={variable.name}
+                        value={previewValues[variable.name] ?? ""}
+                        aria-label={variable.label || variable.name}
+                        placeholder={variable.label || variable.name}
+                        onChange={(e) =>
+                          setPreviewValues((v) => ({
+                            ...v,
+                            [variable.name]: e.target.value,
+                          }))
+                        }
+                        className="rounded-md border border-input bg-background px-2 py-2 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      />
+                    ))}
+                  </div>
+                  <pre className="max-w-full whitespace-pre-wrap break-words bg-muted px-3 py-2 text-xs text-foreground">
+                    {previewText}
+                  </pre>
+                </div>
+              )}
             </div>
-          )}
-          <div className="flex items-center gap-2">
-            <input
-              value={tagInput}
-              list="known-tags"
-              placeholder={t("promptsView.editor.addTagPlaceholder")}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addTag(tagInput);
-                }
-              }}
-              className={inputClass}
-            />
-            <datalist id="known-tags">
-              {knownTags.map((tag) => (
-                <option key={tag} value={tag} />
-              ))}
-            </datalist>
-            <button
-              type="button"
-              onClick={() => addTag(tagInput)}
-              className="flex shrink-0 items-center gap-1 rounded-md border border-input px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+          </section>
+
+          <section
+            aria-labelledby="prompt-editor-organization"
+            className="border-t border-border pt-5"
+          >
+            <h3
+              id="prompt-editor-organization"
+              className="text-sm font-semibold text-foreground"
             >
-              <PlusIcon className="h-4 w-4" aria-hidden="true" />
-              {t("promptsView.editor.addTag")}
-            </button>
-          </div>
-        </div>
+              {t("promptsView.editor.sections.organization")}
+            </h3>
+            <div className="prompt-editor__organization mt-3 grid grid-cols-1 gap-4">
+              <div className="flex flex-col gap-1">
+                <label className={labelClass} htmlFor="prompt-folder">
+                  {t("promptsView.editor.folder")}
+                </label>
+                <select
+                  id="prompt-folder"
+                  value={draft.folderId ?? ""}
+                  onChange={(e) => update("folderId", e.target.value || null)}
+                  className={inputClass}
+                >
+                  <option value="">{t("promptsView.editor.noFolder")}</option>
+                  {folders.map((folder) => (
+                    <option key={folder.id} value={folder.id}>
+                      {folder.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-        {/* Media references */}
-        <MediaRefList
-          label={t("promptsView.editor.images")}
-          kind="image"
-          refs={draft.images}
-          onChange={(images) => update("images", images)}
-        />
-        <MediaRefList
-          label={t("promptsView.editor.videos")}
-          kind="video"
-          refs={draft.videos}
-          onChange={(videos) => update("videos", videos)}
-        />
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <label
+                  className={labelClass}
+                  htmlFor="prompt-tag"
+                >
+                  {t("promptsView.editor.tags")}
+                </label>
+                {draft.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {draft.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-foreground"
+                      >
+                        {tag}
+                        <button
+                          type="button"
+                          aria-label={t("common.cancel")}
+                          onClick={() =>
+                            update(
+                              "tags",
+                              draft.tags.filter((x) => x !== tag),
+                            )
+                          }
+                          className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <XIcon className="h-3 w-3" aria-hidden="true" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="prompt-editor__tag-row flex min-w-0 flex-col gap-2">
+                  <input
+                    id="prompt-tag"
+                    value={tagInput}
+                    list="known-tags"
+                    placeholder={t("promptsView.editor.addTagPlaceholder")}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addTag(tagInput);
+                      }
+                    }}
+                    className={inputClass}
+                  />
+                  <datalist id="known-tags">
+                    {knownTags.map((tag) => (
+                      <option key={tag} value={tag} />
+                    ))}
+                  </datalist>
+                  <button
+                    type="button"
+                    onClick={() => addTag(tagInput)}
+                    className="flex min-h-9 shrink-0 items-center justify-center gap-1 rounded-md border border-input px-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <PlusIcon className="h-4 w-4" aria-hidden="true" />
+                    {t("promptsView.editor.addTag")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
 
-        {/* Source + Notes */}
-        <div className="flex flex-col gap-1">
-          <label className={labelClass} htmlFor="prompt-source">
-            {t("promptsView.editor.source")}
-          </label>
-          <input
-            id="prompt-source"
-            value={draft.source}
-            placeholder={t("promptsView.editor.sourcePlaceholder")}
-            onChange={(e) => update("source", e.target.value)}
-            className={inputClass}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className={labelClass} htmlFor="prompt-notes">
-            {t("promptsView.editor.notes")}
-          </label>
-          <textarea
-            id="prompt-notes"
-            value={draft.notes}
-            placeholder={t("promptsView.editor.notesPlaceholder")}
-            onChange={(e) => update("notes", e.target.value)}
-            rows={2}
-            className={`${inputClass} resize-y`}
-          />
+          <section
+            aria-labelledby="prompt-editor-references"
+            className="border-t border-border pt-5"
+          >
+            <h3
+              id="prompt-editor-references"
+              className="text-sm font-semibold text-foreground"
+            >
+              {t("promptsView.editor.sections.references")}
+            </h3>
+            <div className="prompt-editor__two-column mt-3 grid grid-cols-1 gap-4">
+              <MediaRefList
+                label={t("promptsView.editor.images")}
+                kind="image"
+                refs={draft.images}
+                onChange={(images) => update("images", images)}
+              />
+              <MediaRefList
+                label={t("promptsView.editor.videos")}
+                kind="video"
+                refs={draft.videos}
+                onChange={(videos) => update("videos", videos)}
+              />
+              <div className="flex flex-col gap-1">
+                <label className={labelClass} htmlFor="prompt-source">
+                  {t("promptsView.editor.source")}
+                </label>
+                <input
+                  id="prompt-source"
+                  value={draft.source}
+                  placeholder={t("promptsView.editor.sourcePlaceholder")}
+                  onChange={(e) => update("source", e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className={labelClass} htmlFor="prompt-notes">
+                  {t("promptsView.editor.notes")}
+                </label>
+                <textarea
+                  id="prompt-notes"
+                  value={draft.notes}
+                  placeholder={t("promptsView.editor.notesPlaceholder")}
+                  onChange={(e) => update("notes", e.target.value)}
+                  rows={3}
+                  className={`${inputClass} resize-y`}
+                />
+              </div>
+            </div>
+          </section>
         </div>
       </div>
 
-      {/* Footer actions */}
-      <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border px-4 py-3">
+      <div className="prompt-editor__footer flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border bg-background px-4 py-3">
         {creating && (
           <button
             type="button"
+            title={t("promptsView.editor.cancel")}
+            aria-label={t("promptsView.editor.cancel")}
             onClick={onCancelCreate}
-            className="rounded-md border border-input px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="flex min-h-9 items-center gap-2 rounded-md border border-input px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {t("promptsView.editor.cancel")}
+            <XIcon className="h-4 w-4" aria-hidden="true" />
+            <span className="prompt-editor__footer-label">
+              {t("promptsView.editor.cancel")}
+            </span>
           </button>
         )}
         <button
           type="submit"
+          title={
+            creating
+              ? t("promptsView.editor.create")
+              : t("promptsView.editor.save")
+          }
+          aria-label={
+            creating
+              ? t("promptsView.editor.create")
+              : t("promptsView.editor.save")
+          }
           disabled={!canSubmit}
-          className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity disabled:opacity-50"
+          className="flex min-h-9 items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         >
           <SaveIcon className="h-4 w-4" aria-hidden="true" />
-          {creating ? t("promptsView.editor.create") : t("promptsView.editor.save")}
+          <span className="prompt-editor__footer-label">
+            {creating
+              ? t("promptsView.editor.create")
+              : t("promptsView.editor.save")}
+          </span>
         </button>
       </div>
     </form>

@@ -177,6 +177,120 @@
   }
 }
 
+.prompt-workspace {
+  container-name: prompt-workspace;
+  container-type: inline-size;
+}
+
+.prompt-editor {
+  container-name: prompt-editor;
+  container-type: inline-size;
+}
+
+@container prompt-workspace (min-width: 48rem) {
+  .prompt-workspace__detail-header {
+    padding-inline: 1rem;
+  }
+}
+
+@container prompt-workspace (max-width: 31.999rem) {
+  .prompt-workspace__detail-title {
+    flex-basis: 100%;
+    overflow: visible;
+    white-space: normal;
+  }
+}
+
+@container prompt-workspace (min-width: 56rem) {
+  .prompt-workspace__folders {
+    position: static;
+    z-index: auto;
+    width: 13rem;
+    visibility: visible;
+    pointer-events: auto;
+    transform: none;
+    background-color: hsl(var(--card) / 0.4);
+    box-shadow: none;
+  }
+
+  .prompt-workspace__discovery {
+    display: flex;
+    width: 18rem;
+  }
+
+  .prompt-workspace__detail {
+    display: flex;
+  }
+
+  .prompt-workspace__compact-control {
+    display: none;
+  }
+}
+
+@container prompt-workspace (min-width: 80rem) {
+  .prompt-workspace__folders {
+    width: 14rem;
+  }
+
+  .prompt-workspace__discovery {
+    width: 20rem;
+  }
+
+  .prompt-workspace__history {
+    position: static;
+    width: 18rem;
+    background-color: hsl(var(--card) / 0.4);
+    box-shadow: none;
+  }
+}
+
+@container prompt-editor (min-width: 32rem) {
+  .prompt-editor__preview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .prompt-editor__tag-row {
+    flex-direction: row;
+  }
+}
+
+@container prompt-editor (max-width: 23.999rem) {
+  .prompt-editor__footer {
+    gap: 0.25rem;
+    padding-inline: 0.25rem;
+  }
+
+  .prompt-editor__footer button {
+    padding-inline: 0.5rem;
+  }
+
+  .prompt-editor__footer-label {
+    display: none;
+  }
+}
+
+@container prompt-editor (min-width: 40rem) {
+  .prompt-editor__body {
+    padding-inline: 1.5rem;
+  }
+
+  .prompt-editor__two-column {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .prompt-editor__message {
+    grid-template-columns: 8rem minmax(0, 1fr) auto;
+  }
+
+  .prompt-editor__message-actions {
+    flex-direction: column;
+  }
+
+  .prompt-editor__organization {
+    grid-template-columns: minmax(12rem, 0.7fr) minmax(0, 1.3fr);
+  }
+}
+
 ::selection {
   background: hsl(var(--primary) / 0.2);
   color: hsl(var(--primary));
