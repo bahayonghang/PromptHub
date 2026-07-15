@@ -168,6 +168,34 @@ browser that `getComputedStyle(container).containerType === "inline-size"` at
 the required viewport sizes. Closed off-canvas regions must also disappear from
 the accessibility tree, not only move outside the visible canvas.
 
+### Overlay Tools in Clipped Workspaces
+
+Workbench roots such as `prompt-workspace` use `overflow-hidden` to contain
+off-canvas panes. A dropdown or filter surface positioned inside that root will
+be clipped even when its own z-index is correct. Render non-modal overlay tools
+through a fixed-position portal, measure against the viewport, and flip above
+the trigger when the space below is smaller.
+
+```tsx
+const surface = createPortal(
+  <div
+    role="region"
+    style={{ position: "fixed", left, width, top, maxHeight }}
+    className="overflow-y-auto"
+  />,
+  document.body,
+);
+```
+
+- Keep at least 16 px between the surface and viewport edges.
+- Bound the height to the available side and make overflowing content scroll.
+- Recompute on resize, captured scroll, and owner-size changes.
+- A portal changes DOM tab order. Focus the first surface control when it opens,
+  return focus to the trigger on Escape, and keep outside-click checks scoped to
+  the trigger plus the portaled surface.
+- Test the geometry in a real browser at the minimum viewport and 200% text
+  scale; component tests should also assert the portal parent and flip direction.
+
 ---
 
 ## Accessibility
