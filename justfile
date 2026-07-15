@@ -11,6 +11,10 @@ manifest := "src-tauri/Cargo.toml"
 default:
     @just --list
 
+# Show available recipes.
+help:
+    @just --list
+
 # --- Setup ---
 
 # Install frontend dependencies.
@@ -39,6 +43,64 @@ build:
 # Package desktop installers into src-tauri/target/release/bundle/.
 tauri-build:
     npm run tauri build
+
+# Build and install the native application for the current platform.
+[script("node")]
+tinstall: tauri-build
+    const { existsSync, readdirSync, statSync } = require("node:fs");
+    const { basename, join, resolve } = require("node:path");
+    const { spawnSync } = require("node:child_process");
+
+    const bundleRoot = resolve("src-tauri", "target", "release", "bundle");
+
+    function newestEntry(directory, predicate) {
+      if (!existsSync(directory)) return null;
+      return readdirSync(directory)
+        .map((name) => join(directory, name))
+        .filter(predicate)
+        .sort((left, right) => statSync(right).mtimeMs - statSync(left).mtimeMs)[0] ?? null;
+    }
+
+    function run(command, args) {
+      const result = spawnSync(command, args, { stdio: "inherit" });
+      if (result.error) throw result.error;
+      if (result.status !== 0) process.exit(result.status ?? 1);
+    }
+
+    if (process.platform === "win32") {
+      const nsis = newestEntry(join(bundleRoot, "nsis"), (path) => path.endsWith(".exe"));
+      if (nsis) {
+        run(nsis, []);
+        process.exit(0);
+      }
+
+      const msi = newestEntry(join(bundleRoot, "msi"), (path) => path.endsWith(".msi"));
+      if (msi) {
+        run("msiexec.exe", ["/i", msi]);
+        process.exit(0);
+      }
+
+      throw new Error("No Windows installer was produced by tauri-build");
+    }
+
+    if (process.platform === "darwin") {
+      const app = newestEntry(
+        join(bundleRoot, "macos"),
+        (path) => path.endsWith(".app") && statSync(path).isDirectory(),
+      );
+      if (!app) throw new Error("No macOS app bundle was produced by tauri-build");
+      run("sudo", ["ditto", app, join("/Applications", basename(app))]);
+      process.exit(0);
+    }
+
+    if (process.platform === "linux") {
+      const deb = newestEntry(join(bundleRoot, "deb"), (path) => path.endsWith(".deb"));
+      if (!deb) throw new Error("No Debian package was produced by tauri-build");
+      run("sudo", ["apt-get", "install", "-y", deb]);
+      process.exit(0);
+    }
+
+    throw new Error("Unsupported platform: " + process.platform);
 
 # --- Test ---
 
