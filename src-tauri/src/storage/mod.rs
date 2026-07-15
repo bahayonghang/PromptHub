@@ -45,7 +45,7 @@ pub type DbPool = Pool<SqliteConnectionManager>;
 const BUSY_TIMEOUT_MS: u64 = 5_000;
 
 /// Latest ordered schema migration understood by this binary.
-pub const CURRENT_SCHEMA_VERSION: u32 = 3;
+pub const CURRENT_SCHEMA_VERSION: u32 = 4;
 
 struct Migration {
     version: u32,
@@ -96,6 +96,126 @@ CREATE INDEX IF NOT EXISTS idx_versions_parent ON prompt_versions(parent_revisio
         sql: r#"
 ALTER TABLE prompts ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE prompt_versions ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0;
+"#,
+    },
+    Migration {
+        version: 4,
+        sql: r#"
+ALTER TABLE prompts ADD COLUMN messages TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE prompt_versions ADD COLUMN messages TEXT NOT NULL DEFAULT '[]';
+
+CREATE TABLE execution_profile_revisions (
+  id TEXT PRIMARY KEY,
+  profile_id TEXT NOT NULL,
+  revision INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  provider TEXT NOT NULL CHECK(provider IN ('mock','openai-compatible')),
+  endpoint TEXT,
+  model TEXT NOT NULL,
+  parameters TEXT NOT NULL DEFAULT '{}',
+  credential TEXT,
+  created_at INTEGER NOT NULL,
+  UNIQUE(profile_id, revision)
+);
+
+CREATE TABLE prompt_runs (
+  id TEXT PRIMARY KEY,
+  prompt_revision_id TEXT NOT NULL,
+  profile_revision_id TEXT NOT NULL,
+  test_case_id TEXT,
+  inputs TEXT NOT NULL DEFAULT '{}',
+  rendered_messages TEXT NOT NULL DEFAULT '[]',
+  output TEXT,
+  status TEXT NOT NULL CHECK(status IN ('running','success','error','cancelled')),
+  error TEXT,
+  started_at INTEGER NOT NULL,
+  completed_at INTEGER,
+  duration_ms INTEGER,
+  usage TEXT,
+  cache_key TEXT
+);
+
+CREATE TABLE test_sets (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE test_cases (
+  id TEXT PRIMARY KEY,
+  test_set_id TEXT NOT NULL REFERENCES test_sets(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  inputs TEXT NOT NULL DEFAULT '{}',
+  expected_output TEXT,
+  annotations TEXT NOT NULL DEFAULT '{}',
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE evaluator_configs (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK(kind IN ('manual','exact','contains','regex','numeric')),
+  config TEXT NOT NULL DEFAULT '{}',
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE evaluation_runs (
+  id TEXT PRIMARY KEY,
+  test_set_id TEXT NOT NULL,
+  prompt_revision_ids TEXT NOT NULL,
+  profile_revision_ids TEXT NOT NULL,
+  evaluator_ids TEXT NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('running','success','error','cancelled')),
+  total_cells INTEGER NOT NULL,
+  completed_cells INTEGER NOT NULL DEFAULT 0,
+  failed_cells INTEGER NOT NULL DEFAULT 0,
+  started_at INTEGER NOT NULL,
+  completed_at INTEGER,
+  runtime_version TEXT NOT NULL
+);
+
+CREATE TABLE evaluation_cells (
+  id TEXT PRIMARY KEY,
+  evaluation_run_id TEXT NOT NULL REFERENCES evaluation_runs(id) ON DELETE CASCADE,
+  prompt_revision_id TEXT NOT NULL,
+  profile_revision_id TEXT NOT NULL,
+  test_case_id TEXT NOT NULL,
+  prompt_run_id TEXT,
+  status TEXT NOT NULL CHECK(status IN ('pending','running','success','error','cancelled','skipped')),
+  cache_hit INTEGER NOT NULL DEFAULT 0,
+  results TEXT NOT NULL DEFAULT '[]',
+  error TEXT,
+  cache_key TEXT NOT NULL,
+  sort_order INTEGER NOT NULL
+);
+
+CREATE TABLE prompt_labels (
+  prompt_id TEXT NOT NULL,
+  label TEXT NOT NULL,
+  prompt_revision_id TEXT NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY(prompt_id, label)
+);
+
+CREATE TABLE prompt_label_history (
+  id TEXT PRIMARY KEY,
+  prompt_id TEXT NOT NULL,
+  label TEXT NOT NULL,
+  from_revision_id TEXT,
+  to_revision_id TEXT NOT NULL,
+  action TEXT NOT NULL CHECK(action IN ('move','rollback')),
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX idx_profile_revisions_profile ON execution_profile_revisions(profile_id, revision);
+CREATE INDEX idx_prompt_runs_started ON prompt_runs(started_at DESC);
+CREATE INDEX idx_prompt_runs_revision ON prompt_runs(prompt_revision_id, profile_revision_id);
+CREATE INDEX idx_test_cases_set ON test_cases(test_set_id, sort_order);
+CREATE INDEX idx_evaluation_runs_started ON evaluation_runs(started_at DESC);
+CREATE INDEX idx_evaluation_cells_run ON evaluation_cells(evaluation_run_id, sort_order);
+CREATE INDEX idx_evaluation_cells_cache ON evaluation_cells(cache_key, status);
+CREATE INDEX idx_label_history_prompt ON prompt_label_history(prompt_id, label, created_at DESC);
 "#,
     },
 ];
@@ -307,6 +427,7 @@ CREATE TABLE IF NOT EXISTS prompts (
   prompt_type TEXT NOT NULL DEFAULT 'text' CHECK(prompt_type IN ('text','image','video')),
   system_prompt TEXT,
   user_prompt TEXT NOT NULL,
+  messages TEXT NOT NULL DEFAULT '[]',
   variables TEXT NOT NULL DEFAULT '[]',
   tags TEXT NOT NULL DEFAULT '[]',
   folder_id TEXT REFERENCES folders(id) ON DELETE SET NULL,
@@ -330,6 +451,7 @@ CREATE TABLE IF NOT EXISTS prompt_versions (
   version INTEGER NOT NULL,
   system_prompt TEXT,
   user_prompt TEXT NOT NULL,
+  messages TEXT NOT NULL DEFAULT '[]',
   variables TEXT NOT NULL DEFAULT '[]',
   title TEXT NOT NULL DEFAULT '',
   description TEXT,
@@ -385,6 +507,110 @@ CREATE TABLE IF NOT EXISTS rule_versions (
   UNIQUE(rule_id, version)
 );
 
+CREATE TABLE IF NOT EXISTS execution_profile_revisions (
+  id TEXT PRIMARY KEY,
+  profile_id TEXT NOT NULL,
+  revision INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  provider TEXT NOT NULL CHECK(provider IN ('mock','openai-compatible')),
+  endpoint TEXT,
+  model TEXT NOT NULL,
+  parameters TEXT NOT NULL DEFAULT '{}',
+  credential TEXT,
+  created_at INTEGER NOT NULL,
+  UNIQUE(profile_id, revision)
+);
+
+CREATE TABLE IF NOT EXISTS prompt_runs (
+  id TEXT PRIMARY KEY,
+  prompt_revision_id TEXT NOT NULL,
+  profile_revision_id TEXT NOT NULL,
+  test_case_id TEXT,
+  inputs TEXT NOT NULL DEFAULT '{}',
+  rendered_messages TEXT NOT NULL DEFAULT '[]',
+  output TEXT,
+  status TEXT NOT NULL CHECK(status IN ('running','success','error','cancelled')),
+  error TEXT,
+  started_at INTEGER NOT NULL,
+  completed_at INTEGER,
+  duration_ms INTEGER,
+  usage TEXT,
+  cache_key TEXT
+);
+
+CREATE TABLE IF NOT EXISTS test_sets (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS test_cases (
+  id TEXT PRIMARY KEY,
+  test_set_id TEXT NOT NULL REFERENCES test_sets(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  inputs TEXT NOT NULL DEFAULT '{}',
+  expected_output TEXT,
+  annotations TEXT NOT NULL DEFAULT '{}',
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS evaluator_configs (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK(kind IN ('manual','exact','contains','regex','numeric')),
+  config TEXT NOT NULL DEFAULT '{}',
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS evaluation_runs (
+  id TEXT PRIMARY KEY,
+  test_set_id TEXT NOT NULL,
+  prompt_revision_ids TEXT NOT NULL,
+  profile_revision_ids TEXT NOT NULL,
+  evaluator_ids TEXT NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('running','success','error','cancelled')),
+  total_cells INTEGER NOT NULL,
+  completed_cells INTEGER NOT NULL DEFAULT 0,
+  failed_cells INTEGER NOT NULL DEFAULT 0,
+  started_at INTEGER NOT NULL,
+  completed_at INTEGER,
+  runtime_version TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS evaluation_cells (
+  id TEXT PRIMARY KEY,
+  evaluation_run_id TEXT NOT NULL REFERENCES evaluation_runs(id) ON DELETE CASCADE,
+  prompt_revision_id TEXT NOT NULL,
+  profile_revision_id TEXT NOT NULL,
+  test_case_id TEXT NOT NULL,
+  prompt_run_id TEXT,
+  status TEXT NOT NULL CHECK(status IN ('pending','running','success','error','cancelled','skipped')),
+  cache_hit INTEGER NOT NULL DEFAULT 0,
+  results TEXT NOT NULL DEFAULT '[]',
+  error TEXT,
+  cache_key TEXT NOT NULL,
+  sort_order INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS prompt_labels (
+  prompt_id TEXT NOT NULL,
+  label TEXT NOT NULL,
+  prompt_revision_id TEXT NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY(prompt_id, label)
+);
+
+CREATE TABLE IF NOT EXISTS prompt_label_history (
+  id TEXT PRIMARY KEY,
+  prompt_id TEXT NOT NULL,
+  label TEXT NOT NULL,
+  from_revision_id TEXT,
+  to_revision_id TEXT NOT NULL,
+  action TEXT NOT NULL CHECK(action IN ('move','rollback')),
+  created_at INTEGER NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_prompts_folder   ON prompts(folder_id);
 CREATE INDEX IF NOT EXISTS idx_prompts_updated  ON prompts(updated_at);
 CREATE INDEX IF NOT EXISTS idx_prompts_favorite ON prompts(is_favorite);
@@ -398,6 +624,14 @@ CREATE INDEX IF NOT EXISTS idx_folders_sort     ON folders(sort_order);
 CREATE INDEX IF NOT EXISTS idx_rules_scope      ON rules(scope);
 CREATE INDEX IF NOT EXISTS idx_rules_platform   ON rules(platform_id);
 CREATE INDEX IF NOT EXISTS idx_rule_versions_rule ON rule_versions(rule_id);
+CREATE INDEX IF NOT EXISTS idx_profile_revisions_profile ON execution_profile_revisions(profile_id, revision);
+CREATE INDEX IF NOT EXISTS idx_prompt_runs_started ON prompt_runs(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_prompt_runs_revision ON prompt_runs(prompt_revision_id, profile_revision_id);
+CREATE INDEX IF NOT EXISTS idx_test_cases_set ON test_cases(test_set_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_evaluation_runs_started ON evaluation_runs(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_evaluation_cells_run ON evaluation_cells(evaluation_run_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_evaluation_cells_cache ON evaluation_cells(cache_key, status);
+CREATE INDEX IF NOT EXISTS idx_label_history_prompt ON prompt_label_history(prompt_id, label, created_at DESC);
 
 "#;
 
@@ -413,6 +647,15 @@ mod tests {
         "settings",
         "rules",
         "rule_versions",
+        "execution_profile_revisions",
+        "prompt_runs",
+        "test_sets",
+        "test_cases",
+        "evaluator_configs",
+        "evaluation_runs",
+        "evaluation_cells",
+        "prompt_labels",
+        "prompt_label_history",
     ];
 
     /// Expected indexes created by [`init_schema`].
@@ -430,6 +673,14 @@ mod tests {
         "idx_rules_scope",
         "idx_rules_platform",
         "idx_rule_versions_rule",
+        "idx_profile_revisions_profile",
+        "idx_prompt_runs_started",
+        "idx_prompt_runs_revision",
+        "idx_test_cases_set",
+        "idx_evaluation_runs_started",
+        "idx_evaluation_cells_run",
+        "idx_evaluation_cells_cache",
+        "idx_label_history_prompt",
     ];
 
     /// Collects names from `sqlite_master` for the given object type.

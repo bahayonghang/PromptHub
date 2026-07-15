@@ -33,6 +33,13 @@ export interface Variable {
   required: boolean;
 }
 
+export type PromptMessageRole = "system" | "user" | "assistant";
+
+export interface PromptMessage {
+  role: PromptMessageRole;
+  content: string;
+}
+
 /** A stored prompt as returned by `prompt.get` / `prompt.list` (Req 6.2, 6.7). */
 export interface Prompt {
   id: string;
@@ -41,6 +48,7 @@ export interface Prompt {
   promptType: PromptType;
   systemPrompt?: string | null;
   userPrompt: string;
+  messages: PromptMessage[];
   variables: Variable[];
   tags: string[];
   folderId?: string | null;
@@ -75,6 +83,7 @@ export interface PromptVersion {
   version: number;
   systemPrompt?: string | null;
   userPrompt: string;
+  messages: PromptMessage[];
   variables: Variable[];
   title: string;
   description?: string | null;
@@ -116,6 +125,7 @@ export interface CreatePromptInput {
   promptType?: PromptType;
   systemPrompt?: string;
   userPrompt: string;
+  messages?: PromptMessage[];
   variables?: Variable[];
   tags?: string[];
   folderId?: string | null;
@@ -133,6 +143,7 @@ export interface UpdatePromptInput {
   promptType?: PromptType;
   systemPrompt?: string;
   userPrompt?: string;
+  messages?: PromptMessage[];
   variables?: Variable[];
   tags?: string[];
   folderId?: string | null;

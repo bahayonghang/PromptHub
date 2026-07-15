@@ -26,6 +26,8 @@ commands, and safety constraints live in `AGENTS.md`.
   command in `invoke_handler!` (the full command list lives here).
 - `src-tauri/src/main.rs` — thin binary entry calling `prompthub_lib::run()`.
 - `src-tauri/tauri.conf.json` — window, bundle, and updater configuration.
+- `src-tauri/src/services/evaluation.rs` — profile revisions, chat rendering,
+  provider adapters, immutable runs, evaluators, matrices, cache, and labels.
 
 ## Cross-Boundary Contract
 
@@ -45,6 +47,7 @@ commands, and safety constraints live in `AGENTS.md`.
 - `invoke_handler!` (in `lib.rs`) — the authoritative registry of every command.
 - `SCHEMA_SQL` — the full SQLite DDL in `src-tauri/src/storage/mod.rs`.
 - `rename = "` — locate the wire name of any backend command.
+- `evaluation.` / `evaluation:` — evaluation commands and progress events.
 
 ## Generated, Vendored, and Ignored Paths
 

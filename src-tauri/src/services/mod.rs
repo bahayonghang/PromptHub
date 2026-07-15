@@ -13,6 +13,7 @@
 
 pub mod ai;
 pub mod data_path;
+pub mod evaluation;
 pub mod folder;
 pub mod media;
 pub mod network_safety;

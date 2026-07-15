@@ -24,6 +24,8 @@ pub struct Prompt {
     pub system_prompt: Option<String>,
     /// User prompt (non-empty).
     pub user_prompt: String,
+    /// Ordered chat messages. Empty for a simple text prompt.
+    pub messages: Vec<PromptMessage>,
     /// Declared variables/placeholders.
     pub variables: Vec<Variable>,
     /// Free-form tags.
@@ -76,6 +78,16 @@ pub struct Variable {
     pub required: bool,
 }
 
+/// One ordered message in a chat-style prompt definition.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PromptMessage {
+    /// Message role: `system`, `user`, or `assistant`.
+    pub role: String,
+    /// Message content, including any declared `{{variable}}` placeholders.
+    pub content: String,
+}
+
 /// A snapshot of a prompt captured as a version (Requirement 7).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -90,6 +102,8 @@ pub struct PromptVersion {
     pub system_prompt: Option<String>,
     /// Snapshot of the user prompt.
     pub user_prompt: String,
+    /// Snapshot of ordered chat messages.
+    pub messages: Vec<PromptMessage>,
     /// Snapshot of the variables.
     pub variables: Vec<Variable>,
     pub title: String,

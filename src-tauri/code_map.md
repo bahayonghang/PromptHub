@@ -34,6 +34,9 @@ everything the original Electron main process did.
   `SCHEMA_SQL` (fresh-install DDL).
 - `src/services/portable.rs` — versioned prompt bundle validation, preview,
   export/import, media staging, and import rollback cleanup.
+- `src/services/evaluation.rs` — chat rendering, encrypted execution profiles,
+  SSRF-safe provider adapters, run/matrix persistence, deterministic evaluators,
+  cache keys, and prompt labels.
 - `Cargo.toml` — dependencies, each annotated with the requirement it serves.
 - `tauri.conf.json` — window/bundle/updater config.
 
@@ -41,7 +44,7 @@ everything the original Electron main process did.
 
 Each domain typically has a matching `commands/<d>.rs` + `services/<d>.rs` pair:
 `prompt`, `folder`, `version` (prompt versions), `rules`, `settings`, `security`,
-`data_path`, `sync`, `ai`, `media`, `window`, `updater`. Shared network address
+`data_path`, `sync`, `ai`, `evaluation`, `media`, `window`, `updater`. Shared network address
 validation for untrusted downloads lives in `services/network_safety.rs`.
 
 Prompt-library persistence also uses `commands/portable.rs` +
@@ -64,6 +67,7 @@ Prompt-library persistence also uses `commands/portable.rs` +
 - `CURRENT_SCHEMA_VERSION` / `MIGRATIONS` — ordered database upgrades.
 - `FORMAT_VERSION` / `PromptBundleManifest` — portable bundle contract.
 - `EVENT_` (in `events.rs`) — event channel name constants.
+- `RUNTIME_VERSION` (in `services/evaluation.rs`) — conservative matrix-cache invalidation.
 - `AppError::` / `ErrorCode::` — error construction and the code taxonomy.
 - `EventSink` / `UpdaterEventSink` — the streaming/progress injection points.
 

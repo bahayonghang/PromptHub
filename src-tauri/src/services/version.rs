@@ -109,16 +109,17 @@ pub(crate) fn append_snapshot(
 
     conn.execute(
         "INSERT INTO prompt_versions \
-         (id,prompt_id,version,system_prompt,user_prompt,variables,title,description,prompt_type,\
+         (id,prompt_id,version,system_prompt,user_prompt,messages,variables,title,description,prompt_type,\
           tags,folder_id,images,videos,is_favorite,is_pinned,is_private,source,notes,note,ai_response,\
           source_action,parent_revision_id,created_at) \
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23)",
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24)",
         params![
             id,
             prompt.id,
             next_version,
             prompt.system_prompt,
             prompt.user_prompt,
+            json_array(&prompt.messages),
             variables_json(&prompt.variables),
             prompt.title,
             prompt.description,
@@ -250,15 +251,16 @@ pub fn rollback(conn: &Connection, prompt_id: &str, version: i64) -> Result<Prom
 
     let now = now_millis();
     tx.execute(
-        "UPDATE prompts SET title=?1,description=?2,prompt_type=?3,system_prompt=?4,user_prompt=?5,\
-         variables=?6,tags=?7,folder_id=?8,images=?9,videos=?10,is_favorite=?11,is_pinned=?12,\
-         is_private=?13,source=?14,notes=?15,last_ai_response=?16,updated_at=?17 WHERE id=?18",
+        "UPDATE prompts SET title=?1,description=?2,prompt_type=?3,system_prompt=?4,user_prompt=?5,messages=?6,\
+         variables=?7,tags=?8,folder_id=?9,images=?10,videos=?11,is_favorite=?12,is_pinned=?13,\
+         is_private=?14,source=?15,notes=?16,last_ai_response=?17,updated_at=?18 WHERE id=?19",
         params![
             snapshot.title,
             snapshot.description,
             prompt_type_wire(snapshot.prompt_type),
             snapshot.system_prompt,
             snapshot.user_prompt,
+            json_array(&snapshot.messages),
             variables_json(&snapshot.variables),
             json_array(&snapshot.tags),
             snapshot.folder_id,

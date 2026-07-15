@@ -28,6 +28,7 @@ function makePrompt(partial: Partial<Prompt> & { id: string }): Prompt {
     createdAt: "2024-01-01T00:00:00.000Z",
     updatedAt: "2024-01-01T00:00:00.000Z",
     ...partial,
+    messages: partial.messages ?? [],
   };
 }
 
@@ -70,6 +71,7 @@ function makeVersion(partial: Partial<PromptVersion> = {}): PromptVersion {
     sourceAction: "create",
     createdAt: "2024-01-01T00:00:00.000Z",
     ...partial,
+    messages: partial.messages ?? [],
   };
 }
 

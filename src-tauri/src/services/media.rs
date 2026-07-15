@@ -43,7 +43,6 @@
 use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::fs;
-use std::net::{IpAddr, SocketAddr};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -53,7 +52,6 @@ use futures_util::StreamExt;
 use uuid::Uuid;
 
 use crate::error::AppError;
-use crate::services::network_safety::{is_blocked_hostname, is_public_ip};
 
 // ===========================================================================
 // Constants
@@ -452,80 +450,6 @@ pub fn save_video_base64(dir: &Path, ext: &str, data: &str) -> Result<String, Ap
 // Image download with SSRF protection (Req 18.4, 18.5)
 // ===========================================================================
 
-/// Outcome of the synchronous, DNS-free URL precheck.
-enum HostCheck {
-    /// The host was an IP literal; the validated (public) address is carried.
-    Literal(IpAddr),
-    /// The host is a domain name that still requires DNS resolution.
-    Domain(String),
-}
-
-/// Synchronously validates a URL's scheme and host against the SSRF policy
-/// without performing DNS (Req 18.5).
-///
-/// Image download permits **HTTP and HTTPS** (Req 18.5). Rejects with
-/// `SSRF_BLOCKED` when the scheme is neither HTTP nor
-/// HTTPS, when the host names the local machine, or when the host is an IP literal
-/// in a non-public range — reusing [`is_public_ip`]/[`is_blocked_hostname`] so the
-/// SSRF ranges are defined in exactly one place.
-fn precheck_url(raw: &str) -> Result<(reqwest::Url, HostCheck), AppError> {
-    let url = reqwest::Url::parse(raw)
-        .map_err(|e| AppError::validation(format!("invalid URL `{raw}`: {e}")))?;
-
-    if url.scheme() != "http" && url.scheme() != "https" {
-        return Err(AppError::ssrf_blocked(
-            "only HTTP and HTTPS URLs are allowed for image download",
-        ));
-    }
-
-    let host = url
-        .host_str()
-        .ok_or_else(|| AppError::validation("URL has no host"))?
-        .to_string();
-
-    // IPv6 literals appear bracketed in `host_str()` (e.g. `[::1]`).
-    let ip_candidate = host.trim_start_matches('[').trim_end_matches(']');
-    if let Ok(ip) = ip_candidate.parse::<IpAddr>() {
-        if !is_public_ip(ip) {
-            return Err(AppError::ssrf_blocked(format!(
-                "host `{host}` resolves to a non-public address"
-            )));
-        }
-        return Ok((url, HostCheck::Literal(ip)));
-    }
-
-    if is_blocked_hostname(&host) {
-        return Err(AppError::ssrf_blocked(format!(
-            "host `{host}` names the local machine"
-        )));
-    }
-
-    Ok((url, HostCheck::Domain(host)))
-}
-
-/// Resolves a domain host and verifies every resolved address is public
-/// (Req 18.5), returning the validated addresses.
-async fn resolve_public_addrs(host: &str, port: u16) -> Result<Vec<IpAddr>, AppError> {
-    let addrs = tokio::net::lookup_host((host, port))
-        .await
-        .map_err(|e| AppError::network(format!("failed to resolve host `{host}`: {e}")))?;
-
-    let mut ips = Vec::new();
-    for addr in addrs {
-        let ip = addr.ip();
-        if !is_public_ip(ip) {
-            return Err(AppError::ssrf_blocked(format!(
-                "host `{host}` resolves to a non-public address"
-            )));
-        }
-        ips.push(ip);
-    }
-    if ips.is_empty() {
-        return Err(AppError::network(format!("host `{host}` did not resolve")));
-    }
-    Ok(ips)
-}
-
 /// Maps a `reqwest` transport error into the appropriate [`AppError`].
 fn map_reqwest_err(context: &str, e: reqwest::Error) -> AppError {
     if e.is_timeout() {
@@ -569,28 +493,8 @@ pub async fn download_image(dir: &Path, url: &str) -> Result<String, AppError> {
     let mut current = url.to_string();
 
     for _ in 0..=MAX_REDIRECTS {
-        let (parsed, host_check) = precheck_url(&current)?;
-        let host = parsed
-            .host_str()
-            .ok_or_else(|| AppError::validation("URL has no host"))?
-            .to_string();
-        let scheme_default = if parsed.scheme() == "https" { 443 } else { 80 };
-        let port = parsed.port_or_known_default().unwrap_or(scheme_default);
-
-        // Resolve + classify the addresses, then pin the client to exactly those
-        // validated addresses so the connection cannot target a different host.
-        let ips = match host_check {
-            HostCheck::Literal(ip) => vec![ip],
-            HostCheck::Domain(ref domain) => resolve_public_addrs(domain, port).await?,
-        };
-        let addrs: Vec<SocketAddr> = ips.iter().map(|ip| SocketAddr::new(*ip, port)).collect();
-
-        let client = reqwest::Client::builder()
-            .redirect(reqwest::redirect::Policy::none())
-            .timeout(DOWNLOAD_TIMEOUT)
-            .resolve_to_addrs(&host, &addrs)
-            .build()
-            .map_err(|e| map_reqwest_err("failed to build HTTP client", e))?;
+        let (parsed, client) =
+            crate::services::network_safety::prepare_public_url(&current, DOWNLOAD_TIMEOUT).await?;
 
         let response = client
             .get(parsed.clone())

@@ -33,6 +33,8 @@ Runtime Bridge through which all backend access flows.
 - `features/prompts/PromptsView.tsx` — prompt paging, portable bundle controls,
   tag management, and batch-action orchestration.
 - `features/prompts/versionDiff.ts` — structured immutable-revision diffing.
+- `features/evaluation/` — typed bridge API, Zustand orchestration, and the
+  playground/matrix/history workbench.
 
 ## Upstream and Downstream Boundaries
 
@@ -50,6 +52,7 @@ Runtime Bridge through which all backend access flows.
 - `i18nKeys.test` — per-feature locale-key coverage tests.
 - `create(` (Zustand) — store definitions.
 - `prompt.bundle` — portable bundle preview/export/import bridge calls.
+- `evaluation.` — profile, run, test-set, evaluator, matrix, and label bridge calls.
 - `PromptPage` — counted prompt paging contract and store pagination state.
 
 ## Generated or Ignored Local Paths

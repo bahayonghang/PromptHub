@@ -58,6 +58,7 @@ base64 = "0.22"
 # `syncStatus` (14.2) and to detect changes on save (14.4). Pinned to the stable
 # 0.10 line.
 sha2 = "0.10"
+regex = "1"
 # HTTP clients: reqwest powers AI provider requests, protected media downloads,
 # and the WebDAV/S3 transports below. `default-features = false` + `rustls-tls`
 # avoids the system/native TLS stack so the build is self-contained and

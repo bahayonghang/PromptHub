@@ -144,7 +144,9 @@ export function VersionHistory({
                       {diff.map((entry) => (
                         <div key={entry.field}>
                           <dt className="text-xs font-medium text-foreground">
-                            {t(`promptsView.history.fields.${entry.field}`)}
+                            {entry.field === "messages"
+                              ? t("evaluation.messages")
+                              : t(`promptsView.history.fields.${entry.field}`)}
                           </dt>
                           <dd className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                             <span className="break-words">{entry.revisionValue}</span>

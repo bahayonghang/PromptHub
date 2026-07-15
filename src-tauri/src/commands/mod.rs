@@ -2,6 +2,7 @@
 
 pub mod ai;
 pub mod data_path;
+pub mod evaluation;
 pub mod events;
 pub mod folder;
 pub mod media;

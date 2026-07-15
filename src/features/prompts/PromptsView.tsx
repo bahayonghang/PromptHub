@@ -6,6 +6,7 @@ import {
   CopyIcon,
   CommandIcon,
   DownloadIcon,
+  FlaskConicalIcon,
   HistoryIcon,
   LockIcon,
   PinIcon,
@@ -14,6 +15,7 @@ import {
   Trash2Icon,
   UploadIcon,
 } from "lucide-react";
+import { EvaluationWorkbench } from "../evaluation/EvaluationWorkbench";
 import {
   selectSelectedPrompt,
   PROMPT_PAGE_SIZE,
@@ -79,6 +81,7 @@ export function PromptsView() {
   const rollbackVersion = usePromptStore((s) => s.rollbackVersion);
 
   const [creating, setCreating] = useState(false);
+  const [workspaceMode, setWorkspaceMode] = useState<"editor" | "evaluation">("editor");
   const [showHistory, setShowHistory] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [bundlePath, setBundlePath] = useState("");
@@ -117,7 +120,7 @@ export function PromptsView() {
   return (
     <div className="flex h-full w-full">
       {/* Folder tree */}
-      <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-card/40 py-2">
+      <aside className={workspaceMode === "evaluation" && selectedPrompt ? "hidden" : "flex w-56 shrink-0 flex-col border-r border-border bg-card/40 py-2"}>
         <FolderTree
           folders={folders}
           selectedFolderId={filters.folderId}
@@ -133,7 +136,7 @@ export function PromptsView() {
       </aside>
 
       {/* Prompt list + search */}
-      <section className="flex w-80 shrink-0 flex-col border-r border-border">
+      <section className={workspaceMode === "evaluation" && selectedPrompt ? "hidden" : "flex w-80 shrink-0 flex-col border-r border-border"}>
         <div className="flex flex-col gap-2 border-b border-border p-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-foreground">
@@ -368,7 +371,11 @@ export function PromptsView() {
               </span>
               {!creating && selectedPrompt && (
                 <>
-                  <button
+                  <div role="tablist" aria-label={t("evaluation.workspaceMode")} className="mr-1 flex rounded border border-input p-0.5">
+                    <button type="button" role="tab" aria-selected={workspaceMode === "editor"} onClick={() => setWorkspaceMode("editor")} className={`rounded px-2 py-1 text-xs ${workspaceMode === "editor" ? "bg-accent text-foreground" : "text-muted-foreground"}`}>{t("evaluation.editorTab")}</button>
+                    <button type="button" role="tab" aria-selected={workspaceMode === "evaluation"} onClick={() => { setWorkspaceMode("evaluation"); setShowHistory(false); }} className={`flex items-center gap-1 rounded px-2 py-1 text-xs ${workspaceMode === "evaluation" ? "bg-accent text-foreground" : "text-muted-foreground"}`}><FlaskConicalIcon className="h-3.5 w-3.5" aria-hidden="true" />{t("evaluation.evaluationTab")}</button>
+                  </div>
+                  {workspaceMode === "editor" && <button
                     type="button"
                     title={
                       selectedPrompt.isPinned
@@ -396,7 +403,7 @@ export function PromptsView() {
                       }`}
                       aria-hidden="true"
                     />
-                  </button>
+                  </button>}
                   <button
                     type="button"
                     title={t("promptsView.duplicatePrompt")}
@@ -433,7 +440,7 @@ export function PromptsView() {
                       aria-hidden="true"
                     />
                   </button>
-                  <button
+                  {workspaceMode === "editor" && <button
                     type="button"
                     title={t("promptsView.history.title")}
                     aria-label={t("promptsView.history.title")}
@@ -446,7 +453,7 @@ export function PromptsView() {
                     }`}
                   >
                     <HistoryIcon className="h-4 w-4" aria-hidden="true" />
-                  </button>
+                  </button>}
                   <button
                     type="button"
                     title={t("promptsView.deletePrompt")}
@@ -475,6 +482,8 @@ export function PromptsView() {
                       {t("promptsView.privateLockedHint")}
                     </p>
                   </div>
+                ) : workspaceMode === "evaluation" && !creating && selectedPrompt ? (
+                  <EvaluationWorkbench prompt={selectedPrompt} versions={versions} />
                 ) : (
                   <PromptEditor
                   prompt={creating ? null : selectedPrompt}
@@ -491,7 +500,7 @@ export function PromptsView() {
                   />
                 )}
               </div>
-              {!creating && showHistory && selectedPrompt && (
+              {!creating && workspaceMode === "editor" && showHistory && selectedPrompt && (
                 <aside className="w-72 shrink-0 border-l border-border bg-card/40">
                   <VersionHistory
                     prompt={selectedPrompt}

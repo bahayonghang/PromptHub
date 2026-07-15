@@ -30,6 +30,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Runtime};
 
 use crate::services::ai::EventSink;
+use crate::services::evaluation::EvaluationEventSink;
 use crate::services::updater::{UpdaterEventSink, UpdaterStatus};
 use crate::services::window::{
     CloseRequested, FullscreenChanged, ShortcutTriggered, VisibilityChanged, EVENT_CLOSE_REQUESTED,
@@ -49,6 +50,9 @@ pub const EVENT_AI_STREAM_ERROR: &str = "ai:stream-error";
 /// `ai:stream-complete` — the single terminal completion carrying the full
 /// concatenated content of a streaming AI response (16.6).
 pub const EVENT_AI_STREAM_COMPLETE: &str = "ai:stream-complete";
+pub const EVENT_EVALUATION_RUN_CHUNK: &str = "evaluation:run-chunk";
+pub const EVENT_EVALUATION_RUN_TERMINAL: &str = "evaluation:run-terminal";
+pub const EVENT_EVALUATION_MATRIX_PROGRESS: &str = "evaluation:matrix-progress";
 
 /// `shortcut:triggered` — a registered keyboard shortcut fired (20.6).
 pub const EVENT_SHORTCUT: &str = EVENT_SHORTCUT_TRIGGERED;
@@ -133,6 +137,73 @@ impl<R: Runtime> EventSink for TauriEventSink<R> {
     }
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EvaluationRunChunk<'a> {
+    run_id: &'a str,
+    chunk: &'a str,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EvaluationRunTerminal<'a> {
+    run_id: &'a str,
+    status: &'a str,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EvaluationMatrixProgress<'a> {
+    evaluation_run_id: &'a str,
+    completed: i64,
+    total: i64,
+    cell_id: &'a str,
+}
+
+pub struct TauriEvaluationEventSink<R: Runtime> {
+    app: AppHandle<R>,
+}
+
+impl<R: Runtime> TauriEvaluationEventSink<R> {
+    pub fn new(app: AppHandle<R>) -> Self {
+        Self { app }
+    }
+}
+
+impl<R: Runtime> EvaluationEventSink for TauriEvaluationEventSink<R> {
+    fn emit_run_chunk(&self, run_id: &str, chunk: &str) {
+        let _ = self.app.emit(
+            EVENT_EVALUATION_RUN_CHUNK,
+            EvaluationRunChunk { run_id, chunk },
+        );
+    }
+
+    fn emit_run_terminal(&self, run_id: &str, status: &str) {
+        let _ = self.app.emit(
+            EVENT_EVALUATION_RUN_TERMINAL,
+            EvaluationRunTerminal { run_id, status },
+        );
+    }
+
+    fn emit_matrix_progress(
+        &self,
+        evaluation_run_id: &str,
+        completed: i64,
+        total: i64,
+        cell_id: &str,
+    ) {
+        let _ = self.app.emit(
+            EVENT_EVALUATION_MATRIX_PROGRESS,
+            EvaluationMatrixProgress {
+                evaluation_run_id,
+                completed,
+                total,
+                cell_id,
+            },
+        );
+    }
+}
+
 // ===========================================================================
 // Updater event sink (24.3)
 // ===========================================================================
@@ -211,6 +282,12 @@ mod tests {
         assert_eq!(EVENT_AI_STREAM_CHUNK, "ai:stream-chunk");
         assert_eq!(EVENT_AI_STREAM_ERROR, "ai:stream-error");
         assert_eq!(EVENT_AI_STREAM_COMPLETE, "ai:stream-complete");
+        assert_eq!(EVENT_EVALUATION_RUN_CHUNK, "evaluation:run-chunk");
+        assert_eq!(EVENT_EVALUATION_RUN_TERMINAL, "evaluation:run-terminal");
+        assert_eq!(
+            EVENT_EVALUATION_MATRIX_PROGRESS,
+            "evaluation:matrix-progress"
+        );
         assert_eq!(EVENT_SHORTCUT, "shortcut:triggered");
         assert_eq!(EVENT_WINDOW_CLOSE_REQUESTED, "window:close-requested");
         assert_eq!(EVENT_WINDOW_FULLSCREEN_CHANGED, "window:fullscreen-changed");

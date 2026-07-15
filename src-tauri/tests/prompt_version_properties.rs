@@ -632,6 +632,7 @@ proptest! {
             description: p_desc.clone(),
             prompt_type: p_type.clone(),
             system_prompt: p_sys.clone(),
+            messages: None,
             variables: p_vars.clone(),
             tags: p_tags.clone(),
             folder_id: None,

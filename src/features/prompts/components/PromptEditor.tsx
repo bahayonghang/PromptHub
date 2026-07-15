@@ -1,11 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { PlusIcon, SaveIcon, XIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  MessageSquareIcon,
+  PlusIcon,
+  SaveIcon,
+  TextIcon,
+  Trash2Icon,
+  XIcon,
+} from "lucide-react";
 import {
   PROMPT_TYPES,
   type CreatePromptInput,
   type Folder,
   type Prompt,
+  type PromptMessage,
+  type PromptMessageRole,
   type PromptType,
   type UpdatePromptInput,
   type Variable,
@@ -22,6 +33,7 @@ interface Draft {
   folderId: string | null;
   systemPrompt: string;
   userPrompt: string;
+  messages: PromptMessage[];
   variables: Variable[];
   tags: string[];
   images: string[];
@@ -40,6 +52,7 @@ function toDraft(prompt: Prompt | null): Draft {
     folderId: prompt?.folderId ?? null,
     systemPrompt: prompt?.systemPrompt ?? "",
     userPrompt: prompt?.userPrompt ?? "",
+    messages: prompt?.messages ?? [],
     variables: prompt?.variables ?? [],
     tags: prompt?.tags ?? [],
     images: prompt?.images ?? [],
@@ -104,8 +117,52 @@ export function PromptEditor({
     });
   };
 
+  const updateMessages = (messages: PromptMessage[]) => {
+    setDraft((current) => ({
+      ...current,
+      messages,
+      variables: syncVariables(
+        current.variables,
+        "",
+        messages.map((message) => message.content).join("\n"),
+      ),
+    }));
+  };
+
+  const chatMode = draft.messages.length > 0;
+
+  const setChatMode = (enabled: boolean) => {
+    if (enabled) {
+      const messages: PromptMessage[] = [];
+      if (draft.systemPrompt.trim() !== "") {
+        messages.push({ role: "system", content: draft.systemPrompt });
+      }
+      messages.push({ role: "user", content: draft.userPrompt });
+      updateMessages(messages);
+      return;
+    }
+    const system = draft.messages.find((message) => message.role === "system");
+    const user = [...draft.messages]
+      .reverse()
+      .find((message) => message.role === "user");
+    setDraft((current) => ({
+      ...current,
+      systemPrompt: system?.content ?? current.systemPrompt,
+      userPrompt: user?.content ?? current.userPrompt,
+      messages: [],
+      variables: syncVariables(
+        current.variables,
+        system?.content ?? current.systemPrompt,
+        user?.content ?? current.userPrompt,
+      ),
+    }));
+  };
+
   const titleValid = draft.title.trim() !== "";
-  const userPromptValid = draft.userPrompt.trim() !== "";
+  const userPromptValid = chatMode
+    ? draft.messages.length > 0 &&
+      draft.messages.every((message) => message.content.trim() !== "")
+    : draft.userPrompt.trim() !== "";
   const canSubmit = titleValid && userPromptValid;
 
   const addTag = (raw: string) => {
@@ -117,8 +174,16 @@ export function PromptEditor({
   };
 
   const previewText = useMemo(
-    () => substituteVariables(draft.userPrompt, previewValues),
-    [draft.userPrompt, previewValues],
+    () =>
+      chatMode
+        ? draft.messages
+            .map(
+              (message) =>
+                `${message.role}: ${substituteVariables(message.content, previewValues)}`,
+            )
+            .join("\n\n")
+        : substituteVariables(draft.userPrompt, previewValues),
+    [chatMode, draft.messages, draft.userPrompt, previewValues],
   );
 
   const submit = () => {
@@ -130,6 +195,7 @@ export function PromptEditor({
         promptType: draft.promptType,
         description: draft.description || undefined,
         systemPrompt: draft.systemPrompt || undefined,
+        messages: draft.messages,
         variables: draft.variables,
         tags: draft.tags,
         folderId: draft.folderId,
@@ -147,6 +213,7 @@ export function PromptEditor({
         promptType: draft.promptType,
         systemPrompt: draft.systemPrompt,
         userPrompt: draft.userPrompt,
+        messages: draft.messages,
         variables: draft.variables,
         tags: draft.tags,
         folderId: draft.folderId,
@@ -260,40 +327,160 @@ export function PromptEditor({
           />
         </div>
 
-        {/* System prompt */}
-        <div className="flex flex-col gap-1">
-          <label className={labelClass} htmlFor="prompt-system">
-            {t("promptsView.editor.systemPrompt")}
-          </label>
-          <textarea
-            id="prompt-system"
-            value={draft.systemPrompt}
-            placeholder={t("promptsView.editor.systemPromptPlaceholder")}
-            onChange={(e) => updateText("systemPrompt", e.target.value)}
-            rows={3}
-            className={`${inputClass} resize-y`}
-          />
+        <div className="flex items-center justify-between">
+          <span className={labelClass}>{t("evaluation.definitionMode")}</span>
+          <div
+            role="group"
+            aria-label={t("evaluation.definitionMode")}
+            className="flex rounded-md border border-input p-0.5"
+          >
+            <button
+              type="button"
+              aria-pressed={!chatMode}
+              onClick={() => setChatMode(false)}
+              className={`flex items-center gap-1.5 rounded px-2 py-1 text-xs ${
+                !chatMode ? "bg-accent text-foreground" : "text-muted-foreground"
+              }`}
+            >
+              <TextIcon className="h-3.5 w-3.5" aria-hidden="true" />
+              {t("evaluation.textMode")}
+            </button>
+            <button
+              type="button"
+              aria-pressed={chatMode}
+              onClick={() => setChatMode(true)}
+              className={`flex items-center gap-1.5 rounded px-2 py-1 text-xs ${
+                chatMode ? "bg-accent text-foreground" : "text-muted-foreground"
+              }`}
+            >
+              <MessageSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
+              {t("evaluation.chatMode")}
+            </button>
+          </div>
         </div>
 
-        {/* User prompt */}
-        <div className="flex flex-col gap-1">
-          <label className={labelClass} htmlFor="prompt-user">
-            {t("promptsView.editor.userPrompt")}
-          </label>
-          <textarea
-            id="prompt-user"
-            value={draft.userPrompt}
-            placeholder={t("promptsView.editor.userPromptPlaceholder")}
-            onChange={(e) => updateText("userPrompt", e.target.value)}
-            rows={6}
-            className={`${inputClass} resize-y font-mono`}
-          />
-          {!userPromptValid && (
-            <span className="text-xs text-destructive">
-              {t("promptsView.editor.userPromptRequired")}
-            </span>
-          )}
-        </div>
+        {chatMode ? (
+          <div className="flex flex-col gap-2">
+            {draft.messages.map((message, index) => (
+              <div
+                key={`${index}-${message.role}`}
+                className="grid grid-cols-[8rem_minmax(0,1fr)_auto] items-start gap-2 rounded border border-border p-2"
+              >
+                <select
+                  value={message.role}
+                  aria-label={t("evaluation.messageRole", { index: index + 1 })}
+                  onChange={(event) => {
+                    const next = [...draft.messages];
+                    next[index] = {
+                      ...message,
+                      role: event.target.value as PromptMessageRole,
+                    };
+                    updateMessages(next);
+                  }}
+                  className="rounded border border-input bg-background px-2 py-1.5 text-xs text-foreground"
+                >
+                  <option value="system">{t("evaluation.roleSystem")}</option>
+                  <option value="user">{t("evaluation.roleUser")}</option>
+                  <option value="assistant">{t("evaluation.roleAssistant")}</option>
+                </select>
+                <textarea
+                  value={message.content}
+                  aria-label={t("evaluation.messageContent", { index: index + 1 })}
+                  onChange={(event) => {
+                    const next = [...draft.messages];
+                    next[index] = { ...message, content: event.target.value };
+                    updateMessages(next);
+                  }}
+                  rows={3}
+                  className={`${inputClass} resize-y font-mono`}
+                />
+                <div className="flex flex-col gap-1">
+                  {[ArrowUpIcon, ArrowDownIcon, Trash2Icon].map((Icon, action) => (
+                    <button
+                      key={action}
+                      type="button"
+                      disabled={
+                        (action === 0 && index === 0) ||
+                        (action === 1 && index === draft.messages.length - 1) ||
+                        (action === 2 && draft.messages.length === 1)
+                      }
+                      title={t(
+                        action === 0
+                          ? "evaluation.moveMessageUp"
+                          : action === 1
+                            ? "evaluation.moveMessageDown"
+                            : "evaluation.removeMessage",
+                      )}
+                      aria-label={t(
+                        action === 0
+                          ? "evaluation.moveMessageUp"
+                          : action === 1
+                            ? "evaluation.moveMessageDown"
+                            : "evaluation.removeMessage",
+                      )}
+                      onClick={() => {
+                        const next = [...draft.messages];
+                        if (action === 2) next.splice(index, 1);
+                        else {
+                          const target = action === 0 ? index - 1 : index + 1;
+                          [next[index], next[target]] = [next[target], next[index]];
+                        }
+                        updateMessages(next);
+                      }}
+                      className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
+                    >
+                      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                updateMessages([...draft.messages, { role: "user", content: "" }])
+              }
+              className="flex w-fit items-center gap-1.5 rounded border border-input px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <PlusIcon className="h-3.5 w-3.5" aria-hidden="true" />
+              {t("evaluation.addMessage")}
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-col gap-1">
+              <label className={labelClass} htmlFor="prompt-system">
+                {t("promptsView.editor.systemPrompt")}
+              </label>
+              <textarea
+                id="prompt-system"
+                value={draft.systemPrompt}
+                placeholder={t("promptsView.editor.systemPromptPlaceholder")}
+                onChange={(e) => updateText("systemPrompt", e.target.value)}
+                rows={3}
+                className={`${inputClass} resize-y`}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className={labelClass} htmlFor="prompt-user">
+                {t("promptsView.editor.userPrompt")}
+              </label>
+              <textarea
+                id="prompt-user"
+                value={draft.userPrompt}
+                placeholder={t("promptsView.editor.userPromptPlaceholder")}
+                onChange={(e) => updateText("userPrompt", e.target.value)}
+                rows={6}
+                className={`${inputClass} resize-y font-mono`}
+              />
+            </div>
+          </>
+        )}
+        {!userPromptValid && (
+          <span className="text-xs text-destructive">
+            {t("promptsView.editor.userPromptRequired")}
+          </span>
+        )}
 
         {/* Variables */}
         <VariableEditor

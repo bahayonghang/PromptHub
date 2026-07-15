@@ -40,7 +40,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
 use crate::models::{
-    Prompt, PromptPage, PromptRevisionSource, PromptType, PromptVersion, Variable,
+    Prompt, PromptMessage, PromptPage, PromptRevisionSource, PromptType, PromptVersion, Variable,
 };
 use crate::models::{SearchQuery, SortField, SortOrder};
 use crate::state::EncryptionState;
@@ -66,6 +66,8 @@ pub struct PromptCreate {
     pub prompt_type: Option<String>,
     /// Optional system prompt.
     pub system_prompt: Option<String>,
+    /// Ordered chat messages. Empty or omitted for a simple text prompt.
+    pub messages: Option<Vec<PromptMessage>>,
     /// Declared variables/placeholders.
     pub variables: Option<Vec<Variable>>,
     /// Free-form tags.
@@ -108,6 +110,8 @@ pub struct PromptUpdate {
     pub prompt_type: Option<String>,
     /// Replacement system prompt.
     pub system_prompt: Option<String>,
+    /// Replacement ordered chat messages.
+    pub messages: Option<Vec<PromptMessage>>,
     /// Replacement variables.
     pub variables: Option<Vec<Variable>>,
     /// Replacement tags.
@@ -166,6 +170,22 @@ fn prompt_type_wire(prompt_type: PromptType) -> &'static str {
     }
 }
 
+fn validate_messages(messages: &[PromptMessage]) -> Result<(), AppError> {
+    for (index, message) in messages.iter().enumerate() {
+        if !matches!(message.role.as_str(), "system" | "user" | "assistant") {
+            return Err(AppError::validation(format!(
+                "messages[{index}].role must be system, user, or assistant"
+            )));
+        }
+        if message.content.trim().is_empty() {
+            return Err(AppError::validation(format!(
+                "messages[{index}].content is required"
+            )));
+        }
+    }
+    Ok(())
+}
+
 /// Creates a prompt and returns the stored record (Req 6.1, 6.6, 6.7).
 ///
 /// Validates non-empty `title`/`userPrompt` (Req 6.13) and the optional
@@ -177,8 +197,12 @@ pub fn create(conn: &Connection, input: PromptCreate) -> Result<Prompt, AppError
     if input.title.trim().is_empty() {
         return Err(AppError::validation("title is required"));
     }
-    if input.user_prompt.trim().is_empty() {
-        return Err(AppError::validation("userPrompt is required"));
+    let messages = input.messages.unwrap_or_default();
+    validate_messages(&messages)?;
+    if input.user_prompt.trim().is_empty() && messages.is_empty() {
+        return Err(AppError::validation(
+            "userPrompt or at least one chat message is required",
+        ));
     }
     let prompt_type = match input.prompt_type.as_deref() {
         Some(raw) => parse_prompt_type(raw)?,
@@ -188,6 +212,7 @@ pub fn create(conn: &Connection, input: PromptCreate) -> Result<Prompt, AppError
     let id = uuid::Uuid::new_v4().to_string();
     let now = now_millis();
     let variables = json_array(&input.variables.unwrap_or_default());
+    let messages = json_array(&messages);
     let tags = json_array(&input.tags.unwrap_or_default());
     let images = json_array(&input.images.unwrap_or_default());
     let videos = json_array(&input.videos.unwrap_or_default());
@@ -197,10 +222,10 @@ pub fn create(conn: &Connection, input: PromptCreate) -> Result<Prompt, AppError
         .map_err(|e| db_err("failed to begin create-prompt transaction", e))?;
     tx.execute(
         "INSERT INTO prompts \
-         (id, title, description, prompt_type, system_prompt, user_prompt, variables, tags, \
+         (id, title, description, prompt_type, system_prompt, user_prompt, messages, variables, tags, \
           folder_id, images, videos, is_favorite, is_pinned, is_private, current_version, usage_count, \
           source, notes, last_ai_response, created_at, updated_at) \
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21)",
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22)",
         params![
             id,
             input.title,
@@ -208,6 +233,7 @@ pub fn create(conn: &Connection, input: PromptCreate) -> Result<Prompt, AppError
             prompt_type_wire(prompt_type),
             input.system_prompt,
             input.user_prompt,
+            messages,
             variables,
             tags,
             input.folder_id,
@@ -288,6 +314,13 @@ pub fn update(conn: &Connection, id: &str, patch: PromptUpdate) -> Result<Prompt
     let user_prompt = patch
         .user_prompt
         .unwrap_or_else(|| existing.user_prompt.clone());
+    let messages = patch.messages.unwrap_or_else(|| existing.messages.clone());
+    validate_messages(&messages)?;
+    if user_prompt.trim().is_empty() && messages.is_empty() {
+        return Err(AppError::validation(
+            "userPrompt or at least one chat message is required",
+        ));
+    }
     let variables = patch
         .variables
         .unwrap_or_else(|| existing.variables.clone());
@@ -310,6 +343,7 @@ pub fn update(conn: &Connection, id: &str, patch: PromptUpdate) -> Result<Prompt
         || prompt_type != existing.prompt_type
         || system_prompt != existing.system_prompt
         || user_prompt != existing.user_prompt
+        || messages != existing.messages
         || variables != existing.variables
         || tags != existing.tags
         || folder_id != existing.folder_id
@@ -331,17 +365,18 @@ pub fn update(conn: &Connection, id: &str, patch: PromptUpdate) -> Result<Prompt
         .map_err(|e| db_err("failed to begin update-prompt transaction", e))?;
     tx.execute(
         "UPDATE prompts SET \
-         title=?1, description=?2, prompt_type=?3, system_prompt=?4, user_prompt=?5, \
-         variables=?6, tags=?7, folder_id=?8, images=?9, videos=?10, is_favorite=?11, \
-         is_pinned=?12, is_private=?13, usage_count=?14, source=?15, notes=?16, last_ai_response=?17, \
-         updated_at=?18 \
-         WHERE id=?19",
+         title=?1, description=?2, prompt_type=?3, system_prompt=?4, user_prompt=?5, messages=?6, \
+         variables=?7, tags=?8, folder_id=?9, images=?10, videos=?11, is_favorite=?12, \
+         is_pinned=?13, is_private=?14, usage_count=?15, source=?16, notes=?17, last_ai_response=?18, \
+         updated_at=?19 \
+         WHERE id=?20",
         params![
             title,
             description,
             prompt_type_wire(prompt_type),
             system_prompt,
             user_prompt,
+            json_array(&messages),
             json_array(&variables),
             json_array(&tags),
             folder_id,
@@ -392,6 +427,32 @@ fn decrypt_optional(value: Option<String>, key: &[u8]) -> Result<Option<String>,
         .transpose()
 }
 
+fn encrypt_messages(
+    messages: Vec<PromptMessage>,
+    key: &[u8],
+) -> Result<Vec<PromptMessage>, AppError> {
+    messages
+        .into_iter()
+        .map(|mut message| {
+            message.content = crate::services::security::encrypt(&message.content, key)?;
+            Ok(message)
+        })
+        .collect()
+}
+
+fn decrypt_messages(
+    messages: Vec<PromptMessage>,
+    key: &[u8],
+) -> Result<Vec<PromptMessage>, AppError> {
+    messages
+        .into_iter()
+        .map(|mut message| {
+            message.content = crate::services::security::decrypt(&message.content, key)?;
+            Ok(message)
+        })
+        .collect()
+}
+
 pub(crate) fn present_prompt(mut prompt: Prompt, key: Option<&[u8]>) -> Result<Prompt, AppError> {
     if !prompt.is_private {
         return Ok(prompt);
@@ -400,6 +461,7 @@ pub(crate) fn present_prompt(mut prompt: Prompt, key: Option<&[u8]>) -> Result<P
         prompt.description = None;
         prompt.system_prompt = None;
         prompt.user_prompt.clear();
+        prompt.messages.clear();
         prompt.source = None;
         prompt.notes = None;
         prompt.last_ai_response = None;
@@ -410,6 +472,7 @@ pub(crate) fn present_prompt(mut prompt: Prompt, key: Option<&[u8]>) -> Result<P
     prompt.description = decrypt_optional(prompt.description, key)?;
     prompt.system_prompt = decrypt_optional(prompt.system_prompt, key)?;
     prompt.user_prompt = crate::services::security::decrypt(&prompt.user_prompt, key)?;
+    prompt.messages = decrypt_messages(prompt.messages, key)?;
     prompt.source = decrypt_optional(prompt.source, key)?;
     prompt.notes = decrypt_optional(prompt.notes, key)?;
     prompt.last_ai_response = decrypt_optional(prompt.last_ai_response, key)?;
@@ -428,6 +491,7 @@ pub(crate) fn present_version(
         version.description = None;
         version.system_prompt = None;
         version.user_prompt.clear();
+        version.messages.clear();
         version.source = None;
         version.notes = None;
         version.ai_response = None;
@@ -437,6 +501,7 @@ pub(crate) fn present_version(
     version.description = decrypt_optional(version.description, key)?;
     version.system_prompt = decrypt_optional(version.system_prompt, key)?;
     version.user_prompt = crate::services::security::decrypt(&version.user_prompt, key)?;
+    version.messages = decrypt_messages(version.messages, key)?;
     version.source = decrypt_optional(version.source, key)?;
     version.notes = decrypt_optional(version.notes, key)?;
     version.ai_response = decrypt_optional(version.ai_response, key)?;
@@ -453,6 +518,7 @@ pub fn create_secure(
         input.description = encrypt_optional(input.description, &key)?;
         input.system_prompt = encrypt_optional(input.system_prompt, &key)?;
         input.user_prompt = crate::services::security::encrypt(&input.user_prompt, &key)?;
+        input.messages = Some(encrypt_messages(input.messages.unwrap_or_default(), &key)?);
         input.source = encrypt_optional(input.source, &key)?;
         input.notes = encrypt_optional(input.notes, &key)?;
     }
@@ -491,6 +557,10 @@ pub fn update_secure(
                     .unwrap_or(&existing.user_prompt),
                 &key,
             )?);
+            patch.messages = Some(encrypt_messages(
+                patch.messages.take().unwrap_or(existing.messages.clone()),
+                &key,
+            )?);
             patch.source = encrypt_optional(patch.source.take().or(existing.source.clone()), &key)?;
             patch.notes = encrypt_optional(patch.notes.take().or(existing.notes.clone()), &key)?;
             patch.last_ai_response = encrypt_optional(
@@ -507,6 +577,7 @@ pub fn update_secure(
             patch.description = patch.description.or(current.description);
             patch.system_prompt = patch.system_prompt.or(current.system_prompt);
             patch.user_prompt = Some(patch.user_prompt.unwrap_or(current.user_prompt));
+            patch.messages = Some(patch.messages.unwrap_or(current.messages));
             patch.source = patch.source.or(current.source);
             patch.notes = patch.notes.or(current.notes);
             patch.last_ai_response = patch.last_ai_response.or(current.last_ai_response);
@@ -515,6 +586,7 @@ pub fn update_secure(
             let touches_content = patch.description.is_some()
                 || patch.system_prompt.is_some()
                 || patch.user_prompt.is_some()
+                || patch.messages.is_some()
                 || patch.source.is_some()
                 || patch.notes.is_some()
                 || patch.last_ai_response.is_some();
@@ -525,6 +597,10 @@ pub fn update_secure(
                 patch.user_prompt = patch
                     .user_prompt
                     .map(|value| crate::services::security::encrypt(&value, &key))
+                    .transpose()?;
+                patch.messages = patch
+                    .messages
+                    .map(|messages| encrypt_messages(messages, &key))
                     .transpose()?;
                 patch.source = encrypt_optional(patch.source, &key)?;
                 patch.notes = encrypt_optional(patch.notes, &key)?;
@@ -599,8 +675,8 @@ pub fn duplicate(conn: &Connection, id: &str) -> Result<Prompt, AppError> {
         .unchecked_transaction()
         .map_err(|error| db_err("failed to begin duplicate transaction", error))?;
     tx.execute(
-        "INSERT INTO prompts (id,title,description,prompt_type,system_prompt,user_prompt,variables,tags,folder_id,images,videos,is_favorite,is_pinned,is_private,current_version,usage_count,source,notes,last_ai_response,created_at,updated_at) \
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,0,0,?15,?16,?17,?18,?18)",
+        "INSERT INTO prompts (id,title,description,prompt_type,system_prompt,user_prompt,messages,variables,tags,folder_id,images,videos,is_favorite,is_pinned,is_private,current_version,usage_count,source,notes,last_ai_response,created_at,updated_at) \
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,0,0,?16,?17,?18,?19,?19)",
         params![
             duplicate_id,
             title,
@@ -608,6 +684,7 @@ pub fn duplicate(conn: &Connection, id: &str) -> Result<Prompt, AppError> {
             prompt_type_wire(source.prompt_type),
             source.system_prompt,
             source.user_prompt,
+            json_array(&source.messages),
             json_array(&source.variables),
             json_array(&source.tags),
             source.folder_id,
@@ -926,7 +1003,7 @@ pub struct PromptCopy {
 /// in `values`, the whole placeholder is replaced by that value; otherwise the
 /// placeholder is copied through unchanged. An unterminated `{{` is also left
 /// intact.
-fn substitute_placeholders(
+pub(crate) fn substitute_placeholders(
     text: &str,
     values: &std::collections::HashMap<String, String>,
 ) -> String {
@@ -1159,6 +1236,7 @@ mod tests {
             description: Some("a description".into()),
             prompt_type: None,
             system_prompt: Some("be helpful".into()),
+            messages: None,
             variables: Some(vec![Variable {
                 name: "name".into(),
                 r#type: "text".into(),
@@ -2223,5 +2301,74 @@ mod tests {
         let rekeyed = get_secure(&conn, &encryption, &created.id).unwrap();
         assert_eq!(rekeyed.user_prompt, "classified body");
         assert_eq!(rekeyed.notes.as_deref(), Some("classified notes"));
+    }
+
+    #[test]
+    fn ordered_chat_messages_round_trip_in_private_revisions() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let encryption = Mutex::new(EncryptionState::default());
+        crate::services::security::set_master_password(&conn, &encryption, "old-password").unwrap();
+        let messages = vec![
+            PromptMessage {
+                role: "system".into(),
+                content: "Be concise".into(),
+            },
+            PromptMessage {
+                role: "user".into(),
+                content: "Hello {{name}}".into(),
+            },
+            PromptMessage {
+                role: "assistant".into(),
+                content: "Hello".into(),
+            },
+        ];
+        let created = create_secure(
+            &conn,
+            &encryption,
+            PromptCreate {
+                title: "Private chat".into(),
+                user_prompt: String::new(),
+                messages: Some(messages.clone()),
+                is_private: Some(true),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(created.messages, messages);
+
+        let stored = get(&conn, &created.id).unwrap();
+        assert!(stored
+            .messages
+            .iter()
+            .all(|message| message.content.starts_with("ENC::")));
+        let revision = crate::services::version::list(&conn, &created.id).unwrap();
+        let key = crate::services::security::unlocked_key(&encryption).unwrap();
+        assert_eq!(
+            present_version(revision[0].clone(), key.as_deref())
+                .unwrap()
+                .messages,
+            messages
+        );
+
+        crate::services::security::change_master_password(
+            &conn,
+            &encryption,
+            "old-password",
+            "new-password",
+        )
+        .unwrap();
+        crate::services::security::lock(&encryption).unwrap();
+        assert!(get_secure(&conn, &encryption, &created.id)
+            .unwrap()
+            .messages
+            .is_empty());
+        crate::services::security::unlock(&conn, &encryption, "new-password").unwrap();
+        assert_eq!(
+            get_secure(&conn, &encryption, &created.id)
+                .unwrap()
+                .messages,
+            messages
+        );
     }
 }

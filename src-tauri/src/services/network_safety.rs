@@ -1,6 +1,9 @@
 //! Shared network-safety helpers for outbound requests.
 
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::time::Duration;
+
+use crate::error::AppError;
 
 /// Returns `true` only for genuinely public, routable IP addresses.
 pub fn is_public_ip(ip: IpAddr) -> bool {
@@ -89,6 +92,75 @@ pub(crate) fn is_blocked_hostname(host: &str) -> bool {
         || normalized.ends_with(".localdomain")
 }
 
+/// Validates and DNS-pins one outbound HTTP(S) hop before it is contacted.
+/// Callers that follow redirects must call this again for every target.
+pub async fn prepare_public_url(
+    raw: &str,
+    timeout: Duration,
+) -> Result<(reqwest::Url, reqwest::Client), AppError> {
+    let url = reqwest::Url::parse(raw)
+        .map_err(|e| AppError::validation(format!("invalid URL `{raw}`: {e}")))?;
+    if !matches!(url.scheme(), "http" | "https") {
+        return Err(AppError::ssrf_blocked(
+            "only HTTP and HTTPS outbound URLs are allowed",
+        ));
+    }
+    let host = url
+        .host_str()
+        .ok_or_else(|| AppError::validation("provider endpoint has no host"))?
+        .trim_start_matches('[')
+        .trim_end_matches(']')
+        .to_string();
+    if is_blocked_hostname(&host) {
+        return Err(AppError::ssrf_blocked(format!(
+            "host `{host}` names the local machine"
+        )));
+    }
+    let port = url
+        .port_or_known_default()
+        .unwrap_or(if url.scheme() == "https" { 443 } else { 80 });
+    let ips = if let Ok(ip) = host.parse::<IpAddr>() {
+        if !is_public_ip(ip) {
+            return Err(AppError::ssrf_blocked(format!(
+                "host `{host}` resolves to a non-public address"
+            )));
+        }
+        vec![ip]
+    } else {
+        let resolved = tokio::net::lookup_host((host.as_str(), port))
+            .await
+            .map_err(|e| AppError::network(format!("failed to resolve host `{host}`: {e}")))?;
+        let mut ips = Vec::new();
+        for address in resolved {
+            if !is_public_ip(address.ip()) {
+                return Err(AppError::ssrf_blocked(format!(
+                    "host `{host}` resolves to a non-public address"
+                )));
+            }
+            if !ips.contains(&address.ip()) {
+                ips.push(address.ip());
+            }
+        }
+        if ips.is_empty() {
+            return Err(AppError::network(format!(
+                "host `{host}` did not resolve to an address"
+            )));
+        }
+        ips
+    };
+    let addrs: Vec<SocketAddr> = ips
+        .into_iter()
+        .map(|ip| SocketAddr::new(ip, port))
+        .collect();
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(timeout)
+        .resolve_to_addrs(&host, &addrs)
+        .build()
+        .map_err(|e| AppError::network(format!("failed to build provider client: {e}")))?;
+    Ok((url, client))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -175,5 +247,13 @@ mod tests {
             assert!(is_blocked_hostname(host));
         }
         assert!(!is_blocked_hostname("example.com"));
+    }
+
+    #[tokio::test]
+    async fn public_url_precheck_blocks_local_provider_endpoints() {
+        let error = prepare_public_url("http://localhost:8080/v1/chat", Duration::from_secs(1))
+            .await
+            .unwrap_err();
+        assert_eq!(error.code_str(), "SSRF_BLOCKED");
     }
 }

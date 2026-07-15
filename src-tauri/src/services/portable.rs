@@ -464,6 +464,9 @@ fn validate_private_bundle_key(
         require_encrypted("prompt.description", prompt.description.as_deref())?;
         require_encrypted("prompt.systemPrompt", prompt.system_prompt.as_deref())?;
         require_encrypted("prompt.userPrompt", Some(&prompt.user_prompt))?;
+        for message in &prompt.messages {
+            require_encrypted("prompt.messages.content", Some(&message.content))?;
+        }
         require_encrypted("prompt.source", prompt.source.as_deref())?;
         require_encrypted("prompt.notes", prompt.notes.as_deref())?;
         require_encrypted("prompt.lastAiResponse", prompt.last_ai_response.as_deref())?;
@@ -477,6 +480,9 @@ fn validate_private_bundle_key(
         require_encrypted("revision.description", revision.description.as_deref())?;
         require_encrypted("revision.systemPrompt", revision.system_prompt.as_deref())?;
         require_encrypted("revision.userPrompt", Some(&revision.user_prompt))?;
+        for message in &revision.messages {
+            require_encrypted("revision.messages.content", Some(&message.content))?;
+        }
         require_encrypted("revision.source", revision.source.as_deref())?;
         require_encrypted("revision.notes", revision.notes.as_deref())?;
         require_encrypted("revision.aiResponse", revision.ai_response.as_deref())?;
@@ -579,11 +585,11 @@ fn insert_prompt(
     folder_id: Option<&str>,
 ) -> Result<(), AppError> {
     tx.execute(
-        "INSERT INTO prompts (id,title,description,prompt_type,system_prompt,user_prompt,variables,tags,folder_id,images,videos,is_favorite,is_pinned,is_private,current_version,usage_count,source,notes,last_ai_response,created_at,updated_at) \
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21)",
+        "INSERT INTO prompts (id,title,description,prompt_type,system_prompt,user_prompt,messages,variables,tags,folder_id,images,videos,is_favorite,is_pinned,is_private,current_version,usage_count,source,notes,last_ai_response,created_at,updated_at) \
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22)",
         params![
             id, prompt.title, prompt.description, enum_wire(&prompt.prompt_type)?,
-            prompt.system_prompt, prompt.user_prompt, json(&prompt.variables)?, json(&prompt.tags)?,
+            prompt.system_prompt, prompt.user_prompt, json(&prompt.messages)?, json(&prompt.variables)?, json(&prompt.tags)?,
             folder_id, json(&prompt.images)?, json(&prompt.videos)?, prompt.is_favorite,
             prompt.is_pinned, prompt.is_private, prompt.current_version, prompt.usage_count,
             prompt.source, prompt.notes, prompt.last_ai_response,
@@ -602,10 +608,10 @@ fn insert_revision(
     parent_revision_id: Option<&str>,
 ) -> Result<(), AppError> {
     tx.execute(
-        "INSERT INTO prompt_versions (id,prompt_id,version,system_prompt,user_prompt,variables,title,description,prompt_type,tags,folder_id,images,videos,is_favorite,is_pinned,is_private,source,notes,note,ai_response,source_action,parent_revision_id,created_at) \
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23)",
+        "INSERT INTO prompt_versions (id,prompt_id,version,system_prompt,user_prompt,messages,variables,title,description,prompt_type,tags,folder_id,images,videos,is_favorite,is_pinned,is_private,source,notes,note,ai_response,source_action,parent_revision_id,created_at) \
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24)",
         params![
-            id, prompt_id, revision.version, revision.system_prompt, revision.user_prompt,
+            id, prompt_id, revision.version, revision.system_prompt, revision.user_prompt, json(&revision.messages)?,
             json(&revision.variables)?, revision.title, revision.description,
             enum_wire(&revision.prompt_type)?, json(&revision.tags)?, revision.folder_id,
             json(&revision.images)?, json(&revision.videos)?, revision.is_favorite,
@@ -620,10 +626,10 @@ fn insert_revision(
 
 fn replace_prompt(tx: &Transaction<'_>, incoming: &Prompt) -> Result<(), AppError> {
     tx.execute(
-        "UPDATE prompts SET title=?1,description=?2,prompt_type=?3,system_prompt=?4,user_prompt=?5,variables=?6,tags=?7,folder_id=?8,images=?9,videos=?10,is_favorite=?11,is_pinned=?12,is_private=?13,source=?14,notes=?15,last_ai_response=?16,updated_at=?17 WHERE id=?18",
+        "UPDATE prompts SET title=?1,description=?2,prompt_type=?3,system_prompt=?4,user_prompt=?5,messages=?6,variables=?7,tags=?8,folder_id=?9,images=?10,videos=?11,is_favorite=?12,is_pinned=?13,is_private=?14,source=?15,notes=?16,last_ai_response=?17,updated_at=?18 WHERE id=?19",
         params![
             incoming.title, incoming.description, enum_wire(&incoming.prompt_type)?,
-            incoming.system_prompt, incoming.user_prompt, json(&incoming.variables)?,
+            incoming.system_prompt, incoming.user_prompt, json(&incoming.messages)?, json(&incoming.variables)?,
             json(&incoming.tags)?, incoming.folder_id, json(&incoming.images)?,
             json(&incoming.videos)?, incoming.is_favorite, incoming.is_pinned,
             incoming.is_private, incoming.source, incoming.notes, incoming.last_ai_response,

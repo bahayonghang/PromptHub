@@ -10,6 +10,7 @@
 #![allow(dead_code)]
 
 mod enums;
+mod evaluation;
 mod folder;
 mod prompt;
 mod rules;
@@ -17,8 +18,9 @@ mod security;
 mod settings;
 
 pub use enums::{PromptRevisionSource, PromptType, SortField, SortOrder, SyncStatus};
+pub use evaluation::*;
 pub use folder::Folder;
-pub use prompt::{Prompt, PromptPage, PromptVersion, SearchQuery, Variable};
+pub use prompt::{Prompt, PromptMessage, PromptPage, PromptVersion, SearchQuery, Variable};
 pub use rules::{RuleFileContent, RuleVersionSnapshot};
 pub use security::StoredMasterPassword;
 pub use settings::{SecuritySettings, Settings, SyncSettings};
@@ -104,6 +106,7 @@ mod tests {
             prompt_type: PromptType::Text,
             system_prompt: None,
             user_prompt: "Hello {{name}}".into(),
+            messages: vec![],
             variables: vec![Variable {
                 name: "name".into(),
                 r#type: "text".into(),

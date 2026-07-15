@@ -6,6 +6,7 @@ export type PromptRevisionField =
   | "promptType"
   | "systemPrompt"
   | "userPrompt"
+  | "messages"
   | "variables"
   | "tags"
   | "folder"
@@ -48,6 +49,7 @@ export function diffPromptRevision(
     ["promptType", revision.promptType, prompt.promptType],
     ["systemPrompt", revision.systemPrompt, prompt.systemPrompt],
     ["userPrompt", revision.userPrompt, prompt.userPrompt],
+    ["messages", revision.messages, prompt.messages],
     ["variables", revision.variables, prompt.variables],
     ["tags", revision.tags, prompt.tags],
     ["folder", revision.folderId, prompt.folderId],

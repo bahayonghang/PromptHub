@@ -181,6 +181,8 @@ pub fn change_master_password(
         .map_err(|e| AppError::internal(format!("failed to begin transaction: {e}")))?;
     rekey_settings(&tx, &old_key, &new_key)?;
     rekey_prompt_fields(&tx, &old_key, &new_key)?;
+    rekey_prompt_messages(&tx, &old_key, &new_key)?;
+    rekey_profile_credentials(&tx, &old_key, &new_key)?;
     save_stored(&tx, &new_stored)?;
     tx.commit()
         .map_err(|e| AppError::internal(format!("failed to commit re-key: {e}")))?;
@@ -442,6 +444,69 @@ fn rekey_prompt_fields(conn: &Connection, old_key: &[u8], new_key: &[u8]) -> Res
         "ai_response",
     ] {
         rekey_column(conn, "prompt_versions", column, old_key, new_key)?;
+    }
+    Ok(())
+}
+
+fn rekey_prompt_messages(
+    conn: &Connection,
+    old_key: &[u8],
+    new_key: &[u8],
+) -> Result<(), AppError> {
+    for table in ["prompts", "prompt_versions"] {
+        let select = format!("SELECT id, messages FROM {table} WHERE is_private = 1");
+        let rows: Vec<(String, String)> = conn
+            .prepare(&select)
+            .and_then(|mut stmt| {
+                stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
+                    .collect()
+            })
+            .map_err(|e| AppError::internal(format!("failed to read private messages: {e}")))?;
+        let update = format!("UPDATE {table} SET messages = ?1 WHERE id = ?2");
+        for (id, raw) in rows {
+            let mut messages: Vec<crate::models::PromptMessage> = serde_json::from_str(&raw)
+                .map_err(|e| {
+                    AppError::internal(format!("failed to decode private messages: {e}"))
+                })?;
+            for message in &mut messages {
+                if message.content.starts_with(ENC_PREFIX) {
+                    message.content = rekey_value(&message.content, old_key, new_key)?;
+                }
+            }
+            let encoded = serde_json::to_string(&messages).map_err(|e| {
+                AppError::internal(format!("failed to encode private messages: {e}"))
+            })?;
+            conn.execute(&update, params![encoded, id]).map_err(|e| {
+                AppError::internal(format!("failed to re-key private messages: {e}"))
+            })?;
+        }
+    }
+    Ok(())
+}
+
+fn rekey_profile_credentials(
+    conn: &Connection,
+    old_key: &[u8],
+    new_key: &[u8],
+) -> Result<(), AppError> {
+    let rows: Vec<(String, String)> = conn
+        .prepare(
+            "SELECT id, credential FROM execution_profile_revisions WHERE credential IS NOT NULL",
+        )
+        .and_then(|mut stmt| {
+            stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
+                .collect()
+        })
+        .map_err(|e| AppError::internal(format!("failed to read profile credentials: {e}")))?;
+    for (id, credential) in rows {
+        if credential.starts_with(ENC_PREFIX) {
+            let reencrypted = rekey_value(&credential, old_key, new_key)?;
+            conn.execute(
+                "UPDATE execution_profile_revisions SET credential = ?1 WHERE id = ?2",
+                params![reencrypted, id],
+            )
+            .map_err(|e| AppError::internal(format!("failed to re-key profile credential: {e}")))?;
+        }
     }
     Ok(())
 }
