@@ -1,0 +1,31 @@
+{
+  "id": "prompt-workspace-ux-optimization",
+  "name": "prompt-workspace-ux-optimization",
+  "title": "Optimize prompt workspace UX and organization",
+  "description": "Redesign the Prompts workspace, repair filter presentation, support inline organization creation, and complete localized accessible interaction.",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "lyh",
+  "assignee": "lyh",
+  "createdAt": "2026-07-15",
+  "completedAt": "2026-07-15",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "07-15-prompt-workspace-layout-localization",
+    "07-15-prompt-filter-panel",
+    "07-15-prompt-inline-folder-create",
+    "07-15-prompt-type-definitions"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
