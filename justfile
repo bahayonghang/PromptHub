@@ -18,21 +18,22 @@ help:
 # --- Setup ---
 
 # Install frontend dependencies.
-install:
+deps:
     npm install
 
 # --- Dev ---
 
-# Frontend-only dev server on http://localhost:1420.
-dev:
-    npm run dev
-
 # Full desktop dev environment (Vite + native window + Rust backend).
-tauri-dev:
+dev:
     npm run tauri dev
 
-# Short alias for `tauri-dev` (frontend-only `dev` cannot reach the backend).
-alias tdev := tauri-dev
+# Frontend-only Vite server on http://localhost:1420.
+frontend:
+    npm run dev
+
+# Backward-compatible aliases for `dev`.
+alias tauri-dev := dev
+alias tdev := dev
 
 # --- Build ---
 
@@ -44,9 +45,9 @@ build:
 tauri-build:
     npm run tauri build
 
-# Build and install the native application for the current platform.
+# Build and install PromptHub on this machine.
 [script("node")]
-tinstall: tauri-build
+install: tauri-build
     const { existsSync, readdirSync, statSync } = require("node:fs");
     const { basename, join, resolve } = require("node:path");
     const { spawnSync } = require("node:child_process");
@@ -101,6 +102,9 @@ tinstall: tauri-build
     }
 
     throw new Error("Unsupported platform: " + process.platform);
+
+# Backward-compatible alias for `install`.
+alias tinstall := install
 
 # --- Test ---
 
