@@ -1,3 +1,11 @@
+// MSVC link.exe prints a localized "Creating library" progress line when
+// linking the Tauri `cdylib`. rustc 1.97+ only filters the English text
+// and re-emits the rest as `linker_messages`.
+#![cfg_attr(
+    all(windows, target_env = "msvc"),
+    allow(unknown_lints, linker_messages)
+)]
+
 pub mod error;
 pub mod state;
 
