@@ -1,7 +1,7 @@
 {
   "name": "prompthub-desktop",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "PromptHub Desktop - Tauri application for AI prompt management",
   "allowScripts": {
