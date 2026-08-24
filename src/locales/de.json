@@ -1746,6 +1746,21 @@
       "copyHint": "{{mod}}+Enter",
       "newPrompt": "Neuer Prompt"
     },
+    "palette": {
+      "placeholder": "Prompts und Aktionen suchen",
+      "groupPrompts": "Prompt",
+      "groupActions": "Aktionen",
+      "newPrompt": "Neuer Prompt",
+      "favorites": "Nur Favoriten zeigen",
+      "toggleView": "Liste und Raster wechseln",
+      "toggleTheme": "Hell und dunkel wechseln",
+      "empty": "Keine Prompts passen zu diesen Begriffen"
+    },
+    "toast": {
+      "dismiss": "Benachrichtigung schliessen",
+      "saved": "Prompt gespeichert",
+      "batchDeleted": "Ausgewaehlte Prompts geloescht"
+    },
     "history": {
       "title": "Versionsverlauf",
       "empty": "Noch keine Versionen",

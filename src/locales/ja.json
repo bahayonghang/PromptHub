@@ -1752,6 +1752,21 @@
       "copyHint": "{{mod}}+Enter",
       "newPrompt": "新しい Prompt"
     },
+    "palette": {
+      "placeholder": "Prompt と操作を検索",
+      "groupPrompts": "Prompt",
+      "groupActions": "操作",
+      "newPrompt": "新しい Prompt",
+      "favorites": "お気に入りのみ",
+      "toggleView": "リストとグリッドを切替",
+      "toggleTheme": "ライトとダークを切替",
+      "empty": "これらの語に一致する Prompt はありません"
+    },
+    "toast": {
+      "dismiss": "通知を閉じる",
+      "saved": "Prompt を保存しました",
+      "batchDeleted": "選択した Prompt を削除しました"
+    },
     "history": {
       "title": "バージョン履歴",
       "empty": "バージョンはまだありません",

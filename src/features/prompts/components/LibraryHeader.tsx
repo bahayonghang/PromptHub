@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { DownloadIcon, PlusIcon, UploadIcon } from "lucide-react";
 import { resolveLibraryScope, usePromptStore } from "../promptStore";
 import { useSystemStore } from "../../system/systemStore";
+import { useToastStore } from "../../notifications/toastStore";
 import type { BundlePreview, ImportConflictPolicy } from "../types";
 
 const iconButtonClass =
@@ -10,7 +11,6 @@ const iconButtonClass =
 
 interface LibraryHeaderProps {
   onCreate: () => void;
-  onTransferMessage: (message: string | null) => void;
 }
 
 export function libraryScopeTitle(
@@ -24,7 +24,7 @@ export function libraryScopeTitle(
   return t("promptsView.library.all");
 }
 
-export function LibraryHeader({ onCreate, onTransferMessage }: LibraryHeaderProps) {
+export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
   const { t } = useTranslation();
   const folders = usePromptStore((state) => state.folders);
   const filters = usePromptStore((state) => state.filters);
@@ -61,9 +61,12 @@ export function LibraryHeader({ onCreate, onTransferMessage }: LibraryHeaderProp
             onClick={() =>
               void exportBundle().then((result) => {
                 if (result) {
-                  onTransferMessage(
-                    t("promptsView.bundle.exported", { path: result.filePath }),
-                  );
+                  useToastStore.getState().push({
+                    message: t("promptsView.bundle.exported", {
+                      path: result.filePath,
+                    }),
+                    tone: "success",
+                  });
                 }
               })
             }
@@ -159,14 +162,15 @@ export function LibraryHeader({ onCreate, onTransferMessage }: LibraryHeaderProp
                 onClick={() =>
                   void importBundle(bundlePath.trim(), conflictPolicy).then((result) => {
                     if (result) {
-                      onTransferMessage(
-                        t("promptsView.bundle.imported", {
+                      useToastStore.getState().push({
+                        message: t("promptsView.bundle.imported", {
                           added: result.added,
                           replaced: result.replaced,
                           skipped: result.skipped,
                           backupId: result.backupId,
                         }),
-                      );
+                        tone: "success",
+                      });
                       setShowImport(false);
                       setBundlePreview(null);
                     }

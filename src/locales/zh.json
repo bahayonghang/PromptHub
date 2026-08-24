@@ -1785,6 +1785,21 @@
       "copyHint": "{{mod}}+Enter",
       "newPrompt": "新建 Prompt"
     },
+    "palette": {
+      "placeholder": "搜索 Prompt 与操作",
+      "groupPrompts": "Prompt",
+      "groupActions": "操作",
+      "newPrompt": "新建 Prompt",
+      "favorites": "只看收藏",
+      "toggleView": "切换列表与网格",
+      "toggleTheme": "切换浅色与深色",
+      "empty": "没有匹配这些词的 Prompt"
+    },
+    "toast": {
+      "dismiss": "关闭通知",
+      "saved": "Prompt 已保存",
+      "batchDeleted": "已删除所选 Prompt"
+    },
     "history": {
       "title": "版本历史",
       "empty": "暂无版本",

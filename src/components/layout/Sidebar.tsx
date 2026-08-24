@@ -10,6 +10,8 @@ import {
 import { useAppStore, type AppView } from "../../store/appStore";
 import { useSettingsStore } from "../../features/settings/settingsStore";
 import { FOOTER_NAV, type NavEntry } from "./navigation";
+import { formatBinding, SHORTCUT_BINDINGS } from "../../shortcuts/bindings";
+import { platformModifier } from "../../shortcuts/platform";
 
 interface NavButtonProps {
   entry: NavEntry;
@@ -54,7 +56,13 @@ function paintedModeIsDark(): boolean {
  * library slot, collapse control, theme toggle, and settings. All text comes
  * from i18n keys (Req 21.3) and every icon is from the Lucide set (Req 22.4).
  */
-export function Sidebar({ children }: { children?: ReactNode }) {
+export function Sidebar({
+  children,
+  onOpenCommandPalette,
+}: {
+  children?: ReactNode;
+  onOpenCommandPalette?: () => void;
+}) {
   const { t } = useTranslation();
   const activeView = useAppStore((state) => state.activeView);
   const setActiveView = useAppStore((state) => state.setActiveView);
@@ -111,10 +119,10 @@ export function Sidebar({ children }: { children?: ReactNode }) {
       <div className={`shrink-0 p-2 ${collapsed ? "flex justify-center" : ""}`}>
         <button
           type="button"
-          disabled
-          title={t("promptsView.library.commandPaletteUnavailable")}
+          onClick={onOpenCommandPalette}
+          title={t("promptsView.library.commandPalette")}
           aria-label={t("promptsView.library.commandPalette")}
-          className={`flex items-center rounded-lg border border-border text-muted-foreground ${
+          className={`flex items-center rounded-lg border border-border text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground ${
             collapsed ? "h-10 w-10 justify-center" : "h-9 w-full justify-between px-3 text-sm"
           }`}
         >
@@ -123,7 +131,12 @@ export function Sidebar({ children }: { children?: ReactNode }) {
             {!collapsed && t("promptsView.library.commandPalette")}
           </span>
           {!collapsed && (
-            <kbd className="font-mono text-[11px] text-muted-foreground-subtle">⌘K</kbd>
+            <kbd className="font-mono text-[11px] text-muted-foreground-subtle">
+              {formatBinding(
+                SHORTCUT_BINDINGS.find((item) => item.id === "togglePalette")!,
+                platformModifier().symbol,
+              )}
+            </kbd>
           )}
         </button>
       </div>

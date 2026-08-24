@@ -59,6 +59,8 @@ import {
   type NavigationGuard,
   type SaveResult,
 } from "../../promptStore";
+import { platformModifier } from "../../../../shortcuts/platform";
+import { useToastStore } from "../../../notifications/toastStore";
 
 export type DetailTab = "content" | "versions" | "run" | "references";
 
@@ -241,14 +243,22 @@ export function PromptDetailModal({
       const created = await onCreate(toCreateInput(draft));
       if (!created) return { ok: false, errors: {} };
       setBaseline(draftSnapshot(draft));
+      useToastStore.getState().push({
+        message: t("promptsView.toast.saved"),
+        tone: "success",
+      });
       return { ok: true };
     }
     if (!prompt) return { ok: false, errors: {} };
     const saved = await onSave(prompt.id, toUpdatePatch(draft));
     if (!saved) return { ok: false, errors: {} };
     setBaseline(draftSnapshot(draft));
+    useToastStore.getState().push({
+      message: t("promptsView.toast.saved"),
+      tone: "success",
+    });
     return { ok: true };
-  }, [creating, draft, onCreate, onSave, prompt]);
+  }, [creating, draft, onCreate, onSave, prompt, t]);
 
   const copyFilled = useCallback(async () => {
     const values = {
@@ -331,26 +341,7 @@ export function PromptDetailModal({
     registerNavigationGuard,
   ]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (!(event.metaKey || event.ctrlKey)) return;
-      if (event.key === "s") {
-        event.preventDefault();
-        void save();
-      }
-      if (event.key === "Enter") {
-        event.preventDefault();
-        void copyFilled();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [copyFilled, open, save]);
-
-  const modifier = navigator.platform.toLowerCase().includes("mac")
-    ? "⌘"
-    : "Ctrl";
+  const modifier = platformModifier().symbol;
 
   const title = creating
     ? t("promptsView.detail.newPrompt")

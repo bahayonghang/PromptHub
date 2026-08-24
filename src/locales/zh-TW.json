@@ -1751,6 +1751,21 @@
       "copyHint": "{{mod}}+Enter",
       "newPrompt": "新增 Prompt"
     },
+    "palette": {
+      "placeholder": "搜尋 Prompt 與操作",
+      "groupPrompts": "Prompt",
+      "groupActions": "操作",
+      "newPrompt": "新增 Prompt",
+      "favorites": "只看收藏",
+      "toggleView": "切換清單與網格",
+      "toggleTheme": "切換淺色與深色",
+      "empty": "沒有符合這些詞的 Prompt"
+    },
+    "toast": {
+      "dismiss": "關閉通知",
+      "saved": "Prompt 已儲存",
+      "batchDeleted": "已刪除所選 Prompt"
+    },
     "history": {
       "title": "版本歷史",
       "empty": "尚無版本",

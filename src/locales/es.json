@@ -1747,6 +1747,21 @@
       "copyHint": "{{mod}}+Enter",
       "newPrompt": "Nuevo prompt"
     },
+    "palette": {
+      "placeholder": "Buscar prompts y acciones",
+      "groupPrompts": "Prompt",
+      "groupActions": "Acciones",
+      "newPrompt": "Nuevo prompt",
+      "favorites": "Mostrar solo favoritos",
+      "toggleView": "Cambiar lista y cuadrícula",
+      "toggleTheme": "Cambiar claro y oscuro",
+      "empty": "Ningun prompt coincide con estos terminos"
+    },
+    "toast": {
+      "dismiss": "Cerrar notificacion",
+      "saved": "Prompt guardado",
+      "batchDeleted": "Prompts seleccionados eliminados"
+    },
     "history": {
       "title": "Historial de versiones",
       "empty": "Aún no hay versiones",

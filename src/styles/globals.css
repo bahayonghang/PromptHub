@@ -241,6 +241,10 @@
   animation: prompt-detail-enter 160ms ease-out;
 }
 
+.toast-item {
+  animation: prompt-detail-enter 160ms ease-out;
+}
+
 @container prompt-editor (min-width: 32rem) {
   .prompt-editor__preview-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

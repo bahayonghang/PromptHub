@@ -186,6 +186,8 @@ interface PromptStoreState {
   registerNavigationGuard: (guard: NavigationGuard | null) => void;
   registerDetailActions: (actions: DetailActions | null) => void;
   requestSelectPrompt: (id: string | null) => Promise<boolean>;
+  createPromptAction: (() => void) | null;
+  registerCreatePromptAction: (action: (() => void) | null) => void;
 
   /** Loads folders, tags, and the filtered prompt list (Req 6.3, 6.8, 8.2). */
   load: () => Promise<void>;
@@ -292,6 +294,8 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
 
   registerNavigationGuard: (guard) => set({ navigationGuard: guard }),
   registerDetailActions: (actions) => set({ detailActions: actions }),
+  createPromptAction: null,
+  registerCreatePromptAction: (action) => set({ createPromptAction: action }),
   requestSelectPrompt: async (id) => {
     const guard = get().navigationGuard;
     if (guard) {

@@ -42,6 +42,9 @@ Runtime Bridge through which all backend access flows.
   library items.
 - `features/prompts/components/detail/` — prompt overlay, tabs, and pickers.
 - `components/ui/Modal.tsx` — shared dialog primitive with a focus stack.
+- `shortcuts/useGlobalShortcuts.ts` — one document keydown table for palette,
+  save, copy, new prompt, and theme.
+- `features/notifications/` — toast store and host.
 - `features/prompts/promptText.ts` — clipboard formatting for `prompt.copy`;
   `@@Title` expansion lives in the backend (`reference.list` / `prompt.copy`).
 - `features/prompts/versionDiff.ts` — structured immutable-revision diffing.

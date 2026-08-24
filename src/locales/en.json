@@ -1545,6 +1545,21 @@
       "copyHint": "{{mod}}+Enter",
       "newPrompt": "New prompt"
     },
+    "palette": {
+      "placeholder": "Search prompts and actions",
+      "groupPrompts": "Prompt",
+      "groupActions": "Actions",
+      "newPrompt": "New prompt",
+      "favorites": "Show favorites only",
+      "toggleView": "Switch list and grid",
+      "toggleTheme": "Toggle light and dark",
+      "empty": "No prompts match these terms"
+    },
+    "toast": {
+      "dismiss": "Dismiss notification",
+      "saved": "Prompt saved",
+      "batchDeleted": "Selected prompts deleted"
+    },
     "history": {
       "title": "Version History",
       "empty": "No versions yet",

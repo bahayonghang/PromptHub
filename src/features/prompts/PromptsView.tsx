@@ -17,6 +17,7 @@ import { PromptGrid } from "./components/PromptGrid";
 import { toLibraryItem } from "./libraryItem";
 import { BatchToolbar } from "./components/BatchToolbar";
 import { PromptDetailModal } from "./components/detail/PromptDetailModal";
+import { useToastStore } from "../notifications/toastStore";
 
 const iconButtonClass =
   "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40";
@@ -66,7 +67,9 @@ export function PromptsView() {
   const rollbackVersion = usePromptStore((s) => s.rollbackVersion);
 
   const [creating, setCreating] = useState(false);
-  const [transferMessage, setTransferMessage] = useState<string | null>(null);
+  const registerCreatePromptAction = usePromptStore(
+    (s) => s.registerCreatePromptAction,
+  );
 
   useEffect(() => {
     void load();
@@ -78,6 +81,11 @@ export function PromptsView() {
       setCreating(true);
     });
   };
+
+  useEffect(() => {
+    registerCreatePromptAction(startCreate);
+    return () => registerCreatePromptAction(null);
+  });
 
   const handleDeletePrompt = (id: string) => {
     if (window.confirm(t("promptsView.deletePromptConfirm"))) {
@@ -102,14 +110,9 @@ export function PromptsView() {
         aria-label={t("common.prompts")}
         className="flex min-w-0 w-full flex-1 flex-col"
       >
-        <LibraryHeader onCreate={startCreate} onTransferMessage={setTransferMessage} />
+        <LibraryHeader onCreate={startCreate} />
         <LibraryToolbar />
         <FilterChips />
-        {transferMessage && (
-          <div className="border-b border-border px-3 py-2 text-xs text-muted-foreground">
-            {transferMessage}
-          </div>
-        )}
         {error && (
           <div
             role="alert"
@@ -128,7 +131,12 @@ export function PromptsView() {
             onTag={(selectedTags) => void batchTag(selectedTags)}
             onDelete={() => {
               if (window.confirm(t("promptsView.batch.deleteConfirm"))) {
-                void batchDelete();
+                void batchDelete().then(() => {
+                  useToastStore.getState().push({
+                    message: t("promptsView.toast.batchDeleted"),
+                    tone: "success",
+                  });
+                });
               }
             }}
             onExit={() => setBatchMode(false)}
