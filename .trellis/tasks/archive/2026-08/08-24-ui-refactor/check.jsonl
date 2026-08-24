@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Forbidden patterns, required tests, and the verification commands behind CC1"}
+{"file": ".trellis/spec/cross-layer/index.md", "reason": "CC4: every backend call still goes through the Runtime Bridge, no invoke outside a feature api.ts"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "CC7: token-only styling and component conventions across every new surface"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "CC6: the children reuse existing actions rather than adding second implementations"}
+{"file": ".trellis/tasks/08-24-ui-refactor/research/shared-ownership.md", "reason": "Integration check: no shared file was split twice and no primitive was written twice"}
