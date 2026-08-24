@@ -13,6 +13,7 @@ interface PromptGridProps {
   onToggleSelection: (id: string) => void;
   onToggleFavorite: (id: string, next: boolean) => void;
   writeText?: (text: string) => Promise<void>;
+  copyPrompt?: (id: string, values: Record<string, string>) => Promise<import("../types").PromptCopyResult>;
 }
 
 function TypeBadge({ kind }: { kind: LibraryItem["typeKind"] }) {
@@ -41,6 +42,7 @@ export function PromptGrid({
   onToggleSelection,
   onToggleFavorite,
   writeText,
+  copyPrompt,
 }: PromptGridProps) {
   const { t } = useTranslation();
 
@@ -124,6 +126,8 @@ export function PromptGrid({
                 <span className="ml-auto">
                   <CopyPromptButton
                     source={item.source}
+                    promptId={item.id}
+                    copyPrompt={copyPrompt}
                     name={item.title}
                     locked={item.isLocked}
                     compact

@@ -13,6 +13,7 @@ interface PromptListProps {
   onToggleSelection: (id: string) => void;
   onToggleFavorite: (id: string, next: boolean) => void;
   writeText?: (text: string) => Promise<void>;
+  copyPrompt?: (id: string, values: Record<string, string>) => Promise<import("../types").PromptCopyResult>;
 }
 
 function TypeBadge({ kind }: { kind: LibraryItem["typeKind"] }) {
@@ -46,6 +47,7 @@ export function PromptList({
   onToggleSelection,
   onToggleFavorite,
   writeText,
+  copyPrompt,
 }: PromptListProps) {
   const { t } = useTranslation();
 
@@ -150,6 +152,8 @@ export function PromptList({
                 <td className="px-1 align-middle">
                   <CopyPromptButton
                     source={item.source}
+                    promptId={item.id}
+                    copyPrompt={copyPrompt}
                     name={item.title}
                     locked={item.isLocked}
                     compact

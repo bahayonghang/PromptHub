@@ -106,7 +106,13 @@ function makeApi(overrides: Partial<PromptApi> = {}): PromptApi {
     batchMove: vi.fn(async () => undefined),
     batchTag: vi.fn(async () => undefined),
     batchDelete: vi.fn(async () => undefined),
-    copyPrompt: vi.fn(async () => "copied"),
+    copyPrompt: vi.fn(async () => ({
+      systemPrompt: null,
+      userPrompt: "copied",
+      messages: [],
+      unexpanded: [],
+    })),
+    listReferences: vi.fn(async () => ({ outgoing: [], incoming: [] })),
     listPromptTypes: vi.fn(async () => []),
     createPromptType: vi.fn(async (input) => ({
       id: "type-1",

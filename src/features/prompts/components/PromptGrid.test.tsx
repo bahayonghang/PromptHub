@@ -62,6 +62,12 @@ describe("PromptGrid", () => {
         onToggleSelection={onToggleSelection}
         onToggleFavorite={onToggleFavorite}
         writeText={writeText}
+        copyPrompt={async () => ({
+          systemPrompt: "Be terse.",
+          userPrompt: "SECRET BODY",
+          messages: [],
+          unexpanded: [],
+        })}
       />,
     );
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Steelman" }));

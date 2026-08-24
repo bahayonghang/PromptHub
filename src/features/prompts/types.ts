@@ -206,6 +206,37 @@ export interface PromptPage {
   hasMore: boolean;
 }
 
+export interface UnexpandedReference {
+  tokenTitle: string;
+  reason: string;
+}
+
+export interface PromptCopyResult {
+  systemPrompt?: string | null;
+  userPrompt: string;
+  messages: PromptMessage[];
+  unexpanded: UnexpandedReference[];
+}
+
+export interface OutgoingReference {
+  targetPromptId: string | null;
+  targetTitle: string | null;
+  tokenTitle: string;
+  resolution: string;
+}
+
+export interface IncomingReference {
+  sourcePromptId: string;
+  sourceTitle: string;
+  tokenTitle: string;
+  resolution: string;
+}
+
+export interface ReferenceList {
+  outgoing: OutgoingReference[];
+  incoming: IncomingReference[];
+}
+
 export type ImportConflictPolicy = "skip" | "duplicate" | "replace";
 
 export interface BundlePreview {

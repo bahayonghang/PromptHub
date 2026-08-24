@@ -27,6 +27,7 @@ not a wishlist for a future rewrite.
 | [Quality Guidelines](./quality-guidelines.md) | Forbidden patterns, tests, review checks, verification commands | Filled |
 | [Type Safety](./type-safety.md) | TypeScript strictness, DTO mirrors, validation, narrowing | Filled |
 | [Design Tokens](./design-tokens.md) | Channel-only HSL tokens, appearance override split, mono stack | Filled |
+| [Prompt References](./prompt-references.md) | `@@Title` token syntax and copy expansion | Filled |
 
 ---
 

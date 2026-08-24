@@ -45,7 +45,7 @@ pub type DbPool = Pool<SqliteConnectionManager>;
 const BUSY_TIMEOUT_MS: u64 = 5_000;
 
 /// Latest ordered schema migration understood by this binary.
-pub const CURRENT_SCHEMA_VERSION: u32 = 5;
+pub const CURRENT_SCHEMA_VERSION: u32 = 6;
 
 struct Migration {
     version: u32,
@@ -236,6 +236,21 @@ ALTER TABLE prompt_versions ADD COLUMN type_definition_base_kind TEXT CHECK(type
 
 CREATE INDEX idx_prompts_type_definition ON prompts(type_definition_id);
 CREATE INDEX idx_versions_type_definition ON prompt_versions(type_definition_id);
+"#,
+    },
+    Migration {
+        version: 6,
+        sql: r#"
+CREATE TABLE IF NOT EXISTS prompt_references (
+  id TEXT PRIMARY KEY,
+  source_prompt_id TEXT NOT NULL REFERENCES prompts(id) ON DELETE CASCADE,
+  target_prompt_id TEXT REFERENCES prompts(id) ON DELETE SET NULL,
+  token_title TEXT NOT NULL,
+  resolution TEXT NOT NULL CHECK(resolution IN ('resolved','missing','ambiguous')),
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_prompt_refs_source ON prompt_references(source_prompt_id);
+CREATE INDEX IF NOT EXISTS idx_prompt_refs_target ON prompt_references(target_prompt_id);
 "#,
     },
 ];
@@ -474,6 +489,15 @@ CREATE TABLE IF NOT EXISTS prompts (
   updated_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS prompt_references (
+  id TEXT PRIMARY KEY,
+  source_prompt_id TEXT NOT NULL REFERENCES prompts(id) ON DELETE CASCADE,
+  target_prompt_id TEXT REFERENCES prompts(id) ON DELETE SET NULL,
+  token_title TEXT NOT NULL,
+  resolution TEXT NOT NULL CHECK(resolution IN ('resolved','missing','ambiguous')),
+  created_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS prompt_versions (
   id TEXT PRIMARY KEY,
   prompt_id TEXT NOT NULL REFERENCES prompts(id) ON DELETE CASCADE,
@@ -666,6 +690,8 @@ CREATE INDEX IF NOT EXISTS idx_evaluation_runs_started ON evaluation_runs(starte
 CREATE INDEX IF NOT EXISTS idx_evaluation_cells_run ON evaluation_cells(evaluation_run_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_evaluation_cells_cache ON evaluation_cells(cache_key, status);
 CREATE INDEX IF NOT EXISTS idx_label_history_prompt ON prompt_label_history(prompt_id, label, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_prompt_refs_source ON prompt_references(source_prompt_id);
+CREATE INDEX IF NOT EXISTS idx_prompt_refs_target ON prompt_references(target_prompt_id);
 
 "#;
 
@@ -691,6 +717,7 @@ mod tests {
         "evaluation_cells",
         "prompt_labels",
         "prompt_label_history",
+        "prompt_references",
     ];
 
     /// Expected indexes created by [`init_schema`].
@@ -718,6 +745,8 @@ mod tests {
         "idx_evaluation_cells_run",
         "idx_evaluation_cells_cache",
         "idx_label_history_prompt",
+        "idx_prompt_refs_source",
+        "idx_prompt_refs_target",
     ];
 
     /// Collects names from `sqlite_master` for the given object type.
@@ -1032,7 +1061,9 @@ mod tests {
         run_migrations(&conn, MIGRATIONS).unwrap();
         run_migrations(&conn, MIGRATIONS).unwrap();
 
-        assert_eq!(schema_version(&conn).unwrap(), 5);
+        assert_eq!(schema_version(&conn).unwrap(), CURRENT_SCHEMA_VERSION);
+        let tables = names_of_type(&conn, "table");
+        assert!(tables.iter().any(|name| name == "prompt_references"));
         let prompt: (String, String, Option<String>) = conn
             .query_row(
                 "SELECT title,user_prompt,type_definition_id FROM prompts WHERE id='p1'",

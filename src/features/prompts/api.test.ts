@@ -33,6 +33,7 @@ describe("createPromptApi command contract (Req 3.1)", () => {
     await api.batchTag(["p1"], ["shared"]);
     await api.batchDelete(["p2"]);
     await api.copyPrompt("p1", { a: "b" });
+    await api.listReferences("p1");
 
     expect(invoke).toHaveBeenCalledWith("prompt.list");
     expect(invoke).toHaveBeenCalledWith("prompt.get", { id: "p1" });
@@ -61,6 +62,7 @@ describe("createPromptApi command contract (Req 3.1)", () => {
       id: "p1",
       values: { a: "b" },
     });
+    expect(invoke).toHaveBeenCalledWith("reference.list", { promptId: "p1" });
   });
 
   it("routes folder commands through the bridge (Req 8)", async () => {

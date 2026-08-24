@@ -109,6 +109,12 @@ describe("PromptList copy control", () => {
         onToggleSelection={onToggleSelection}
         onToggleFavorite={vi.fn()}
         writeText={writeText}
+        copyPrompt={async () => ({
+          systemPrompt: "Be terse.",
+          userPrompt: "Argue both sides.",
+          messages: [],
+          unexpanded: [],
+        })}
       />,
     );
 

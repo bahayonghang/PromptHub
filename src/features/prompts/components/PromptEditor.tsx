@@ -759,6 +759,7 @@ export function PromptEditor({
                     messages: draft.messages,
                     variables: draft.variables,
                   }}
+                  promptId={prompt?.id}
                   writeText={writeText}
                 />
                 <div

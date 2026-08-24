@@ -40,6 +40,8 @@ Runtime Bridge through which all backend access flows.
   tag management, and batch-action orchestration.
 - `features/prompts/libraryItem.ts` — shared projection for grid and list
   library items.
+- `features/prompts/promptText.ts` — clipboard formatting for `prompt.copy`;
+  `@@Title` expansion lives in the backend (`reference.list` / `prompt.copy`).
 - `features/prompts/versionDiff.ts` — structured immutable-revision diffing.
 - `features/evaluation/` — typed bridge API, Zustand orchestration, and the
   playground/matrix/history workbench.

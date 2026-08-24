@@ -1,13 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CheckIcon, ClipboardCopyIcon } from "lucide-react";
+import { promptApi } from "../api";
+import type { PromptCopyResult } from "../types";
 import {
   buildPromptCopyText,
+  defaultVariableValues,
+  formatCopiedPrompt,
   type PromptCopySource,
 } from "../promptText";
 
 interface CopyPromptButtonProps {
   source: PromptCopySource;
+  promptId?: string;
+  copyPrompt?: (id: string, values: Record<string, string>) => Promise<PromptCopyResult>;
   /** Prompt title used in the list's accessible name. */
   name?: string;
   locked?: boolean;
@@ -30,6 +36,8 @@ async function defaultWriteText(text: string): Promise<void> {
  */
 export function CopyPromptButton({
   source,
+  promptId,
+  copyPrompt = (id, values) => promptApi.copyPrompt(id, values),
   name,
   locked = false,
   compact = false,
@@ -67,7 +75,13 @@ export function CopyPromptButton({
     }
     setStatus("busy");
     try {
-      await writeText(buildPromptCopyText(source));
+      const values = defaultVariableValues(source.variables);
+      if (promptId) {
+        const copied = await copyPrompt(promptId, values);
+        await writeText(formatCopiedPrompt(copied));
+      } else {
+        await writeText(buildPromptCopyText(source));
+      }
       setStatus("copied");
       timerRef.current = window.setTimeout(() => {
         setStatus("idle");
