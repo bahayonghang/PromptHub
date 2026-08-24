@@ -349,3 +349,25 @@ Added deterministic paging, immutable revisions, portable bundles, private promp
 ### Next Steps
 
 - None - task complete
+
+
+## Session 11: Prompt 一键复制与默认对话
+
+**Date**: 2026-08-24
+**Task**: Prompt 一键复制与默认对话
+**Branch**: `main`
+
+### Summary
+
+为列表与编辑器添加一键复制，默认并记住对话模式，列表预览改为描述，区块标题改为提示词内容，版本升至 0.4.0。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `647a468` | (see git log) |
+| `2086fc5` | (see git log) |
+
+### Status
+
+[OK] **Completed**
