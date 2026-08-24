@@ -11,6 +11,7 @@ interface BatchToolbarProps {
   onMove: (folderId: string | null) => void;
   onTag: (tags: string[]) => void;
   onDelete: () => void;
+  onExit: () => void;
 }
 
 export function BatchToolbar({
@@ -21,6 +22,7 @@ export function BatchToolbar({
   onMove,
   onTag,
   onDelete,
+  onExit,
 }: BatchToolbarProps) {
   const { t } = useTranslation();
   const [folderId, setFolderId] = useState("");
@@ -49,6 +51,15 @@ export function BatchToolbar({
           className="rounded p-1 hover:bg-accent hover:text-foreground"
         >
           <XIcon className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          title={t("promptsView.chrome.batchExit")}
+          aria-label={t("promptsView.chrome.batchExit")}
+          onClick={onExit}
+          className="rounded px-1.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          {t("promptsView.chrome.batchExit")}
         </button>
       </div>
       <div className="flex items-center gap-1">

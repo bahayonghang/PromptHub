@@ -1616,6 +1616,24 @@
       "bucketCount": "このグループは {{count}} 件",
       "productVersion": "0.4.0"
     },
+    "chrome": {
+      "subtitleCount": "{{count}} 件の Prompt",
+      "subtitleWithPath": "{{count}} 件の Prompt · {{path}}",
+      "resultCount": "{{shown}} / {{total}}",
+      "viewMode": "ライブラリの表示",
+      "viewList": "リスト表示",
+      "viewGrid": "グリッド表示",
+      "batchToggle": "一括編集",
+      "batchOn": "一括モードです",
+      "batchOff": "一括モードを終了しました",
+      "batchExit": "一括を終了",
+      "chipKeyword": "キーワード {{value}}",
+      "chipFolder": "フォルダー {{value}}",
+      "chipTag": "タグ {{value}}",
+      "chipFavorites": "お気に入り",
+      "removeChip": "{{label}} を外す",
+      "clearAll": "すべてクリア"
+    },
     "editor": {
       "sections": {
         "identity": "基本情報",

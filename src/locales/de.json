@@ -1610,6 +1610,24 @@
       "bucketCount": "{{count}} in dieser Gruppe",
       "productVersion": "0.4.0"
     },
+    "chrome": {
+      "subtitleCount": "{{count}} Prompts",
+      "subtitleWithPath": "{{count}} Prompts · {{path}}",
+      "resultCount": "{{shown}} / {{total}}",
+      "viewMode": "Bibliotheksansicht",
+      "viewList": "Listenansicht",
+      "viewGrid": "Rasteransicht",
+      "batchToggle": "Stapelbearbeitung",
+      "batchOn": "Stapelmodus an",
+      "batchOff": "Stapelmodus aus",
+      "batchExit": "Stapel beenden",
+      "chipKeyword": "Stichwort {{value}}",
+      "chipFolder": "Ordner {{value}}",
+      "chipTag": "Tag {{value}}",
+      "chipFavorites": "Favoriten",
+      "removeChip": "{{label}} entfernen",
+      "clearAll": "Alles loschen"
+    },
     "editor": {
       "sections": {
         "identity": "Grundlagen",

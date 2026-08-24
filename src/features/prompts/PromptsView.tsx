@@ -6,7 +6,6 @@ import {
   ChevronRightIcon,
   CopyIcon,
   CommandIcon,
-  DownloadIcon,
   FlaskConicalIcon,
   HistoryIcon,
   LockIcon,
@@ -14,7 +13,6 @@ import {
   PlusIcon,
   StarIcon,
   Trash2Icon,
-  UploadIcon,
 } from "lucide-react";
 import { EvaluationWorkbench } from "../evaluation/EvaluationWorkbench";
 import {
@@ -22,8 +20,9 @@ import {
   PROMPT_PAGE_SIZE,
   usePromptStore,
 } from "./promptStore";
-import type { BundlePreview, ImportConflictPolicy } from "./types";
-import { SearchBar } from "./components/SearchBar";
+import { LibraryHeader } from "./components/LibraryHeader";
+import { LibraryToolbar } from "./components/LibraryToolbar";
+import { FilterChips } from "./components/FilterChips";
 import { PromptList } from "./components/PromptList";
 import { PromptEditor } from "./components/PromptEditor";
 import { VersionHistory } from "./components/VersionHistory";
@@ -48,7 +47,7 @@ export function PromptsView() {
   const offset = usePromptStore((s) => s.offset);
   const tags = usePromptStore((s) => s.tags);
   const promptTypeDefinitions = usePromptStore((s) => s.promptTypeDefinitions);
-  const filters = usePromptStore((s) => s.filters);
+  const batchMode = usePromptStore((s) => s.batchMode);
   const selectedPromptId = usePromptStore((s) => s.selectedPromptId);
   const versions = usePromptStore((s) => s.versions);
   const loading = usePromptStore((s) => s.loading);
@@ -57,8 +56,8 @@ export function PromptsView() {
   const selectedPromptIds = usePromptStore((s) => s.selectedPromptIds);
 
   const load = usePromptStore((s) => s.load);
-  const setFilters = usePromptStore((s) => s.setFilters);
-  const toggleTagFilter = usePromptStore((s) => s.toggleTagFilter);
+  const setBatchMode = usePromptStore((s) => s.setBatchMode);
+  const resetLibraryFilters = usePromptStore((s) => s.resetLibraryFilters);
   const loadPreviousPage = usePromptStore((s) => s.loadPreviousPage);
   const loadNextPage = usePromptStore((s) => s.loadNextPage);
   const selectPrompt = usePromptStore((s) => s.selectPrompt);
@@ -72,9 +71,6 @@ export function PromptsView() {
   const batchMove = usePromptStore((s) => s.batchMove);
   const batchTag = usePromptStore((s) => s.batchTag);
   const batchDelete = usePromptStore((s) => s.batchDelete);
-  const exportBundle = usePromptStore((s) => s.exportBundle);
-  const previewBundle = usePromptStore((s) => s.previewBundle);
-  const importBundle = usePromptStore((s) => s.importBundle);
   const createFolder = usePromptStore((s) => s.createFolder);
   const createPromptType = usePromptStore((s) => s.createPromptType);
   const createVersion = usePromptStore((s) => s.createVersion);
@@ -84,11 +80,6 @@ export function PromptsView() {
   const [compactPane, setCompactPane] = useState<"list" | "detail">("list");
   const [workspaceMode, setWorkspaceMode] = useState<"editor" | "evaluation">("editor");
   const [showHistory, setShowHistory] = useState(false);
-  const [showImport, setShowImport] = useState(false);
-  const [bundlePath, setBundlePath] = useState("");
-  const [conflictPolicy, setConflictPolicy] =
-    useState<ImportConflictPolicy>("skip");
-  const [bundlePreview, setBundlePreview] = useState<BundlePreview | null>(null);
   const [transferMessage, setTransferMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -125,162 +116,15 @@ export function PromptsView() {
         aria-label={t("common.prompts")}
         className={discoveryPaneClass}
       >
-        <div className="flex flex-col gap-2 border-b border-border p-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex min-w-0 flex-1 items-center gap-2">
-              <h2 className="truncate text-sm font-semibold text-foreground">
-                {t("common.prompts")}
-              </h2>
-            </div>
-            <div className="flex shrink-0 items-center gap-1">
-              <button
-                type="button"
-                title={t("promptsView.bundle.export")}
-                aria-label={t("promptsView.bundle.export")}
-                onClick={() =>
-                  void exportBundle().then((result) => {
-                    if (result) {
-                      setTransferMessage(
-                        t("promptsView.bundle.exported", {
-                          path: result.filePath,
-                        }),
-                      );
-                    }
-                  })
-                }
-                className={iconButtonClass}
-              >
-                <DownloadIcon className="h-4 w-4" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                title={t("promptsView.bundle.import")}
-                aria-label={t("promptsView.bundle.import")}
-                aria-pressed={showImport}
-                onClick={() => setShowImport((open) => !open)}
-                className={iconButtonClass}
-              >
-                <UploadIcon className="h-4 w-4" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                onClick={startCreate}
-                className="flex h-8 items-center gap-1.5 rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <PlusIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                {t("promptsView.newPrompt")}
-              </button>
-            </div>
-          </div>
-          <SearchBar
-            filters={filters}
-            tags={tags}
-            onChange={(patch) => void setFilters(patch)}
-            onToggleTag={(tag) => void toggleTagFilter(tag)}
-            onClear={() =>
-              void setFilters({ tags: [], favoritesOnly: false })
-            }
-          />
-        </div>
-        {showImport && (
-          <div className="flex flex-col gap-2 border-b border-border bg-muted/30 p-3">
-            <input
-              value={bundlePath}
-              onChange={(event) => {
-                setBundlePath(event.target.value);
-                setBundlePreview(null);
-              }}
-              placeholder={t("promptsView.bundle.pathPlaceholder")}
-              aria-label={t("promptsView.bundle.path")}
-              className="w-full rounded border border-input bg-background px-2 py-1.5 text-xs text-foreground"
-            />
-            <div className="flex items-center gap-2">
-              <select
-                value={conflictPolicy}
-                onChange={(event) =>
-                  setConflictPolicy(event.target.value as ImportConflictPolicy)
-                }
-                aria-label={t("promptsView.bundle.conflictPolicy")}
-                className="min-w-0 flex-1 rounded border border-input bg-background px-2 py-1.5 text-xs text-foreground"
-              >
-                <option value="skip">{t("promptsView.bundle.skip")}</option>
-                <option value="duplicate">{t("promptsView.bundle.duplicate")}</option>
-                <option value="replace">{t("promptsView.bundle.replace")}</option>
-              </select>
-              <button
-                type="button"
-                disabled={bundlePath.trim() === ""}
-                onClick={() =>
-                  void previewBundle(bundlePath.trim()).then(setBundlePreview)
-                }
-                className="rounded border border-input px-2 py-1.5 text-xs text-foreground hover:bg-accent disabled:opacity-40"
-              >
-                {t("promptsView.bundle.preview")}
-              </button>
-            </div>
-            {bundlePreview && (
-              <div className="text-xs text-muted-foreground">
-                <p>
-                  {t("promptsView.bundle.previewSummary", {
-                    prompts: bundlePreview.prompts,
-                    revisions: bundlePreview.revisions,
-                    conflicts: bundlePreview.conflicts,
-                    mediaFiles: bundlePreview.mediaFiles,
-                  })}
-                </p>
-                <p>
-                  {t("promptsView.bundle.typeDefinitionSummary", {
-                    additions: bundlePreview.typeDefinitionAdditions,
-                    conflicts: bundlePreview.typeDefinitionConflicts,
-                  })}
-                </p>
-                {bundlePreview.typeDefinitionConflicts > 0 && (
-                  <p role="alert" className="mt-1 text-destructive">
-                    {t("promptsView.bundle.typeDefinitionConflict")}
-                  </p>
-                )}
-                {bundlePreview.privatePrompts > 0 && (
-                  <p className="mt-1 text-foreground">
-                    {t("promptsView.bundle.privateKeyWarning", {
-                      count: bundlePreview.privatePrompts,
-                    })}
-                  </p>
-                )}
-                <button
-                  type="button"
-                  disabled={bundlePreview.typeDefinitionConflicts > 0}
-                  onClick={() =>
-                    void importBundle(bundlePath.trim(), conflictPolicy).then(
-                      (result) => {
-                        if (result) {
-                          setTransferMessage(
-                            t("promptsView.bundle.imported", {
-                              added: result.added,
-                              replaced: result.replaced,
-                              skipped: result.skipped,
-                              backupId: result.backupId,
-                            }),
-                          );
-                          setShowImport(false);
-                          setBundlePreview(null);
-                        }
-                      },
-                    )
-                  }
-                  className="mt-2 rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {t("promptsView.bundle.confirmImport")}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+        <LibraryHeader onCreate={startCreate} onTransferMessage={setTransferMessage} />
+        <LibraryToolbar />
+        <FilterChips />
         {transferMessage && (
           <div className="border-b border-border px-3 py-2 text-xs text-muted-foreground">
             {transferMessage}
           </div>
         )}
-        {selectedPromptIds.length > 0 && (
+        {batchMode && (
           <BatchToolbar
             selectedCount={selectedPromptIds.length}
             folders={folders}
@@ -293,22 +137,41 @@ export function PromptsView() {
                 void batchDelete();
               }
             }}
+            onExit={() => setBatchMode(false)}
           />
         )}
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <PromptList
-            prompts={prompts}
-            promptTypeDefinitions={promptTypeDefinitions}
-            selectedPromptId={selectedPromptId}
-            selectedPromptIds={selectedPromptIds}
-            loading={loading}
-            onToggleSelection={togglePromptSelection}
-            onSelect={(id) => {
-              setCreating(false);
-              setCompactPane("detail");
-              void selectPrompt(id);
-            }}
-          />
+          {loading ? (
+            <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
+              {t("promptsView.loading")}
+            </div>
+          ) : prompts.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
+              <p className="text-sm font-medium text-foreground">{t("promptsView.noPrompts")}</p>
+              <p className="max-w-xs text-xs text-muted-foreground">{t("promptsView.noPromptsHint")}</p>
+              <button
+                type="button"
+                onClick={() => void resetLibraryFilters()}
+                className="mt-1 rounded-md border border-input px-2 py-1 text-xs text-foreground hover:bg-accent"
+              >
+                {t("promptsView.chrome.clearAll")}
+              </button>
+            </div>
+          ) : (
+            <PromptList
+              prompts={prompts}
+              promptTypeDefinitions={promptTypeDefinitions}
+              selectedPromptId={selectedPromptId}
+              selectedPromptIds={selectedPromptIds}
+              batchMode={batchMode}
+              onToggleSelection={togglePromptSelection}
+              onSelect={(id) => {
+                setCreating(false);
+                setCompactPane("detail");
+                void selectPrompt(id);
+              }}
+            />
+          )}
         </div>
         <div className="flex h-10 shrink-0 items-center justify-between border-t border-border px-2">
           <span className="text-xs tabular-nums text-muted-foreground">

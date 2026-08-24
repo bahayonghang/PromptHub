@@ -9,7 +9,7 @@ interface PromptListProps {
   promptTypeDefinitions: PromptTypeDefinition[];
   selectedPromptId: string | null;
   selectedPromptIds: string[];
-  loading: boolean;
+  batchMode?: boolean;
   onSelect: (id: string) => void;
   onToggleSelection: (id: string) => void;
   writeText?: (text: string) => Promise<void>;
@@ -48,33 +48,12 @@ export function PromptList({
   promptTypeDefinitions,
   selectedPromptId,
   selectedPromptIds,
-  loading,
+  batchMode = false,
   onSelect,
   onToggleSelection,
   writeText,
 }: PromptListProps) {
   const { t } = useTranslation();
-
-  if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
-        {t("promptsView.loading")}
-      </div>
-    );
-  }
-
-  if (prompts.length === 0) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-1 p-6 text-center">
-        <p className="text-sm font-medium text-foreground">
-          {t("promptsView.noPrompts")}
-        </p>
-        <p className="max-w-xs text-xs text-muted-foreground">
-          {t("promptsView.noPromptsHint")}
-        </p>
-      </div>
-    );
-  }
 
   return (
     <ul className="flex flex-col gap-1 p-2">
@@ -88,13 +67,15 @@ export function PromptList({
           : null;
         return (
           <li key={prompt.id} className="flex items-start gap-1">
-            <input
-              type="checkbox"
-              checked={selectedPromptIds.includes(prompt.id)}
-              onChange={() => onToggleSelection(prompt.id)}
-              aria-label={t("promptsView.batch.selectPrompt", { title })}
-              className="mt-3 h-4 w-4 shrink-0 rounded border-input text-primary focus:ring-ring"
-            />
+            {batchMode && (
+              <input
+                type="checkbox"
+                checked={selectedPromptIds.includes(prompt.id)}
+                onChange={() => onToggleSelection(prompt.id)}
+                aria-label={t("promptsView.batch.selectPrompt", { title })}
+                className="mt-3 h-4 w-4 shrink-0 rounded border-input text-primary focus:ring-ring"
+              />
+            )}
             <div
               className={`flex min-w-0 flex-1 items-start gap-1 rounded-lg border px-3 py-2 transition-colors ${
                 selected

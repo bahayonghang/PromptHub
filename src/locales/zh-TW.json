@@ -1615,6 +1615,24 @@
       "bucketCount": "此分組共 {{count}} 筆",
       "productVersion": "0.4.0"
     },
+    "chrome": {
+      "subtitleCount": "{{count}} 則 Prompt",
+      "subtitleWithPath": "{{count}} 則 Prompt · {{path}}",
+      "resultCount": "{{shown}} / {{total}}",
+      "viewMode": "庫佈局",
+      "viewList": "列表檢視",
+      "viewGrid": "網格檢視",
+      "batchToggle": "批次整理",
+      "batchOn": "已進入批次模式",
+      "batchOff": "已離開批次模式",
+      "batchExit": "離開批次",
+      "chipKeyword": "關鍵字 {{value}}",
+      "chipFolder": "資料夾 {{value}}",
+      "chipTag": "標籤 {{value}}",
+      "chipFavorites": "收藏",
+      "removeChip": "移除 {{label}}",
+      "clearAll": "全部清除"
+    },
     "editor": {
       "sections": {
         "identity": "基本資訊",

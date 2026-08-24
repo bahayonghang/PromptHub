@@ -82,6 +82,19 @@ describe("PromptsView responsive workspace", () => {
     expect(screen.queryByRole("button", { name: "Folders" })).toBeNull();
     expect(screen.queryByRole("navigation", { name: "Prompt library" })).toBeNull();
     expect(screen.queryByText("Manage tags")).toBeNull();
+    expect(screen.getByRole("searchbox", { name: "Search prompts..." })).toBeTruthy();
+  });
+
+  it("shows the empty state only when loading is false", () => {
+    usePromptStore.setState({ loading: true, prompts: [], total: 0 });
+    const { rerender } = render(<PromptsView />);
+    expect(screen.getByText("Loading...")).toBeTruthy();
+    expect(screen.queryByText("No prompts found")).toBeNull();
+
+    usePromptStore.setState({ loading: false, prompts: [], total: 0 });
+    rerender(<PromptsView />);
+    expect(screen.getByText("No prompts found")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Clear all" })).toBeTruthy();
   });
 
   it("preserves the selected prompt and draft across compact pane switches", async () => {

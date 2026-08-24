@@ -166,6 +166,8 @@ function resetStore(api: PromptApi) {
     activeView: "all",
     libraryCounts: { views: {}, folders: {}, tags: {} },
     countsLoading: false,
+    batchMode: false,
+    viewMode: "list",
     selectedPromptId: null,
     selectedPrompt: null,
     versions: [],
@@ -393,6 +395,91 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
 
     expect(usePromptStore.getState().libraryCounts.views.favorites).toBe(9);
     expect(usePromptStore.getState().libraryCounts.views.all).toBe(5);
+  });
+
+  it("discards an older refreshPrompts result that arrives last", async () => {
+    const pages = [
+      makePage([makePrompt({ id: "old" })], 1),
+      makePage([makePrompt({ id: "new" })], 1),
+    ];
+    const deferred: Array<{ resolve: (page: PromptPage) => void }> = [];
+    const searchPrompts = vi.fn(
+      () =>
+        new Promise<PromptPage>((resolve) => {
+          deferred.push({ resolve });
+        }),
+    );
+    resetStore(makeApi({ searchPrompts }));
+    const first = usePromptStore.getState().refreshPrompts();
+    const second = usePromptStore.getState().refreshPrompts();
+    deferred[1].resolve(pages[1]);
+    await second;
+    deferred[0].resolve(pages[0]);
+    await first;
+    expect(usePromptStore.getState().prompts.map((item) => item.id)).toEqual(["new"]);
+  });
+
+  it("keeps a search issued during load after load resolves", async () => {
+    let resolveLoadPage!: (page: PromptPage) => void;
+    let n = 0;
+    const searchPrompts = vi.fn(async () => {
+      n += 1;
+      if (n === 1) {
+        return new Promise<PromptPage>((resolve) => {
+          resolveLoadPage = resolve;
+        });
+      }
+      return makePage([makePrompt({ id: "typed" })], 1);
+    });
+    resetStore(
+      makeApi({
+        searchPrompts,
+        listFolders: vi.fn(async () => [makeFolder("f1")]),
+        listTags: vi.fn(async () => ["t1"]),
+      }),
+    );
+    const loading = usePromptStore.getState().load();
+    await usePromptStore.getState().refreshPrompts();
+    resolveLoadPage(makePage([makePrompt({ id: "initial" })], 1));
+    await loading;
+    expect(usePromptStore.getState().prompts.map((item) => item.id)).toEqual(["typed"]);
+    expect(usePromptStore.getState().folders).toHaveLength(1);
+    expect(usePromptStore.getState().tags).toEqual(["t1"]);
+  });
+
+  it("debounces keyword keystrokes into one search", async () => {
+    vi.useFakeTimers();
+    const searchPrompts = vi.fn(async () => makePage([]));
+    resetStore(makeApi({ searchPrompts }));
+    searchPrompts.mockClear();
+    usePromptStore.getState().setKeyword("a");
+    usePromptStore.getState().setKeyword("ab");
+    usePromptStore.getState().setKeyword("abc");
+    usePromptStore.getState().setKeyword("abcd");
+    expect(searchPrompts).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(200);
+    expect(searchPrompts).toHaveBeenCalledTimes(1);
+    expect(searchPrompts).toHaveBeenCalledWith(expect.objectContaining({ keyword: "abcd" }));
+    vi.useRealTimers();
+  });
+
+  it("clears the selection when leaving batch mode", () => {
+    resetStore(makeApi());
+    usePromptStore.setState({ selectedPromptIds: ["p1", "p2"], batchMode: true });
+    usePromptStore.getState().setBatchMode(false);
+    expect(usePromptStore.getState().batchMode).toBe(false);
+    expect(usePromptStore.getState().selectedPromptIds).toEqual([]);
+  });
+
+  it("resetLibraryFilters restores the all view and default filters", async () => {
+    resetStore(makeApi());
+    usePromptStore.setState({
+      activeView: null,
+      filters: { ...DEFAULT_FILTERS, keyword: "x", folderId: "f1", tags: ["a"], favoritesOnly: true },
+    });
+    await usePromptStore.getState().resetLibraryFilters();
+    expect(usePromptStore.getState().activeView).toBe("all");
+    expect(usePromptStore.getState().filters).toEqual(DEFAULT_FILTERS);
   });
 
   it("caps count refresh concurrency at 8", async () => {

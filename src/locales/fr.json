@@ -1613,6 +1613,24 @@
       "bucketCount": "{{count}} dans ce groupe",
       "productVersion": "0.4.0"
     },
+    "chrome": {
+      "subtitleCount": "{{count}} prompts",
+      "subtitleWithPath": "{{count}} prompts · {{path}}",
+      "resultCount": "{{shown}} / {{total}}",
+      "viewMode": "Disposition de la bibliotheque",
+      "viewList": "Vue liste",
+      "viewGrid": "Vue grille",
+      "batchToggle": "Edition par lot",
+      "batchOn": "Mode lot active",
+      "batchOff": "Mode lot desactive",
+      "batchExit": "Quitter le lot",
+      "chipKeyword": "Mot-cle {{value}}",
+      "chipFolder": "Dossier {{value}}",
+      "chipTag": "Etiquette {{value}}",
+      "chipFavorites": "Favoris",
+      "removeChip": "Retirer {{label}}",
+      "clearAll": "Tout effacer"
+    },
     "editor": {
       "sections": {
         "identity": "Informations générales",

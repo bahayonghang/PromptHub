@@ -1649,6 +1649,24 @@
       "bucketCount": "此分组共 {{count}} 条",
       "productVersion": "0.4.0"
     },
+    "chrome": {
+      "subtitleCount": "{{count}} 条 Prompt",
+      "subtitleWithPath": "{{count}} 条 Prompt · {{path}}",
+      "resultCount": "{{shown}} / {{total}}",
+      "viewMode": "库布局",
+      "viewList": "列表视图",
+      "viewGrid": "网格视图",
+      "batchToggle": "批量整理",
+      "batchOn": "已进入批量模式",
+      "batchOff": "已退出批量模式",
+      "batchExit": "退出批量",
+      "chipKeyword": "关键词 {{value}}",
+      "chipFolder": "文件夹 {{value}}",
+      "chipTag": "标签 {{value}}",
+      "chipFavorites": "收藏",
+      "removeChip": "移除 {{label}}",
+      "clearAll": "全部清除"
+    },
     "editor": {
       "sections": {
         "identity": "基本信息",

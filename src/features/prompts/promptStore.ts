@@ -115,6 +115,18 @@ async function runPool<T>(
 }
 
 let countsGeneration = 0;
+let searchGeneration = 0;
+let keywordTimer: ReturnType<typeof setTimeout> | null = null;
+
+export const KEYWORD_DEBOUNCE_MS = 200;
+export type LibraryViewMode = "grid" | "list";
+
+function cancelKeywordRefresh(): void {
+  if (keywordTimer != null) {
+    clearTimeout(keywordTimer);
+    keywordTimer = null;
+  }
+}
 
 /**
  * Builds the {@link SearchQuery} sent to `prompt.search` from the view filters
@@ -149,6 +161,8 @@ interface PromptStoreState {
   activeView: SavedView | null;
   libraryCounts: LibraryCounts;
   countsLoading: boolean;
+  batchMode: boolean;
+  viewMode: LibraryViewMode;
 
   /** The id of the prompt open in the editor, or `null` when none is selected. */
   selectedPromptId: string | null;
@@ -166,6 +180,12 @@ interface PromptStoreState {
   refreshPrompts: () => Promise<void>;
   /** Replaces the active filters and re-runs the search. */
   setFilters: (patch: Partial<PromptFilters>) => Promise<void>;
+  /** Updates the keyword immediately and debounces the search. */
+  setKeyword: (value: string) => void;
+  /** Restores DEFAULT_FILTERS and the all view. */
+  resetLibraryFilters: () => Promise<void>;
+  setBatchMode: (next: boolean) => void;
+  setViewMode: (next: LibraryViewMode) => void;
   /** Applies a saved-view preset and clears folder/tag axes. */
   selectView: (view: SavedView) => Promise<void>;
   /** Sets or toggles the folder filter and clears the saved-view row. */
@@ -244,6 +264,8 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
   activeView: "all",
   libraryCounts: { views: {}, folders: {}, tags: {} },
   countsLoading: false,
+  batchMode: false,
+  viewMode: "list",
 
   selectedPromptId: null,
   selectedPrompt: null,
@@ -255,6 +277,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
 
   load: async () => {
     const { api, filters, offset } = get();
+    const sequence = ++searchGeneration;
     set({ loading: true, error: null });
     try {
       const [folders, tags, promptTypeDefinitions, page] = await Promise.all([
@@ -267,15 +290,19 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
           offset,
         }),
       ]);
-      set({
-        folders,
-        tags,
-        promptTypeDefinitions,
-        prompts: page.items,
-        total: page.total,
-        offset: page.offset,
-        loading: false,
-      });
+      if (sequence === searchGeneration) {
+        set({
+          folders,
+          tags,
+          promptTypeDefinitions,
+          prompts: page.items,
+          total: page.total,
+          offset: page.offset,
+          loading: false,
+        });
+      } else {
+        set({ folders, tags, promptTypeDefinitions, loading: false });
+      }
       await get().refreshCounts();
     } catch (err) {
       set({ error: errorMessage(err), loading: false });
@@ -284,12 +311,14 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
 
   refreshPrompts: async () => {
     const { api, filters, offset } = get();
+    const sequence = ++searchGeneration;
     try {
       let page = await api.searchPrompts({
         ...buildSearchQuery(filters),
         limit: PROMPT_PAGE_SIZE,
         offset,
       });
+      if (sequence !== searchGeneration) return;
       if (page.items.length === 0 && page.total > 0 && page.offset > 0) {
         const lastOffset =
           Math.floor((page.total - 1) / PROMPT_PAGE_SIZE) * PROMPT_PAGE_SIZE;
@@ -299,13 +328,16 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
           offset: lastOffset,
         });
       }
+      if (sequence !== searchGeneration) return;
       set({ prompts: page.items, total: page.total, offset: page.offset });
     } catch (err) {
+      if (sequence !== searchGeneration) return;
       set({ error: errorMessage(err) });
     }
   },
 
   setFilters: async (patch) => {
+    cancelKeywordRefresh();
     const current = get();
     let activeView = current.activeView;
     if (
@@ -324,6 +356,30 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
       activeView,
     });
     await get().refreshPrompts();
+  },
+
+  setKeyword: (value) => {
+    set({ filters: { ...get().filters, keyword: value } });
+    cancelKeywordRefresh();
+    keywordTimer = setTimeout(() => {
+      keywordTimer = null;
+      void get().refreshPrompts();
+    }, KEYWORD_DEBOUNCE_MS);
+  },
+
+  resetLibraryFilters: async () => {
+    cancelKeywordRefresh();
+    set({ activeView: "all", filters: { ...DEFAULT_FILTERS }, offset: 0 });
+    await get().refreshPrompts();
+  },
+
+  setBatchMode: (next) => {
+    set({ batchMode: next });
+    if (!next) get().clearPromptSelection();
+  },
+
+  setViewMode: (next) => {
+    set({ viewMode: next });
   },
 
   selectView: async (view) => {
