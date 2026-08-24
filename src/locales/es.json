@@ -1629,6 +1629,20 @@
       "removeChip": "Quitar {{label}}",
       "clearAll": "Borrar todo"
     },
+    "items": {
+      "pinned": "Fijado",
+      "moreTags": "+{{count}}",
+      "columns": {
+        "select": "Seleccionar",
+        "title": "Titulo",
+        "description": "Descripcion",
+        "tags": "Etiquetas",
+        "type": "Tipo",
+        "usage": "Usos",
+        "version": "Version",
+        "updated": "Actualizado"
+      }
+    },
     "editor": {
       "sections": {
         "identity": "Datos básicos",

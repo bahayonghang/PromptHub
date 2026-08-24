@@ -1634,6 +1634,20 @@
       "removeChip": "{{label}} を外す",
       "clearAll": "すべてクリア"
     },
+    "items": {
+      "pinned": "ピン留め",
+      "moreTags": "+{{count}}",
+      "columns": {
+        "select": "選択",
+        "title": "タイトル",
+        "description": "説明",
+        "tags": "タグ",
+        "type": "種類",
+        "usage": "使用",
+        "version": "バージョン",
+        "updated": "更新"
+      }
+    },
     "editor": {
       "sections": {
         "identity": "基本情報",

@@ -1631,6 +1631,20 @@
       "removeChip": "Retirer {{label}}",
       "clearAll": "Tout effacer"
     },
+    "items": {
+      "pinned": "Epingle",
+      "moreTags": "+{{count}}",
+      "columns": {
+        "select": "Selectionner",
+        "title": "Titre",
+        "description": "Description",
+        "tags": "Etiquettes",
+        "type": "Type",
+        "usage": "Usages",
+        "version": "Version",
+        "updated": "Mis a jour"
+      }
+    },
     "editor": {
       "sections": {
         "identity": "Informations générales",

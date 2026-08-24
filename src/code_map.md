@@ -38,6 +38,8 @@ Runtime Bridge through which all backend access flows.
 - `features/<name>/<name>Store.ts` — that feature's Zustand store.
 - `features/prompts/PromptsView.tsx` — prompt paging, portable bundle controls,
   tag management, and batch-action orchestration.
+- `features/prompts/libraryItem.ts` — shared projection for grid and list
+  library items.
 - `features/prompts/versionDiff.ts` — structured immutable-revision diffing.
 - `features/evaluation/` — typed bridge API, Zustand orchestration, and the
   playground/matrix/history workbench.

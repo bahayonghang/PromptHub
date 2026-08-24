@@ -1628,6 +1628,20 @@
       "removeChip": "{{label}} entfernen",
       "clearAll": "Alles loschen"
     },
+    "items": {
+      "pinned": "Angeheftet",
+      "moreTags": "+{{count}}",
+      "columns": {
+        "select": "Auswahlen",
+        "title": "Titel",
+        "description": "Beschreibung",
+        "tags": "Tags",
+        "type": "Typ",
+        "usage": "Nutzung",
+        "version": "Version",
+        "updated": "Aktualisiert"
+      }
+    },
     "editor": {
       "sections": {
         "identity": "Grundlagen",

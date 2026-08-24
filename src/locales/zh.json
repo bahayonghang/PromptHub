@@ -1667,6 +1667,20 @@
       "removeChip": "移除 {{label}}",
       "clearAll": "全部清除"
     },
+    "items": {
+      "pinned": "置顶",
+      "moreTags": "+{{count}}",
+      "columns": {
+        "select": "选择",
+        "title": "标题",
+        "description": "描述",
+        "tags": "标签",
+        "type": "类型",
+        "usage": "使用",
+        "version": "版本",
+        "updated": "更新"
+      }
+    },
     "editor": {
       "sections": {
         "identity": "基本信息",

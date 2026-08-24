@@ -1427,6 +1427,20 @@
       "removeChip": "Remove {{label}}",
       "clearAll": "Clear all"
     },
+    "items": {
+      "pinned": "Pinned",
+      "moreTags": "+{{count}}",
+      "columns": {
+        "select": "Select",
+        "title": "Title",
+        "description": "Description",
+        "tags": "Tags",
+        "type": "Type",
+        "usage": "Uses",
+        "version": "Version",
+        "updated": "Updated"
+      }
+    },
     "editor": {
       "sections": {
         "identity": "Basics",

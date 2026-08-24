@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeftIcon,
@@ -24,6 +24,8 @@ import { LibraryHeader } from "./components/LibraryHeader";
 import { LibraryToolbar } from "./components/LibraryToolbar";
 import { FilterChips } from "./components/FilterChips";
 import { PromptList } from "./components/PromptList";
+import { PromptGrid } from "./components/PromptGrid";
+import { toLibraryItem } from "./libraryItem";
 import { PromptEditor } from "./components/PromptEditor";
 import { VersionHistory } from "./components/VersionHistory";
 import { BatchToolbar } from "./components/BatchToolbar";
@@ -48,6 +50,7 @@ export function PromptsView() {
   const tags = usePromptStore((s) => s.tags);
   const promptTypeDefinitions = usePromptStore((s) => s.promptTypeDefinitions);
   const batchMode = usePromptStore((s) => s.batchMode);
+  const viewMode = usePromptStore((s) => s.viewMode);
   const selectedPromptId = usePromptStore((s) => s.selectedPromptId);
   const versions = usePromptStore((s) => s.versions);
   const loading = usePromptStore((s) => s.loading);
@@ -99,6 +102,14 @@ export function PromptsView() {
   };
 
   const editorActive = creating || selectedPrompt != null;
+  const libraryItems = useMemo(
+    () => prompts.map((prompt) => toLibraryItem(prompt, promptTypeDefinitions, t)),
+    [prompts, promptTypeDefinitions, t],
+  );
+  const libraryScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (libraryScrollRef.current) libraryScrollRef.current.scrollTop = 0;
+  }, [viewMode]);
   const navigationVisible = workspaceMode !== "evaluation" || !selectedPrompt;
   const discoveryPaneClass = navigationVisible
     ? `prompt-workspace__discovery min-w-0 w-full shrink-0 flex-col border-r border-border ${
@@ -140,7 +151,7 @@ export function PromptsView() {
             onExit={() => setBatchMode(false)}
           />
         )}
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div ref={libraryScrollRef} className="min-h-0 flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
               {t("promptsView.loading")}
@@ -157,14 +168,28 @@ export function PromptsView() {
                 {t("promptsView.chrome.clearAll")}
               </button>
             </div>
-          ) : (
-            <PromptList
-              prompts={prompts}
-              promptTypeDefinitions={promptTypeDefinitions}
+          ) : viewMode === "grid" ? (
+            <PromptGrid
+              items={libraryItems}
               selectedPromptId={selectedPromptId}
               selectedPromptIds={selectedPromptIds}
               batchMode={batchMode}
               onToggleSelection={togglePromptSelection}
+              onToggleFavorite={(id, next) => void savePrompt(id, { isFavorite: next })}
+              onSelect={(id) => {
+                setCreating(false);
+                setCompactPane("detail");
+                void selectPrompt(id);
+              }}
+            />
+          ) : (
+            <PromptList
+              items={libraryItems}
+              selectedPromptId={selectedPromptId}
+              selectedPromptIds={selectedPromptIds}
+              batchMode={batchMode}
+              onToggleSelection={togglePromptSelection}
+              onToggleFavorite={(id, next) => void savePrompt(id, { isFavorite: next })}
               onSelect={(id) => {
                 setCreating(false);
                 setCompactPane("detail");

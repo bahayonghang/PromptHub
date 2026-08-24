@@ -97,6 +97,25 @@ describe("PromptsView responsive workspace", () => {
     expect(screen.getByRole("button", { name: "Clear all" })).toBeTruthy();
   });
 
+  it("keeps selection and filters when switching grid and list", async () => {
+    usePromptStore.setState({
+      viewMode: "list",
+      selectedPromptIds: [prompt.id],
+      filters: { ...DEFAULT_FILTERS, keyword: "Release" },
+      setViewMode: (next) => {
+        usePromptStore.setState({ viewMode: next });
+      },
+    });
+    render(<PromptsView />);
+    fireEvent.click(screen.getByRole("button", { name: "Grid view" }));
+    expect(usePromptStore.getState().viewMode).toBe("grid");
+    expect(usePromptStore.getState().selectedPromptIds).toEqual([prompt.id]);
+    expect(usePromptStore.getState().filters.keyword).toBe("Release");
+    fireEvent.click(screen.getByRole("button", { name: "List view" }));
+    expect(usePromptStore.getState().viewMode).toBe("list");
+    expect(usePromptStore.getState().selectedPromptIds).toEqual([prompt.id]);
+  });
+
   it("preserves the selected prompt and draft across compact pane switches", async () => {
     render(<PromptsView />);
 
