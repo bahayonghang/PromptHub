@@ -30,7 +30,7 @@ export function AppShell() {
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground">
       <TitleBar />
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div id="app-content" className="flex min-h-0 flex-1 overflow-hidden">
         <Sidebar>
           <PromptLibraryNav />
         </Sidebar>

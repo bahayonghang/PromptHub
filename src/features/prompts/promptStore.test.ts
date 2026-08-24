@@ -521,6 +521,19 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
     expect(usePromptStore.getState().versions).toEqual(versions);
   });
 
+  it("requestSelectPrompt() waits for a registered navigation guard", async () => {
+    resetStore(makeApi());
+    const guard = vi.fn(async () => "cancel" as const);
+    usePromptStore.getState().registerNavigationGuard(guard);
+    const ok = await usePromptStore.getState().requestSelectPrompt("p1");
+    expect(ok).toBe(false);
+    expect(usePromptStore.getState().selectedPromptId).toBeNull();
+    usePromptStore.getState().registerNavigationGuard(async () => "proceed");
+    const next = await usePromptStore.getState().requestSelectPrompt("p1");
+    expect(next).toBe(true);
+    expect(usePromptStore.getState().selectedPromptId).toBe("p1");
+  });
+
   it("createPrompt() refreshes the list and selects the new prompt (Req 6.1)", async () => {
     const created = makePrompt({ id: "new", title: "Fresh" });
     resetStore(

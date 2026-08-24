@@ -74,6 +74,13 @@ export const COUNT_QUERY_CONCURRENCY = 8;
 
 export const PROMPT_PAGE_SIZE = 50;
 
+export type SaveResult = { ok: true } | { ok: false; errors: Record<string, unknown> };
+export type NavigationGuard = () => Promise<"proceed" | "cancel">;
+export type DetailActions = {
+  save: () => Promise<SaveResult>;
+  copy: () => Promise<void>;
+};
+
 export function resolveLibraryScope(state: {
   activeView: SavedView | null;
   filters: PromptFilters;
@@ -174,6 +181,12 @@ interface PromptStoreState {
   loading: boolean;
   error: string | null;
 
+  navigationGuard: NavigationGuard | null;
+  detailActions: DetailActions | null;
+  registerNavigationGuard: (guard: NavigationGuard | null) => void;
+  registerDetailActions: (actions: DetailActions | null) => void;
+  requestSelectPrompt: (id: string | null) => Promise<boolean>;
+
   /** Loads folders, tags, and the filtered prompt list (Req 6.3, 6.8, 8.2). */
   load: () => Promise<void>;
   /** Re-runs the search with the current filters (Req 5.3). */
@@ -197,7 +210,7 @@ interface PromptStoreState {
   loadPreviousPage: () => Promise<void>;
   loadNextPage: () => Promise<void>;
 
-  /** Selects a prompt and loads its version history (Req 7.1). */
+  /** Unguarded selection primitive. Prefer `requestSelectPrompt` from the UI. */
   selectPrompt: (id: string | null) => Promise<void>;
 
   /** Creates a prompt, refreshes the list, and selects it (Req 6.1). */
@@ -274,6 +287,20 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
 
   loading: false,
   error: null,
+  navigationGuard: null,
+  detailActions: null,
+
+  registerNavigationGuard: (guard) => set({ navigationGuard: guard }),
+  registerDetailActions: (actions) => set({ detailActions: actions }),
+  requestSelectPrompt: async (id) => {
+    const guard = get().navigationGuard;
+    if (guard) {
+      const result = await guard();
+      if (result === "cancel") return false;
+    }
+    await get().selectPrompt(id);
+    return true;
+  },
 
   load: async () => {
     const { api, filters, offset } = get();

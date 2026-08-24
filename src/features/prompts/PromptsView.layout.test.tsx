@@ -116,7 +116,7 @@ describe("PromptsView responsive workspace", () => {
     expect(usePromptStore.getState().selectedPromptIds).toEqual([prompt.id]);
   });
 
-  it("preserves the selected prompt and draft across compact pane switches", async () => {
+  it("opens the detail overlay and keeps the draft until close", async () => {
     render(<PromptsView />);
 
     fireEvent.click(screen.getByRole("button", { name: "Release notes" }));
@@ -132,16 +132,18 @@ describe("PromptsView responsive workspace", () => {
     expect(
       screen.getByRole("heading", { name: "Supporting details" }),
     ).toBeTruthy();
+    expect(screen.getByRole("dialog")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Prompts" }));
-    expect(usePromptStore.getState().selectedPromptId).toBe(prompt.id);
-
-    fireEvent.click(screen.getByRole("button", { name: "Release notes" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0]);
     await waitFor(() => {
       expect(
-        (screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement)
-          .value,
-      ).toBe("Unpublished draft");
+        screen.getByRole("button", { name: "Discard and close" }),
+      ).toBeTruthy();
     });
+    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+    expect(
+      (screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement)
+        .value,
+    ).toBe("Unpublished draft");
   });
 });

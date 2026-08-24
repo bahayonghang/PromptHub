@@ -226,46 +226,19 @@
   container-type: inline-size;
 }
 
-@container prompt-workspace (min-width: 48rem) {
-  .prompt-workspace__detail-header {
-    padding-inline: 1rem;
+@keyframes prompt-detail-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@container prompt-workspace (max-width: 31.999rem) {
-  .prompt-workspace__detail-title {
-    flex-basis: 100%;
-    overflow: visible;
-    white-space: normal;
-  }
-}
-
-@container prompt-workspace (min-width: 56rem) {
-  .prompt-workspace__discovery {
-    display: flex;
-    width: 18rem;
-  }
-
-  .prompt-workspace__detail {
-    display: flex;
-  }
-
-  .prompt-workspace__compact-control {
-    display: none;
-  }
-}
-
-@container prompt-workspace (min-width: 80rem) {
-  .prompt-workspace__discovery {
-    width: 20rem;
-  }
-
-  .prompt-workspace__history {
-    position: static;
-    width: 18rem;
-    background-color: hsl(var(--card) / 0.4);
-    box-shadow: none;
-  }
+.prompt-detail-modal {
+  animation: prompt-detail-enter 160ms ease-out;
 }
 
 @container prompt-editor (min-width: 32rem) {
