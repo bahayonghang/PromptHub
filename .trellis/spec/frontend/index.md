@@ -26,6 +26,7 @@ not a wishlist for a future rewrite.
 | [State Management](./state-management.md) | Local state, feature stores, server-backed state, selectors | Filled |
 | [Quality Guidelines](./quality-guidelines.md) | Forbidden patterns, tests, review checks, verification commands | Filled |
 | [Type Safety](./type-safety.md) | TypeScript strictness, DTO mirrors, validation, narrowing | Filled |
+| [Design Tokens](./design-tokens.md) | Channel-only HSL tokens, appearance override split, mono stack | Filled |
 
 ---
 
@@ -53,6 +54,7 @@ For bridge/API/store work:
 For i18n, theme, appearance, or UI quality work:
 - Read [Component Guidelines](./component-guidelines.md).
 - Read [Quality Guidelines](./quality-guidelines.md).
+- Read [Design Tokens](./design-tokens.md).
 - Check `src/locales/*.json`, `src/styles/globals.css`, and Tailwind token usage.
 
 ---

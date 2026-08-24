@@ -29,6 +29,7 @@ export default {
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
+          "foreground-subtle": "hsl(var(--muted-foreground-subtle))",
         },
         accent: {
           DEFAULT: "hsl(var(--accent))",
@@ -48,6 +49,16 @@ export default {
           accent: "hsl(var(--sidebar-accent))",
           border: "hsl(var(--sidebar-border))",
         },
+        success: "hsl(var(--success))",
+        warning: "hsl(var(--warning))",
+        "accent-alt": "hsl(var(--accent-alt))",
+        "diff-added": "hsl(var(--diff-added))",
+        "diff-removed": "hsl(var(--diff-removed))",
+        "border-strong": "hsl(var(--border-strong))",
+        "surface-inset": "hsl(var(--surface-inset))",
+      },
+      fontFamily: {
+        mono: ["var(--font-mono)"],
       },
       borderRadius: {
         lg: "var(--radius)",

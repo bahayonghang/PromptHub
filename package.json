@@ -15,6 +15,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.3.0",
     "@tauri-apps/api": "^2.1.1",
     "i18next": "24.2.3",
     "lucide-react": "1.17.0",

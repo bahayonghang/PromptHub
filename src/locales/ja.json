@@ -20,10 +20,12 @@
       "themeFamily": "テーマファミリー",
       "themeFamilyHint": "配色ファミリーとライト、ダーク、システムモードを個別に設定します。",
       "familyOption": {
+        "prompthub": "PromptHub",
         "catppuccin": "Catppuccin",
         "claude": "Claude"
       },
       "familyDescription": {
+        "prompthub": "2026年再設計のライトとダークのパレット",
         "catppuccin": "公式の Latte、Frappé、Macchiato、Mocha パレット",
         "claude": "温かく集中しやすいライト・ダークパレット"
       },
@@ -80,7 +82,8 @@
         "Sky": "Sky",
         "Sapphire": "Sapphire",
         "Blue": "Blue",
-        "Lavender": "Lavender"
+        "Lavender": "Lavender",
+        "Violet": "Violet"
       },
       "fontOption": {
         "System": "System",

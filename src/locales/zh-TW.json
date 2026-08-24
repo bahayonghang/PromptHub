@@ -20,10 +20,12 @@
       "themeFamily": "主題家族",
       "themeFamilyHint": "主題配色與淺色、深色或跟隨系統模式分開設定。",
       "familyOption": {
+        "prompthub": "PromptHub",
         "catppuccin": "Catppuccin",
         "claude": "Claude"
       },
       "familyDescription": {
+        "prompthub": "2026 介面重設計的淺色與深色配色",
         "catppuccin": "官方 Latte、Frappé、Macchiato 與 Mocha 配色",
         "claude": "溫暖、專注的淺色與深色配色"
       },
@@ -80,7 +82,8 @@
         "Sky": "Sky",
         "Sapphire": "Sapphire",
         "Blue": "Blue",
-        "Lavender": "Lavender"
+        "Lavender": "Lavender",
+        "Violet": "Violet"
       },
       "fontOption": {
         "System": "System",

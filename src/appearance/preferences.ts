@@ -19,7 +19,7 @@ import {
 } from "./index";
 
 export type ColorMode = "light" | "dark" | "system";
-export type ThemeFamily = "catppuccin" | "claude";
+export type ThemeFamily = "prompthub" | "catppuccin" | "claude";
 export type CatppuccinDarkVariant = "frappe" | "macchiato" | "mocha";
 export type HostPlatform = "windows" | "macos" | "linux";
 
@@ -34,14 +34,14 @@ export interface AppearancePreferences {
 }
 
 export const COLOR_MODES: readonly ColorMode[] = ["light", "dark", "system"];
-export const THEME_FAMILIES: readonly ThemeFamily[] = ["catppuccin", "claude"];
+export const THEME_FAMILIES: readonly ThemeFamily[] = ["prompthub", "catppuccin", "claude"];
 export const CATPPUCCIN_DARK_VARIANTS: readonly CatppuccinDarkVariant[] = [
   "frappe",
   "macchiato",
   "mocha",
 ];
 export const MAX_INTERFACE_FONT_FAMILIES = 4;
-export const DEFAULT_THEME_FAMILY: ThemeFamily = "catppuccin";
+export const DEFAULT_THEME_FAMILY: ThemeFamily = "prompthub";
 export const DEFAULT_COLOR_MODE: ColorMode = "dark";
 export const DEFAULT_CATPPUCCIN_DARK_VARIANT: CatppuccinDarkVariant = "mocha";
 
@@ -55,6 +55,8 @@ const LEGACY_FLAVOR_MIGRATION: Record<
   Mocha: { themeFamily: "catppuccin", theme: "dark", catppuccinDarkVariant: "mocha" },
   "Claude Light": { themeFamily: "claude", theme: "light", catppuccinDarkVariant: "mocha" },
   "Claude Dark": { themeFamily: "claude", theme: "dark", catppuccinDarkVariant: "mocha" },
+  "PromptHub Light": { themeFamily: "prompthub", theme: "light", catppuccinDarkVariant: "mocha" },
+  "PromptHub Dark": { themeFamily: "prompthub", theme: "dark", catppuccinDarkVariant: "mocha" },
 };
 
 function catalogValue<T extends string>(value: unknown, catalog: readonly T[], fallback: T): T {
@@ -78,7 +80,7 @@ export function normalizeInterfaceFontStack(
       ? [legacyBodyFont]
       : typeof legacyDisplayFont === "string" && legacyDisplayFont.trim() !== ""
         ? [legacyDisplayFont]
-        : ["System"];
+        : ["Noto Sans SC", "System"];
   const result: string[] = [];
   const seen = new Set<string>();
 
@@ -94,7 +96,7 @@ export function normalizeInterfaceFontStack(
     if (result.length === MAX_INTERFACE_FONT_FAMILIES) break;
   }
 
-  return result.length > 0 ? result : ["System"];
+  return result.length > 0 ? result : ["Noto Sans SC", "System"];
 }
 
 export function normalizeAppearancePreferences(raw: Partial<Settings>): AppearancePreferences {
@@ -134,6 +136,9 @@ export function resolveThemeVariant(
   const dark =
     preferences.theme === "dark" ||
     (preferences.theme === "system" && systemPrefersDark);
+  if (preferences.themeFamily === "prompthub") {
+    return dark ? "PromptHub Dark" : "PromptHub Light";
+  }
   if (preferences.themeFamily === "claude") {
     return dark ? "Claude Dark" : "Claude Light";
   }

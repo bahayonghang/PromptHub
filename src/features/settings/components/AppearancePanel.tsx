@@ -148,7 +148,12 @@ export function AppearancePanel() {
         >
           {THEME_FAMILIES.map((family) => {
             const selected = applied.themeFamily === family;
-            const variants = family === "catppuccin" ? (["Latte", "Mocha"] as const) : (["Claude Light", "Claude Dark"] as const);
+            const variants =
+              family === "catppuccin"
+                ? (["Latte", "Mocha"] as const)
+                : family === "prompthub"
+                  ? (["PromptHub Light", "PromptHub Dark"] as const)
+                  : (["Claude Light", "Claude Dark"] as const);
             return (
               <button
                 key={family}

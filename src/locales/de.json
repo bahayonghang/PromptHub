@@ -20,10 +20,12 @@
       "themeFamily": "Theme-Familie",
       "themeFamilyHint": "Wähle die Palette unabhängig vom hellen, dunklen oder Systemmodus.",
       "familyOption": {
+        "prompthub": "PromptHub",
         "catppuccin": "Catppuccin",
         "claude": "Claude"
       },
       "familyDescription": {
+        "prompthub": "Helle und dunkle Paletten der Neugestaltung 2026",
         "catppuccin": "Offizielle Paletten Latte, Frappé, Macchiato und Mocha",
         "claude": "Warme, fokussierte helle und dunkle Paletten"
       },
@@ -80,7 +82,8 @@
         "Sky": "Sky",
         "Sapphire": "Sapphire",
         "Blue": "Blue",
-        "Lavender": "Lavender"
+        "Lavender": "Lavender",
+        "Violet": "Violet"
       },
       "fontOption": {
         "System": "System",

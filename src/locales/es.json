@@ -20,10 +20,12 @@
       "themeFamily": "Familia de tema",
       "themeFamilyHint": "Elige la paleta independientemente del modo claro, oscuro o del sistema.",
       "familyOption": {
+        "prompthub": "PromptHub",
         "catppuccin": "Catppuccin",
         "claude": "Claude"
       },
       "familyDescription": {
+        "prompthub": "Paletas clara y oscura del rediseño de 2026",
         "catppuccin": "Paletas oficiales Latte, Frappé, Macchiato y Mocha",
         "claude": "Paletas claras y oscuras cálidas y enfocadas"
       },
@@ -80,7 +82,8 @@
         "Sky": "Sky",
         "Sapphire": "Sapphire",
         "Blue": "Blue",
-        "Lavender": "Lavender"
+        "Lavender": "Lavender",
+        "Violet": "Violet"
       },
       "fontOption": {
         "System": "System",

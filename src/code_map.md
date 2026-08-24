@@ -17,8 +17,12 @@ Runtime Bridge through which all backend access flows.
 - `components/` — shared layout (`layout/`) and top-level views (`views/`).
 - `store/` — app-level Zustand store (readiness, fatal init error).
 - `theme/` — light/dark/system theme application and persistence.
+- `appearance/` — theme family catalogs, accent palettes, and the live paint
+  controller (`preferences.ts`). New installs default to the PromptHub family.
 - `locales/` — the 7 translation bundles (`en`, `zh`, `zh-TW`, `ja`, `fr`, `de`, `es`).
-- `styles/globals.css` — Tailwind layers + design-token CSS variables.
+- `styles/globals.css` — Tailwind layers + design-token CSS variables. Color
+  tokens are channel-only HSL; `src/appearance/preferences.ts` overrides 21 of
+  them at runtime. Token list: `.trellis/spec/frontend/design-tokens.md`.
 
 ## Key Files
 

@@ -26,7 +26,9 @@ export type Flavor =
   | "Macchiato"
   | "Mocha"
   | "Claude Light"
-  | "Claude Dark";
+  | "Claude Dark"
+  | "PromptHub Light"
+  | "PromptHub Dark";
 
 /** Named accent color (Req 3.1). */
 export type AccentColor =
@@ -43,7 +45,8 @@ export type AccentColor =
   | "Sky"
   | "Sapphire"
   | "Blue"
-  | "Lavender";
+  | "Lavender"
+  | "Violet";
 
 /** Font family from the fixed Font_Catalog (Req 4.1). */
 export type FontFamilyName = "System" | "Inter" | "Space Grotesk" | "JetBrains Mono";
@@ -78,6 +81,8 @@ export const FLAVORS: readonly Flavor[] = [
   "Mocha",
   "Claude Light",
   "Claude Dark",
+  "PromptHub Light",
+  "PromptHub Dark",
 ];
 
 export const ACCENT_COLORS: readonly AccentColor[] = [
@@ -95,6 +100,7 @@ export const ACCENT_COLORS: readonly AccentColor[] = [
   "Sapphire",
   "Blue",
   "Lavender",
+  "Violet",
 ];
 
 export const FONT_CATALOG: readonly FontFamilyName[] = [
@@ -108,7 +114,7 @@ export const FONT_SCALES: readonly FontScale[] = ["Small", "Default", "Large", "
 
 export const DENSITIES: readonly Density[] = ["Compact", "Default", "Comfortable"];
 
-export const DEFAULT_ACCENT: AccentColor = "Blue";
+export const DEFAULT_ACCENT: AccentColor = "Violet";
 export const DEFAULT_FONT: FontFamilyName = "System";
 export const DEFAULT_FONT_SCALE: FontScale = "Default";
 export const DEFAULT_DENSITY: Density = "Default";
@@ -129,6 +135,8 @@ export const FLAVOR_BASE: Record<Flavor, AppearanceBase> = {
   Mocha: "dark",
   "Claude Light": "light",
   "Claude Dark": "dark",
+  "PromptHub Light": "light",
+  "PromptHub Dark": "dark",
 };
 
 // ===========================================================================
@@ -284,6 +292,22 @@ const FLAVOR_SWATCHES: Record<Flavor, FlavorSwatches> = {
     text: "48 17% 90%",
     subtext0: "45 6% 64%",
   },
+  "PromptHub Light": {
+    base: "220 37% 97%",
+    mantle: "0 0% 100%",
+    surface0: "227 36% 95%",
+    surface1: "225 27% 91%",
+    text: "223 24% 11%",
+    subtext0: "222 13% 41%",
+  },
+  "PromptHub Dark": {
+    base: "225 27% 6%",
+    mantle: "225 25% 9%",
+    surface0: "224 24% 15%",
+    surface1: "223 22% 19%",
+    text: "225 33% 93%",
+    subtext0: "223 16% 65%",
+  },
 };
 
 /** Builds the complete flavor palette-override set from its swatches. */
@@ -316,6 +340,8 @@ export const FLAVOR_OVERRIDES: Record<Flavor, Record<string, string>> = {
   Mocha: buildFlavorOverrides(FLAVOR_SWATCHES.Mocha),
   "Claude Light": buildFlavorOverrides(FLAVOR_SWATCHES["Claude Light"]),
   "Claude Dark": buildFlavorOverrides(FLAVOR_SWATCHES["Claude Dark"]),
+  "PromptHub Light": buildFlavorOverrides(FLAVOR_SWATCHES["PromptHub Light"]),
+  "PromptHub Dark": buildFlavorOverrides(FLAVOR_SWATCHES["PromptHub Dark"]),
 };
 
 /**
@@ -338,6 +364,7 @@ const ACCENT_HSL: Record<AppearanceBase, Record<AccentColor, [number, number, nu
     Sapphire: [189, 70, 42],
     Blue: [220, 91, 54],
     Lavender: [231, 97, 72],
+    Violet: [247, 67, 59],
   },
   dark: {
     Rosewater: [10, 56, 91],
@@ -354,6 +381,7 @@ const ACCENT_HSL: Record<AppearanceBase, Record<AccentColor, [number, number, nu
     Sapphire: [199, 76, 69],
     Blue: [217, 92, 76],
     Lavender: [232, 97, 85],
+    Violet: [248, 89, 73],
   },
 };
 

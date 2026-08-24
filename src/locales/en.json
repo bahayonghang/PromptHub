@@ -1526,10 +1526,12 @@
       "themeFamily": "Theme family",
       "themeFamilyHint": "Choose a palette family independently from light, dark, or system mode.",
       "familyOption": {
+        "prompthub": "PromptHub",
         "catppuccin": "Catppuccin",
         "claude": "Claude"
       },
       "familyDescription": {
+        "prompthub": "Light and dark palettes from the 2026 redesign",
         "catppuccin": "Official Latte, Frappé, Macchiato, and Mocha palettes",
         "claude": "Warm, focused light and dark palettes"
       },
@@ -1586,7 +1588,8 @@
         "Sky": "Sky",
         "Sapphire": "Sapphire",
         "Blue": "Blue",
-        "Lavender": "Lavender"
+        "Lavender": "Lavender",
+        "Violet": "Violet"
       },
       "fontOption": {
         "System": "System",
