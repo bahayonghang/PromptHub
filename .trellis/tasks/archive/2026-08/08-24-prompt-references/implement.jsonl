@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/cross-layer/index.md", "reason": "Cross-layer contract index: command naming, envelope, events"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Rules for a change that crosses the frontend/backend boundary"}
+{"file": ".trellis/spec/cross-layer/prompt-library-foundations.md", "reason": "Existing prompt, folder, tag, and version contracts"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "Rust DTO to TypeScript mirror rules"}
