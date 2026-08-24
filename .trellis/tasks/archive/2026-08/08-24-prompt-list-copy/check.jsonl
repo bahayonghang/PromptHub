@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "Verify list/editor controls stay token-based, labeled, and free of nested buttons"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Verify i18n coverage, colocated tests, and just build/test gates"}
+{"file": ".trellis/tasks/08-24-prompt-list-copy/prd.md", "reason": "Verify AC1-AC11 against the implemented UI"}
+{"file": ".trellis/tasks/08-24-prompt-list-copy/design.md", "reason": "Verify copy payload, default chat seeding, save derivation, and width rules"}

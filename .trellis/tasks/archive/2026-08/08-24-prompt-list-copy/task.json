@@ -1,0 +1,28 @@
+{
+  "id": "prompt-list-copy",
+  "name": "prompt-list-copy",
+  "title": "Prompt one-click copy, default chat mode, and wider definition fields",
+  "description": "One-click copy on prompt list items and editor definition, default chat mode, wider definition fields",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "lyh",
+  "assignee": "lyh",
+  "createdAt": "2026-08-24",
+  "completedAt": "2026-08-24",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "description": "One-click copy on prompt list items and editor definition, default chat mode, wider definition fields"
+  }
+}

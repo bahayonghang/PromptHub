@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "PromptList/PromptEditor structure, props, tokens, accessibility, and container-query layout rules"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "i18n parity, Testing Library patterns, and frontend verification commands"}
+{"file": ".trellis/tasks/08-24-prompt-list-copy/prd.md", "reason": "Accepted copy payload, default chat mode, width, and acceptance criteria"}
+{"file": ".trellis/tasks/08-24-prompt-list-copy/design.md", "reason": "Copy helper, row structure, CopyPromptButton, and definition layout"}
