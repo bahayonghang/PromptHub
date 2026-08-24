@@ -27,7 +27,17 @@ import {
   type UpdatePromptInput,
   type Variable,
 } from "../types";
-import { substituteVariables, syncVariables } from "../promptText";
+import {
+  preferredChatMode,
+  setPreferredChatMode,
+} from "../definitionMode";
+import {
+  deriveTextFieldsFromMessages,
+  seedChatMessages,
+  substituteVariables,
+  syncVariables,
+} from "../promptText";
+import { CopyPromptButton } from "./CopyPromptButton";
 import { MediaRefList } from "./MediaRefList";
 import { VariableEditor } from "./VariableEditor";
 
@@ -60,7 +70,12 @@ function toDraft(prompt: Prompt | null): Draft {
     folderId: prompt?.folderId ?? null,
     systemPrompt: prompt?.systemPrompt ?? "",
     userPrompt: prompt?.userPrompt ?? "",
-    messages: prompt?.messages ?? [],
+    messages:
+      prompt != null && prompt.messages.length > 0
+        ? prompt.messages
+        : preferredChatMode()
+          ? seedChatMessages(prompt?.systemPrompt, prompt?.userPrompt ?? "")
+          : [],
     variables: prompt?.variables ?? [],
     tags: prompt?.tags ?? [],
     images: prompt?.images ?? [],
@@ -86,6 +101,7 @@ interface PromptEditorProps {
   onCreatePromptType: (
     input: CreatePromptTypeInput,
   ) => Promise<PromptTypeDefinition | null>;
+  writeText?: (text: string) => Promise<void>;
 }
 
 interface FolderPickerProps {
@@ -491,6 +507,7 @@ export function PromptEditor({
   onCancelCreate,
   onCreateFolder,
   onCreatePromptType,
+  writeText,
 }: PromptEditorProps) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState<Draft>(() => toDraft(prompt));
@@ -533,6 +550,7 @@ export function PromptEditor({
   const chatMode = draft.messages.length > 0;
 
   const setChatMode = (enabled: boolean) => {
+    setPreferredChatMode(enabled);
     if (enabled) {
       const messages: PromptMessage[] = [];
       if (draft.systemPrompt.trim() !== "") {
@@ -589,14 +607,20 @@ export function PromptEditor({
 
   const submit = () => {
     if (!canSubmit) return;
+    const textFields = chatMode
+      ? deriveTextFieldsFromMessages(draft.messages)
+      : {
+          systemPrompt: draft.systemPrompt,
+          userPrompt: draft.userPrompt,
+        };
     if (creating) {
       const input: CreatePromptInput = {
         title: draft.title.trim(),
-        userPrompt: draft.userPrompt,
+        userPrompt: textFields.userPrompt,
         promptType: draft.promptType,
         typeDefinitionId: draft.typeDefinitionId,
         description: draft.description || undefined,
-        systemPrompt: draft.systemPrompt || undefined,
+        systemPrompt: textFields.systemPrompt || undefined,
         messages: draft.messages,
         variables: draft.variables,
         tags: draft.tags,
@@ -614,8 +638,8 @@ export function PromptEditor({
         description: draft.description,
         promptType: draft.promptType,
         typeDefinitionId: draft.typeDefinitionId,
-        systemPrompt: draft.systemPrompt,
-        userPrompt: draft.userPrompt,
+        systemPrompt: textFields.systemPrompt,
+        userPrompt: textFields.userPrompt,
         messages: draft.messages,
         variables: draft.variables,
         tags: draft.tags,
@@ -643,7 +667,7 @@ export function PromptEditor({
       }}
     >
       <div className="prompt-editor__body min-h-0 flex-1 overflow-y-auto px-4 py-5">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+        <div className="flex w-full flex-col gap-6">
           <section aria-labelledby="prompt-editor-basics">
             <h3
               id="prompt-editor-basics"
@@ -727,40 +751,51 @@ export function PromptEditor({
               >
                 {t("promptsView.editor.sections.definition")}
               </h3>
-              <div
-                role="group"
-                aria-label={t("evaluation.definitionMode")}
-                className="flex rounded-md border border-input p-0.5"
-              >
-                <button
-                  type="button"
-                  aria-pressed={!chatMode}
-                  onClick={() => setChatMode(false)}
-                  className={`flex min-h-8 items-center gap-1.5 rounded px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                    !chatMode
-                      ? "bg-accent text-foreground"
-                      : "text-muted-foreground"
-                  }`}
+              <div className="flex items-center gap-1">
+                <CopyPromptButton
+                  source={{
+                    systemPrompt: draft.systemPrompt,
+                    userPrompt: draft.userPrompt,
+                    messages: draft.messages,
+                    variables: draft.variables,
+                  }}
+                  writeText={writeText}
+                />
+                <div
+                  role="group"
+                  aria-label={t("evaluation.definitionMode")}
+                  className="flex rounded-md border border-input p-0.5"
                 >
-                  <TextIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                  {t("evaluation.textMode")}
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={chatMode}
-                  onClick={() => setChatMode(true)}
-                  className={`flex min-h-8 items-center gap-1.5 rounded px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                    chatMode
-                      ? "bg-accent text-foreground"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  <MessageSquareIcon
-                    className="h-3.5 w-3.5"
-                    aria-hidden="true"
-                  />
-                  {t("evaluation.chatMode")}
-                </button>
+                  <button
+                    type="button"
+                    aria-pressed={!chatMode}
+                    onClick={() => setChatMode(false)}
+                    className={`flex min-h-8 items-center gap-1.5 rounded px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      !chatMode
+                        ? "bg-accent text-foreground"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    <TextIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t("evaluation.textMode")}
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={chatMode}
+                    onClick={() => setChatMode(true)}
+                    className={`flex min-h-8 items-center gap-1.5 rounded px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      chatMode
+                        ? "bg-accent text-foreground"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    <MessageSquareIcon
+                      className="h-3.5 w-3.5"
+                      aria-hidden="true"
+                    />
+                    {t("evaluation.chatMode")}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -785,7 +820,7 @@ export function PromptEditor({
                           };
                           updateMessages(next);
                         }}
-                        className="w-full rounded-md border border-input bg-background px-2 py-2 text-xs text-foreground"
+                        className="prompt-editor__message-role w-full min-w-[6.5rem] rounded-md border border-input bg-background px-2 py-2 text-xs text-foreground"
                       >
                         <option value="system">
                           {t("evaluation.roleSystem")}
@@ -808,8 +843,12 @@ export function PromptEditor({
                           };
                           updateMessages(next);
                         }}
-                        rows={4}
-                        className={`${inputClass} resize-y font-mono`}
+                        rows={draft.messages.length > 1 ? 8 : 16}
+                        className={`${inputClass} prompt-editor__message-body resize-y font-mono ${
+                          draft.messages.length > 1
+                            ? "prompt-editor__message-body--compact"
+                            : ""
+                        }`}
                       />
                       <div className="prompt-editor__message-actions flex gap-1">
                         {[ArrowUpIcon, ArrowDownIcon, Trash2Icon].map(

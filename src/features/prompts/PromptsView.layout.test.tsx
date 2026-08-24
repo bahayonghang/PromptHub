@@ -92,14 +92,14 @@ describe("PromptsView responsive workspace", () => {
   it("preserves the selected prompt and draft across compact pane switches", async () => {
     render(<PromptsView />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Release notes/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Release notes" }));
 
     const title = await screen.findByRole("textbox", { name: "Title" });
     fireEvent.change(title, { target: { value: "Unpublished draft" } });
 
     expect(screen.getByRole("heading", { name: "Basics" })).toBeTruthy();
     expect(
-      screen.getByRole("heading", { name: "Prompt definition" }),
+      screen.getByRole("heading", { name: "Prompt content" }),
     ).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Organization" })).toBeTruthy();
     expect(
@@ -109,7 +109,7 @@ describe("PromptsView responsive workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Prompts" }));
     expect(usePromptStore.getState().selectedPromptId).toBe(prompt.id);
 
-    fireEvent.click(screen.getByRole("button", { name: /Release notes/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Release notes" }));
     await waitFor(() => {
       expect(
         (screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement)

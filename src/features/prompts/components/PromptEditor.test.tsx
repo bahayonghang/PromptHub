@@ -2,6 +2,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import i18n, { ensureBundle } from "../../../runtime/i18n";
+import { resetPreferredChatModeForTests, setPreferredChatMode } from "../definitionMode";
 import type { Folder, Prompt, PromptTypeDefinition } from "../types";
 import { PromptEditor } from "./PromptEditor";
 
@@ -109,6 +110,7 @@ function renderEditor(
 beforeEach(async () => {
   await ensureBundle("en");
   await i18n.changeLanguage("en");
+  resetPreferredChatModeForTests();
 });
 
 afterEach(cleanup);
@@ -122,7 +124,7 @@ describe("PromptEditor inline folder creation", () => {
     fireEvent.change(screen.getByLabelText("Title"), {
       target: { value: "Unsaved title" },
     });
-    fireEvent.change(screen.getByLabelText("User Prompt"), {
+    fireEvent.change(screen.getByLabelText("Content for message 1"), {
       target: { value: "Unsaved body" },
     });
     fireEvent.change(screen.getByLabelText("Folder"), {
@@ -155,9 +157,10 @@ describe("PromptEditor inline folder creation", () => {
     expect((screen.getByLabelText("Title") as HTMLInputElement).value).toBe(
       "Unsaved title",
     );
-    expect((screen.getByLabelText("User Prompt") as HTMLTextAreaElement).value).toBe(
-      "Unsaved body",
-    );
+    expect(
+      (screen.getByLabelText("Content for message 1") as HTMLTextAreaElement)
+        .value,
+    ).toBe("Unsaved body");
     expect(view.onCreate).not.toHaveBeenCalled();
   });
 
@@ -287,7 +290,7 @@ describe("PromptEditor inline prompt type creation", () => {
     fireEvent.change(screen.getByLabelText("Title"), {
       target: { value: "Unsaved title" },
     });
-    fireEvent.change(screen.getByLabelText("User Prompt"), {
+    fireEvent.change(screen.getByLabelText("Content for message 1"), {
       target: { value: "Unsaved body" },
     });
 
@@ -353,5 +356,156 @@ describe("PromptEditor inline prompt type creation", () => {
       (screen.getByRole("combobox", { name: "Type" }) as HTMLSelectElement)
         .value,
     ).toBe("base:text");
+  });
+});
+
+describe("PromptEditor create chat default and copy", () => {
+  it("opens a create draft in chat mode with one empty user message", () => {
+    renderEditor();
+    expect(screen.getByRole("button", { name: "Chat" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    expect(
+      (screen.getByLabelText("Content for message 1") as HTMLTextAreaElement)
+        .value,
+    ).toBe("");
+    expect(screen.queryByLabelText("User Prompt")).toBeNull();
+  });
+
+  it("derives userPrompt from the last user message on create", () => {
+    const { onCreate } = renderEditor();
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "Consult" },
+    });
+    fireEvent.change(screen.getByLabelText("Content for message 1"), {
+      target: { value: "What should we check?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Consult",
+        userPrompt: "What should we check?",
+        messages: [
+          { role: "user", content: "What should we check?" },
+        ],
+      }),
+    );
+  });
+
+  it("copies the current draft from the definition header", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const onCreate = vi.fn();
+    render(
+      <PromptEditor
+        prompt={null}
+        creating
+        folders={[folder("existing", "Existing")]}
+        promptTypeDefinitions={[]}
+        knownTags={[]}
+        onCreate={onCreate}
+        onSave={vi.fn()}
+        onCancelCreate={vi.fn()}
+        onCreateFolder={vi.fn(async () => null)}
+        onCreatePromptType={vi.fn(async () => null)}
+        writeText={writeText}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Content for message 1"), {
+      target: { value: "Draft copy body" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Copy prompt" }));
+    });
+    expect(writeText).toHaveBeenCalledWith("[User]\nDraft copy body");
+  });
+
+  it("opens a saved text-mode prompt in chat when chat is preferred", () => {
+    render(
+      <PromptEditor
+        prompt={prompt(null)}
+        creating={false}
+        folders={[folder("existing", "Existing")]}
+        promptTypeDefinitions={[]}
+        knownTags={["saved-tag"]}
+        onCreate={vi.fn()}
+        onSave={vi.fn()}
+        onCancelCreate={vi.fn()}
+        onCreateFolder={vi.fn(async () => null)}
+        onCreatePromptType={vi.fn(async () => null)}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Chat" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    expect(
+      (screen.getByLabelText("Content for message 1") as HTMLTextAreaElement)
+        .value,
+    ).toBe("Saved body");
+  });
+
+  it("keeps chat after switching prompts and only returns to text after an explicit toggle", () => {
+    const first = prompt(null);
+    const onSave = vi.fn();
+    const view = render(
+      <PromptEditor
+        prompt={first}
+        creating={false}
+        folders={[folder("existing", "Existing")]}
+        promptTypeDefinitions={[]}
+        knownTags={["saved-tag"]}
+        onCreate={vi.fn()}
+        onSave={onSave}
+        onCancelCreate={vi.fn()}
+        onCreateFolder={vi.fn(async () => null)}
+        onCreatePromptType={vi.fn(async () => null)}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Chat" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Text" }));
+    expect(screen.getByRole("button", { name: "Text" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Chat" }));
+    const second = {
+      ...first,
+      id: "prompt-2",
+      title: "Second",
+      userPrompt: "Second body",
+      messages: [] as Prompt["messages"],
+    };
+    view.rerender(
+      <PromptEditor
+        prompt={second}
+        creating={false}
+        folders={[folder("existing", "Existing")]}
+        promptTypeDefinitions={[]}
+        knownTags={["saved-tag"]}
+        onCreate={vi.fn()}
+        onSave={onSave}
+        onCancelCreate={vi.fn()}
+        onCreateFolder={vi.fn(async () => null)}
+        onCreatePromptType={vi.fn(async () => null)}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Chat" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    expect(
+      (screen.getByLabelText("Content for message 1") as HTMLTextAreaElement)
+        .value,
+    ).toBe("Second body");
+  });
+
+  it("opens a create draft in text mode after the user chooses text", () => {
+    setPreferredChatMode(false);
+    renderEditor();
+    expect(screen.getByRole("button", { name: "Text" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    expect(screen.getByLabelText("User Prompt")).toBeTruthy();
   });
 });

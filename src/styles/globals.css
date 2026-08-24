@@ -279,7 +279,11 @@
   }
 
   .prompt-editor__message {
-    grid-template-columns: 8rem minmax(0, 1fr) auto;
+    grid-template-columns: max-content minmax(0, 1fr) auto;
+  }
+
+  .prompt-editor__message-role {
+    width: auto;
   }
 
   .prompt-editor__message-actions {
@@ -289,6 +293,14 @@
   .prompt-editor__organization {
     grid-template-columns: minmax(12rem, 0.7fr) minmax(0, 1.3fr);
   }
+}
+
+.prompt-editor__message-body {
+  min-height: 24rem;
+}
+
+.prompt-editor__message-body--compact {
+  min-height: 12rem;
 }
 
 ::selection {
