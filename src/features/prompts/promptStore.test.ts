@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildSearchQuery,
+  COUNT_QUERY_CONCURRENCY,
   DEFAULT_FILTERS,
   PROMPT_PAGE_SIZE,
+  resolveLibraryScope,
   selectSelectedPrompt,
   usePromptStore,
   type PromptFilters,
@@ -14,6 +16,7 @@ import type {
   PromptPage,
   PromptTypeDefinition,
   PromptVersion,
+  SearchQuery,
 } from "./types";
 
 function makePrompt(partial: Partial<Prompt> & { id: string }): Prompt {
@@ -160,6 +163,9 @@ function resetStore(api: PromptApi) {
     tags: [],
     promptTypeDefinitions: [],
     filters: { ...DEFAULT_FILTERS },
+    activeView: "all",
+    libraryCounts: { views: {}, folders: {}, tags: {} },
+    countsLoading: false,
     selectedPromptId: null,
     selectedPrompt: null,
     versions: [],
@@ -250,6 +256,166 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
     expect(usePromptStore.getState().filters.tags).toEqual(["a"]);
     await usePromptStore.getState().toggleTagFilter("a");
     expect(usePromptStore.getState().filters.tags).toEqual([]);
+  });
+
+  it("applies the D4b library-scope transition table", async () => {
+    const search = vi.fn(async () => makePage([]));
+    resetStore(makeApi({ searchPrompts: search }));
+    usePromptStore.setState({ folders: [makeFolder("f1")] });
+
+    await usePromptStore.getState().selectView("favorites");
+    expect(usePromptStore.getState().activeView).toBe("favorites");
+    expect(usePromptStore.getState().filters).toMatchObject({
+      folderId: null,
+      tags: [],
+      favoritesOnly: true,
+    });
+
+    await usePromptStore.getState().selectFolder("f1");
+    expect(usePromptStore.getState().activeView).toBeNull();
+    expect(usePromptStore.getState().filters.folderId).toBe("f1");
+    expect(usePromptStore.getState().filters.favoritesOnly).toBe(true);
+
+    await usePromptStore.getState().toggleTagFilter("writing");
+    expect(usePromptStore.getState().activeView).toBeNull();
+    expect(usePromptStore.getState().filters.folderId).toBe("f1");
+    expect(usePromptStore.getState().filters.tags).toEqual(["writing"]);
+    expect(buildSearchQuery(usePromptStore.getState().filters)).toMatchObject({
+      folderId: "f1",
+      tags: ["writing"],
+      isFavorite: true,
+    });
+
+    await usePromptStore.getState().setFilters({ keyword: "alpha" });
+    expect(usePromptStore.getState().activeView).toBeNull();
+    expect(usePromptStore.getState().filters.folderId).toBe("f1");
+    expect(usePromptStore.getState().filters.keyword).toBe("alpha");
+
+    await usePromptStore.getState().selectView("recent");
+    expect(usePromptStore.getState().activeView).toBe("recent");
+    expect(usePromptStore.getState().filters.folderId).toBeNull();
+    expect(usePromptStore.getState().filters.tags).toEqual([]);
+    expect(usePromptStore.getState().filters.sortBy).toBe("updatedAt");
+    expect(usePromptStore.getState().filters.sortOrder).toBe("desc");
+
+    await usePromptStore.getState().setFilters({ sortBy: "title" });
+    expect(usePromptStore.getState().activeView).toBeNull();
+
+    await usePromptStore.getState().selectView("all");
+    expect(usePromptStore.getState().activeView).toBe("all");
+    expect(usePromptStore.getState().filters.favoritesOnly).toBe(false);
+    expect(usePromptStore.getState().filters.folderId).toBeNull();
+    expect(usePromptStore.getState().filters.tags).toEqual([]);
+
+    await usePromptStore.getState().selectFolder("f1");
+    await usePromptStore.getState().selectFolder("f1");
+    expect(usePromptStore.getState().filters.folderId).toBeNull();
+  });
+
+  it("titles the library scope as view, then folder, then a single tag", () => {
+    const folder = makeFolder("f1");
+    folder.name = "Shipping";
+    expect(
+      resolveLibraryScope({
+        activeView: "favorites",
+        filters: { ...DEFAULT_FILTERS, folderId: "f1" },
+        folders: [folder],
+      }),
+    ).toEqual({ kind: "view", view: "favorites" });
+    expect(
+      resolveLibraryScope({
+        activeView: null,
+        filters: { ...DEFAULT_FILTERS, folderId: "f1" },
+        folders: [folder],
+      }),
+    ).toEqual({ kind: "folder", folder });
+    expect(
+      resolveLibraryScope({
+        activeView: null,
+        filters: { ...DEFAULT_FILTERS, tags: ["alpha"] },
+        folders: [],
+      }),
+    ).toEqual({ kind: "tag", tag: "alpha" });
+    expect(
+      resolveLibraryScope({
+        activeView: null,
+        filters: { ...DEFAULT_FILTERS, tags: ["alpha", "beta"] },
+        folders: [],
+      }),
+    ).toEqual({ kind: "all" });
+  });
+
+  it("refreshCounts issues one limit-1 query per bucket and skips recent", async () => {
+    const queries: SearchQuery[] = [];
+    const searchPrompts = vi.fn(async (query: SearchQuery) => {
+      queries.push(query);
+      if (query.isFavorite) return makePage([], 4);
+      if (query.folderId === "f1") return makePage([], 12);
+      if (query.tags?.[0] === "a") return makePage([], 3);
+      return makePage([], 20);
+    });
+    resetStore(makeApi({ searchPrompts }));
+    usePromptStore.setState({
+      folders: [makeFolder("f1")],
+      tags: ["a"],
+    });
+
+    await usePromptStore.getState().refreshCounts();
+
+    expect(queries.every((query) => query.limit === 1)).toBe(true);
+    expect(queries.some((query) => query.sortBy === "updatedAt" && !query.folderId && !query.tags && !query.isFavorite && !query.keyword)).toBe(false);
+    expect(queries).toEqual(
+      expect.arrayContaining([
+        { limit: 1 },
+        { isFavorite: true, limit: 1 },
+        { folderId: "f1", limit: 1 },
+        { tags: ["a"], limit: 1 },
+      ]),
+    );
+    expect(usePromptStore.getState().libraryCounts).toEqual({
+      views: { all: 20, favorites: 4 },
+      folders: { f1: 12 },
+      tags: { a: 3 },
+    });
+  });
+
+  it("keeps the prior count when a bucket query rejects", async () => {
+    const searchPrompts = vi.fn(async (query: SearchQuery) => {
+      if (query.isFavorite) throw new Error("unavailable");
+      return makePage([], 5);
+    });
+    resetStore(makeApi({ searchPrompts }));
+    usePromptStore.setState({
+      libraryCounts: { views: { all: 1, favorites: 9 }, folders: {}, tags: {} },
+    });
+
+    await usePromptStore.getState().refreshCounts();
+
+    expect(usePromptStore.getState().libraryCounts.views.favorites).toBe(9);
+    expect(usePromptStore.getState().libraryCounts.views.all).toBe(5);
+  });
+
+  it("caps count refresh concurrency at 8", async () => {
+    const folders = Array.from({ length: 20 }, (_, index) => makeFolder(`f${index}`));
+    const tags = Array.from({ length: 40 }, (_, index) => `t${index}`);
+    let inflight = 0;
+    let peak = 0;
+    const searchPrompts = vi.fn(async () => {
+      inflight += 1;
+      peak = Math.max(peak, inflight);
+      await Promise.resolve();
+      inflight -= 1;
+      return makePage([], 1);
+    });
+    resetStore(makeApi({ searchPrompts }));
+    usePromptStore.setState({ folders, tags });
+
+    const started = Date.now();
+    await usePromptStore.getState().refreshCounts();
+    const elapsedMs = Date.now() - started;
+
+    expect(peak).toBeLessThanOrEqual(COUNT_QUERY_CONCURRENCY);
+    expect(elapsedMs).toBeLessThan(200);
   });
 
   it("selectPrompt() loads the prompt's version history (Req 7.1)", async () => {

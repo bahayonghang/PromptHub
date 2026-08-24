@@ -1632,6 +1632,23 @@
       "delete": "删除标签",
       "deleteConfirm": "从所有 Prompt 中删除标签 {{tag}}？"
     },
+    "library": {
+      "nav": "Prompt 库",
+      "savedViews": "资料库",
+      "all": "全部 Prompt",
+      "favorites": "收藏",
+      "recent": "最近",
+      "folders": "文件夹",
+      "tags": "标签",
+      "addFolder": "新建文件夹",
+      "commandPalette": "命令面板",
+      "commandPaletteUnavailable": "命令面板将在后续更新中提供。快捷键：Ctrl+K 或 Command+K。",
+      "themeToggle": "明暗模式",
+      "themeToLight": "切换到浅色模式",
+      "themeToDark": "切换到深色模式",
+      "bucketCount": "此分组共 {{count}} 条",
+      "productVersion": "0.4.0"
+    },
     "editor": {
       "sections": {
         "identity": "基本信息",

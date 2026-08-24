@@ -241,17 +241,6 @@
 }
 
 @container prompt-workspace (min-width: 56rem) {
-  .prompt-workspace__folders {
-    position: static;
-    z-index: auto;
-    width: 13rem;
-    visibility: visible;
-    pointer-events: auto;
-    transform: none;
-    background-color: hsl(var(--card) / 0.4);
-    box-shadow: none;
-  }
-
   .prompt-workspace__discovery {
     display: flex;
     width: 18rem;
@@ -267,10 +256,6 @@
 }
 
 @container prompt-workspace (min-width: 80rem) {
-  .prompt-workspace__folders {
-    width: 14rem;
-  }
-
   .prompt-workspace__discovery {
     width: 20rem;
   }

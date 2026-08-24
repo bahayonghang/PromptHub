@@ -1596,6 +1596,23 @@
       "delete": "Supprimer l'etiquette",
       "deleteConfirm": "Supprimer l'etiquette {{tag}} de tous les prompts ?"
     },
+    "library": {
+      "nav": "Bibliotheque de prompts",
+      "savedViews": "Bibliotheque",
+      "all": "Tous les prompts",
+      "favorites": "Favoris",
+      "recent": "Recents",
+      "folders": "Dossiers",
+      "tags": "Etiquettes",
+      "addFolder": "Nouveau dossier",
+      "commandPalette": "Palette de commandes",
+      "commandPaletteUnavailable": "La palette de commandes arrivera dans une mise a jour ulterieure. Raccourci : Ctrl+K ou Command+K.",
+      "themeToggle": "Mode couleur",
+      "themeToLight": "Passer en mode clair",
+      "themeToDark": "Passer en mode sombre",
+      "bucketCount": "{{count}} dans ce groupe",
+      "productVersion": "0.4.0"
+    },
     "editor": {
       "sections": {
         "identity": "Informations générales",

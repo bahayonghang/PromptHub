@@ -1392,6 +1392,23 @@
       "delete": "Delete tag",
       "deleteConfirm": "Delete tag {{tag}} from every prompt?"
     },
+    "library": {
+      "nav": "Prompt library",
+      "savedViews": "Library",
+      "all": "All prompts",
+      "favorites": "Favorites",
+      "recent": "Recent",
+      "folders": "Folders",
+      "tags": "Tags",
+      "addFolder": "New folder",
+      "commandPalette": "Command palette",
+      "commandPaletteUnavailable": "Command palette arrives in a later update. Shortcut: Ctrl+K or Command+K.",
+      "themeToggle": "Color mode",
+      "themeToLight": "Switch to light mode",
+      "themeToDark": "Switch to dark mode",
+      "bucketCount": "{{count}} in this group",
+      "productVersion": "0.4.0"
+    },
     "editor": {
       "sections": {
         "identity": "Basics",

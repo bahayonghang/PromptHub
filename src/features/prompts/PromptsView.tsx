@@ -10,7 +10,6 @@ import {
   FlaskConicalIcon,
   HistoryIcon,
   LockIcon,
-  PanelLeftOpenIcon,
   PinIcon,
   PlusIcon,
   StarIcon,
@@ -23,23 +22,22 @@ import {
   PROMPT_PAGE_SIZE,
   usePromptStore,
 } from "./promptStore";
-import type { BundlePreview, Folder, ImportConflictPolicy } from "./types";
-import { FolderTree } from "./components/FolderTree";
+import type { BundlePreview, ImportConflictPolicy } from "./types";
 import { SearchBar } from "./components/SearchBar";
 import { PromptList } from "./components/PromptList";
 import { PromptEditor } from "./components/PromptEditor";
 import { VersionHistory } from "./components/VersionHistory";
 import { BatchToolbar } from "./components/BatchToolbar";
-import { TagManager } from "./components/TagManager";
 
 const iconButtonClass =
   "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40";
 
 /**
- * The prompt-editing view (Req 22.3). Lays out a folder tree (Req 8), a
- * searchable/filterable prompt list (Req 5, 6.3), and a prompt editor with
- * version history (Req 6, 7). All data flows through the prompt store, which
- * routes every backend call through the Runtime_Bridge (Req 3.1).
+ * The prompt-editing view (Req 22.3). Lays out a searchable/filterable prompt
+ * list (Req 5, 6.3) and a prompt editor with version history (Req 6, 7). Folder
+ * and tag navigation lives in PromptLibraryNav. All data flows through the
+ * prompt store, which routes every backend call through the Runtime_Bridge
+ * (Req 3.1).
  */
 export function PromptsView() {
   const { t } = useTranslation();
@@ -74,22 +72,16 @@ export function PromptsView() {
   const batchMove = usePromptStore((s) => s.batchMove);
   const batchTag = usePromptStore((s) => s.batchTag);
   const batchDelete = usePromptStore((s) => s.batchDelete);
-  const renameTag = usePromptStore((s) => s.renameTag);
-  const deleteTag = usePromptStore((s) => s.deleteTag);
   const exportBundle = usePromptStore((s) => s.exportBundle);
   const previewBundle = usePromptStore((s) => s.previewBundle);
   const importBundle = usePromptStore((s) => s.importBundle);
   const createFolder = usePromptStore((s) => s.createFolder);
   const createPromptType = usePromptStore((s) => s.createPromptType);
-  const updateFolder = usePromptStore((s) => s.updateFolder);
-  const deleteFolder = usePromptStore((s) => s.deleteFolder);
-  const reorderFolders = usePromptStore((s) => s.reorderFolders);
   const createVersion = usePromptStore((s) => s.createVersion);
   const rollbackVersion = usePromptStore((s) => s.rollbackVersion);
 
   const [creating, setCreating] = useState(false);
   const [compactPane, setCompactPane] = useState<"list" | "detail">("list");
-  const [showFolders, setShowFolders] = useState(false);
   const [workspaceMode, setWorkspaceMode] = useState<"editor" | "evaluation">("editor");
   const [showHistory, setShowHistory] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -109,16 +101,6 @@ export function PromptsView() {
     void selectPrompt(null);
   };
 
-  const handleDeleteFolder = (folder: Folder) => {
-    if (
-      window.confirm(
-        t("promptsView.deleteFolderConfirm", { name: folder.name }),
-      )
-    ) {
-      void deleteFolder(folder.id);
-    }
-  };
-
   const handleDeletePrompt = (id: string) => {
     if (window.confirm(t("promptsView.deletePromptConfirm"))) {
       void deletePrompt(id);
@@ -127,13 +109,6 @@ export function PromptsView() {
 
   const editorActive = creating || selectedPrompt != null;
   const navigationVisible = workspaceMode !== "evaluation" || !selectedPrompt;
-  const folderPaneClass = navigationVisible
-    ? `prompt-workspace__folders absolute inset-y-0 left-0 z-30 flex w-64 shrink-0 flex-col border-r border-border bg-card py-2 shadow-lg transition-transform duration-200 ${
-         showFolders
-           ? "visible translate-x-0 pointer-events-auto"
-           : "invisible -translate-x-full pointer-events-none"
-       }`
-    : "hidden";
   const discoveryPaneClass = navigationVisible
     ? `prompt-workspace__discovery min-w-0 w-full shrink-0 flex-col border-r border-border ${
         compactPane === "list" ? "flex" : "hidden"
@@ -145,38 +120,6 @@ export function PromptsView() {
 
   return (
     <div className="prompt-workspace relative flex h-full min-h-0 w-full overflow-hidden">
-      {navigationVisible && showFolders && (
-        <button
-          type="button"
-          aria-label={t("common.close")}
-          onClick={() => setShowFolders(false)}
-          className="prompt-workspace__compact-control absolute inset-0 z-20 bg-foreground/15"
-        />
-      )}
-
-      {/* Folder tree */}
-      <aside
-        id="prompt-folder-navigation"
-        aria-label={t("promptsView.folders")}
-        className={folderPaneClass}
-      >
-        <FolderTree
-          folders={folders}
-          selectedFolderId={filters.folderId}
-          onSelectFolder={(folderId) => {
-            setShowFolders(false);
-            void setFilters({ folderId });
-          }}
-          onCreateFolder={(name, parentId) =>
-            void createFolder({ name, parentId })
-          }
-          onRenameFolder={(id, name) => void updateFolder(id, { name })}
-          onDeleteFolder={handleDeleteFolder}
-          onReorder={(orderedIds) => void reorderFolders(orderedIds)}
-          onReparent={(id, parentId) => void updateFolder(id, { parentId })}
-        />
-      </aside>
-
       {/* Prompt list + search */}
       <section
         aria-label={t("common.prompts")}
@@ -185,17 +128,6 @@ export function PromptsView() {
         <div className="flex flex-col gap-2 border-b border-border p-3">
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <button
-                type="button"
-                aria-label={t("promptsView.folders")}
-                aria-expanded={showFolders}
-                aria-controls="prompt-folder-navigation"
-                onClick={() => setShowFolders(true)}
-                className="prompt-workspace__compact-control flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-input px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <PanelLeftOpenIcon className="h-4 w-4" aria-hidden="true" />
-                {t("promptsView.folders")}
-              </button>
               <h2 className="truncate text-sm font-semibold text-foreground">
                 {t("common.prompts")}
               </h2>
@@ -348,15 +280,6 @@ export function PromptsView() {
             {transferMessage}
           </div>
         )}
-        <TagManager
-          tags={tags}
-          onRename={(old, next) => void renameTag(old, next)}
-          onDelete={(tag) => {
-            if (window.confirm(t("promptsView.tags.deleteConfirm", { tag }))) {
-              void deleteTag(tag);
-            }
-          }}
-        />
         {selectedPromptIds.length > 0 && (
           <BatchToolbar
             selectedCount={selectedPromptIds.length}

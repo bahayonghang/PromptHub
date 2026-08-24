@@ -1594,6 +1594,23 @@
       "delete": "Eliminar etiqueta",
       "deleteConfirm": "Eliminar la etiqueta {{tag}} de todos los prompts?"
     },
+    "library": {
+      "nav": "Biblioteca de prompts",
+      "savedViews": "Biblioteca",
+      "all": "Todos los prompts",
+      "favorites": "Favoritos",
+      "recent": "Recientes",
+      "folders": "Carpetas",
+      "tags": "Etiquetas",
+      "addFolder": "Nueva carpeta",
+      "commandPalette": "Paleta de comandos",
+      "commandPaletteUnavailable": "La paleta de comandos llega en una actualizacion posterior. Atajo: Ctrl+K o Command+K.",
+      "themeToggle": "Modo de color",
+      "themeToLight": "Cambiar a modo claro",
+      "themeToDark": "Cambiar a modo oscuro",
+      "bucketCount": "{{count}} en este grupo",
+      "productVersion": "0.4.0"
+    },
     "editor": {
       "sections": {
         "identity": "Datos básicos",

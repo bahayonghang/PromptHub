@@ -1598,6 +1598,23 @@
       "delete": "刪除標籤",
       "deleteConfirm": "從所有 Prompt 中刪除標籤 {{tag}}？"
     },
+    "library": {
+      "nav": "Prompt 庫",
+      "savedViews": "資料庫",
+      "all": "全部 Prompt",
+      "favorites": "收藏",
+      "recent": "最近",
+      "folders": "資料夾",
+      "tags": "標籤",
+      "addFolder": "新增資料夾",
+      "commandPalette": "命令面板",
+      "commandPaletteUnavailable": "命令面板將在後續更新提供。快捷鍵：Ctrl+K 或 Command+K。",
+      "themeToggle": "色彩模式",
+      "themeToLight": "切換到淺色模式",
+      "themeToDark": "切換到深色模式",
+      "bucketCount": "此分組共 {{count}} 筆",
+      "productVersion": "0.4.0"
+    },
     "editor": {
       "sections": {
         "identity": "基本資訊",

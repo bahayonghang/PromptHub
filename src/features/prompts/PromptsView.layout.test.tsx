@@ -76,17 +76,12 @@ afterEach(() => {
 });
 
 describe("PromptsView responsive workspace", () => {
-  it("opens and dismisses the compact folder navigation", () => {
+  it("does not mount the folder tree or tag manager in the prompts view", () => {
     render(<PromptsView />);
 
-    const foldersButton = screen.getByRole("button", { name: "Folders" });
-    expect(foldersButton.getAttribute("aria-expanded")).toBe("false");
-
-    fireEvent.click(foldersButton);
-    expect(foldersButton.getAttribute("aria-expanded")).toBe("true");
-
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    expect(foldersButton.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("button", { name: "Folders" })).toBeNull();
+    expect(screen.queryByRole("navigation", { name: "Prompt library" })).toBeNull();
+    expect(screen.queryByText("Manage tags")).toBeNull();
   });
 
   it("preserves the selected prompt and draft across compact pane switches", async () => {

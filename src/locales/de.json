@@ -1593,6 +1593,23 @@
       "delete": "Tag loschen",
       "deleteConfirm": "Tag {{tag}} aus allen Prompts loschen?"
     },
+    "library": {
+      "nav": "Prompt-Bibliothek",
+      "savedViews": "Bibliothek",
+      "all": "Alle Prompts",
+      "favorites": "Favoriten",
+      "recent": "Zuletzt",
+      "folders": "Ordner",
+      "tags": "Tags",
+      "addFolder": "Neuer Ordner",
+      "commandPalette": "Befehlspalette",
+      "commandPaletteUnavailable": "Die Befehlspalette kommt in einem spateren Update. Tastenkuerzel: Ctrl+K oder Command+K.",
+      "themeToggle": "Farbmodus",
+      "themeToLight": "Zum hellen Modus wechseln",
+      "themeToDark": "Zum dunklen Modus wechseln",
+      "bucketCount": "{{count}} in dieser Gruppe",
+      "productVersion": "0.4.0"
+    },
     "editor": {
       "sections": {
         "identity": "Grundlagen",

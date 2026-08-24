@@ -15,6 +15,8 @@ Runtime Bridge through which all backend access flows.
 - `features/` — business modules (`prompts/`, `settings/`, `system/`),
   each self-contained; start here for feature behavior.
 - `components/` — shared layout (`layout/`) and top-level views (`views/`).
+  The sidebar rail is app-wide; library saved views, folders, and tags live in
+  `features/prompts/components/PromptLibraryNav.tsx`.
 - `store/` — app-level Zustand store (readiness, fatal init error).
 - `theme/` — light/dark/system theme application and persistence.
 - `appearance/` — theme family catalogs, accent palettes, and the live paint

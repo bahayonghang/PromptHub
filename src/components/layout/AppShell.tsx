@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { useAppStore, type AppView } from "../../store/appStore";
 import { Sidebar } from "./Sidebar";
+import { PromptLibraryNav } from "../../features/prompts/components/PromptLibraryNav";
 import { Header } from "./Header";
 import { PromptsView } from "../views/PromptsView";
 import { SettingsView } from "../views/SettingsView";
@@ -30,7 +31,9 @@ export function AppShell() {
     <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground">
       <TitleBar />
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <Sidebar />
+        <Sidebar>
+          <PromptLibraryNav />
+        </Sidebar>
         <div className="flex min-w-0 flex-1 flex-col">
           <Header />
           <main className="min-h-0 flex-1 overflow-auto">

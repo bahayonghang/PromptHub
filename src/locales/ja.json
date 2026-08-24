@@ -1599,6 +1599,23 @@
       "delete": "タグを削除",
       "deleteConfirm": "すべての Prompt からタグ {{tag}} を削除しますか？"
     },
+    "library": {
+      "nav": "Prompt ライブラリ",
+      "savedViews": "ライブラリ",
+      "all": "すべての Prompt",
+      "favorites": "お気に入り",
+      "recent": "最近",
+      "folders": "フォルダー",
+      "tags": "タグ",
+      "addFolder": "フォルダーを追加",
+      "commandPalette": "コマンドパレット",
+      "commandPaletteUnavailable": "コマンドパレットは後の更新で追加されます。ショートカット: Ctrl+K または Command+K。",
+      "themeToggle": "カラーモード",
+      "themeToLight": "ライトモードに切り替え",
+      "themeToDark": "ダークモードに切り替え",
+      "bucketCount": "このグループは {{count}} 件",
+      "productVersion": "0.4.0"
+    },
     "editor": {
       "sections": {
         "identity": "基本情報",
