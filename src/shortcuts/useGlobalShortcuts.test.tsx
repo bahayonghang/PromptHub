@@ -1,14 +1,40 @@
 // @vitest-environment jsdom
-import { cleanup, render } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import i18n, { ensureBundle } from "../runtime/i18n";
 import { useGlobalShortcuts } from "./useGlobalShortcuts";
 import { usePaletteStore } from "../features/prompts/paletteStore";
 import { usePromptStore } from "../features/prompts/promptStore";
+import { CommandPalette } from "../features/prompts/components/CommandPalette";
+
+vi.mock("../features/prompts/api", async () => {
+  const actual = await vi.importActual<typeof import("../features/prompts/api")>(
+    "../features/prompts/api",
+  );
+  return {
+    ...actual,
+    promptApi: {
+      ...actual.promptApi,
+      searchPrompts: vi.fn(async () => ({
+        items: [],
+        total: 0,
+        limit: 5,
+        offset: 0,
+        hasMore: false,
+      })),
+    },
+  };
+});
 
 function Host() {
   useGlobalShortcuts();
   return null;
 }
+
+beforeEach(async () => {
+  await ensureBundle("en");
+  await i18n.changeLanguage("en");
+});
 
 afterEach(() => {
   cleanup();
@@ -31,6 +57,23 @@ describe("useGlobalShortcuts", () => {
     input.remove();
   });
 
+  it("still toggles Cmd/Ctrl+K while the palette query input is focused", () => {
+    usePaletteStore.setState({ open: true });
+    render(
+      <>
+        <Host />
+        <CommandPalette />
+      </>,
+    );
+    const query = screen.getByRole("combobox", {
+      name: "Search prompts and actions",
+    });
+    query.focus();
+    expect(document.activeElement).toBe(query);
+    fireKey("k", { ctrlKey: true, metaKey: true, target: query });
+    expect(usePaletteStore.getState().open).toBe(false);
+  });
+
   it("fires save from a textarea when detail actions are registered", () => {
     const save = vi.fn(async () => ({ ok: true as const }));
     usePromptStore.getState().registerDetailActions({
@@ -43,6 +86,21 @@ describe("useGlobalShortcuts", () => {
     input.focus();
     fireKey("s", { ctrlKey: true, metaKey: true, target: input });
     expect(save).toHaveBeenCalledOnce();
+    input.remove();
+  });
+
+  it("fires copy from a textarea on Cmd/Ctrl+Enter", () => {
+    const copy = vi.fn(async () => undefined);
+    usePromptStore.getState().registerDetailActions({
+      save: vi.fn(async () => ({ ok: true as const })),
+      copy,
+    });
+    render(<Host />);
+    const input = document.createElement("textarea");
+    document.body.appendChild(input);
+    input.focus();
+    fireKey("Enter", { ctrlKey: true, metaKey: true, target: input });
+    expect(copy).toHaveBeenCalledOnce();
     input.remove();
   });
 

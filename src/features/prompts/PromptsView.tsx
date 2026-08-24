@@ -104,6 +104,10 @@ export function PromptsView() {
     if (libraryScrollRef.current) libraryScrollRef.current.scrollTop = 0;
   }, [viewMode]);
 
+  useEffect(() => {
+    if (selectedPromptId != null) setCreating(false);
+  }, [selectedPromptId]);
+
   return (
     <div className="prompt-workspace relative flex h-full min-h-0 w-full overflow-hidden">
       <section
@@ -168,7 +172,6 @@ export function PromptsView() {
               onToggleSelection={togglePromptSelection}
               onToggleFavorite={(id, next) => void savePrompt(id, { isFavorite: next })}
               onSelect={(id) => {
-                setCreating(false);
                 void requestSelectPrompt(id);
               }}
             />
@@ -181,7 +184,6 @@ export function PromptsView() {
               onToggleSelection={togglePromptSelection}
               onToggleFavorite={(id, next) => void savePrompt(id, { isFavorite: next })}
               onSelect={(id) => {
-                setCreating(false);
                 void requestSelectPrompt(id);
               }}
             />

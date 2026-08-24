@@ -137,6 +137,7 @@ export function CommandPalette() {
       <div className="flex flex-col">
         <input
           value={query}
+          data-command-palette-input=""
           onChange={(event) => setQuery(event.target.value)}
           placeholder={t("promptsView.palette.placeholder")}
           aria-label={t("promptsView.palette.placeholder")}

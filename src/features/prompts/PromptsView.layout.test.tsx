@@ -146,4 +146,62 @@ describe("PromptsView responsive workspace", () => {
         .value,
     ).toBe("Unpublished draft");
   });
+
+  it("leaves create mode when a library prompt is selected", async () => {
+    render(<PromptsView />);
+    fireEvent.click(screen.getByRole("button", { name: "New Prompt" }));
+    await screen.findByRole("textbox", { name: "Title" });
+    fireEvent.click(screen.getByRole("button", { name: "Release notes" }));
+    await waitFor(() => {
+      expect(
+        (screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement)
+          .value,
+      ).toBe("Release notes");
+    });
+    expect(usePromptStore.getState().selectedPromptId).toBe(prompt.id);
+  });
+
+  it("keeps a dirty new-prompt overlay when keep-editing after a library select", async () => {
+    render(<PromptsView />);
+    fireEvent.click(screen.getByRole("button", { name: "New Prompt" }));
+    const title = await screen.findByRole("textbox", { name: "Title" });
+    fireEvent.change(title, { target: { value: "Draft create" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Release notes" }));
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Keep editing" }),
+      ).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+
+    expect(
+      (screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement)
+        .value,
+    ).toBe("Draft create");
+    expect(usePromptStore.getState().selectedPromptId).toBeNull();
+  });
+
+  it("opens a library prompt after a new-prompt overlay is discarded", async () => {
+    render(<PromptsView />);
+    fireEvent.click(screen.getByRole("button", { name: "New Prompt" }));
+    const title = await screen.findByRole("textbox", { name: "Title" });
+    fireEvent.change(title, { target: { value: "Draft create" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Release notes" }));
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Discard and close" }),
+      ).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Discard and close" }));
+
+    await waitFor(() => {
+      expect(
+        (screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement)
+          .value,
+      ).toBe("Release notes");
+    });
+    expect(usePromptStore.getState().selectedPromptId).toBe(prompt.id);
+  });
 });

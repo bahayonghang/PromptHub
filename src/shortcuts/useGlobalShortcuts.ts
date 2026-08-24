@@ -10,9 +10,12 @@ export function useGlobalShortcuts(): void {
     const modifier = platformModifier();
     const onKeyDown = (event: KeyboardEvent) => {
       const typing = isTypingTarget(event.target);
+      const paletteInput =
+        event.target instanceof HTMLElement &&
+        event.target.hasAttribute("data-command-palette-input");
       for (const binding of SHORTCUT_BINDINGS) {
         if (!matchesBinding(event, binding, modifier.isMatch(event))) continue;
-        if (typing && !binding.allowWhileTyping) return;
+        if (typing && !binding.allowWhileTyping && !paletteInput) return;
         event.preventDefault();
         runBinding(binding.id);
         return;
