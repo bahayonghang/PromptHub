@@ -29,4 +29,28 @@ export default defineConfig({
       ignored: ["**/src-tauri/**", "**/ref/**"],
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Keep the entry under Rollup's 500 kB warning. Locales already load
+        // via dynamic import(); vendor libraries stay in their own files.
+        manualChunks(id) {
+          if (!id.includes("node_modules")) {
+            return undefined;
+          }
+          if (id.includes("lucide-react")) {
+            return "icons";
+          }
+          if (id.includes("i18next")) {
+            return "i18n";
+          }
+          // Match the package directory so `react` does not catch `react-dom`.
+          if (/[/\\](?:react-dom|scheduler|react)[/\\]/.test(id)) {
+            return "react-vendor";
+          }
+          return undefined;
+        },
+      },
+    },
+  },
 });
