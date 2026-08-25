@@ -123,7 +123,7 @@ npm run tauri build
 
 | 命令 | 用途 |
 | --- | --- |
-| `npm run dev` | 仅启动 Vite 前端开发服务器（http://localhost:1420） |
+| `npm run dev` | 仅启动 Vite 前端开发服务器（http://localhost:5173） |
 | `npm run tauri dev` | 启动完整桌面端开发环境 |
 | `npm run build` | 前端类型检查 + Vite 生产构建 |
 | `npm run tauri build` | 构建桌面端安装包 |

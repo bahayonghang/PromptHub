@@ -123,7 +123,7 @@ Artifacts are written to `src-tauri/target/release/bundle/`, producing installer
 
 | Command | Purpose |
 | --- | --- |
-| `npm run dev` | Start the Vite frontend dev server only (http://localhost:1420) |
+| `npm run dev` | Start the Vite frontend dev server only (http://localhost:5173) |
 | `npm run tauri dev` | Start the full desktop dev environment |
 | `npm run build` | Frontend type-check + Vite production build |
 | `npm run tauri build` | Build the desktop installer |

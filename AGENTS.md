@@ -46,7 +46,7 @@ Prefer the checked-in `justfile` from the repo root:
 - `just deps` - install frontend dependencies.
 - `just install` - build and install PromptHub on this machine.
 - `just dev` - full desktop dev environment (Vite + native window + Rust backend).
-- `just frontend` - frontend-only Vite dev server on `http://localhost:1420`.
+- `just frontend` - frontend-only Vite dev server on `http://localhost:5173`.
 - `just build` - frontend gate: `tsc` typecheck + Vite production build.
 - `just test` - frontend Vitest suite.
 - `just test-rust` - backend unit + property tests.

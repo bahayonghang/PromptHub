@@ -9,9 +9,12 @@ export default defineConfig({
   plugins: [react()],
 
   // Tauri expects a fixed port and fails if it is not available.
+  // Windows Hyper-V / WinNAT often reserves 1390-1489, so the old Tauri
+  // default 1420 fails with EACCES. 5173 is Vite's default and sits outside
+  // those ranges.
   clearScreen: false,
   server: {
-    port: 1420,
+    port: 5173,
     strictPort: true,
     host: host || false,
     hmr: host

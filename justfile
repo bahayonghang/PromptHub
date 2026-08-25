@@ -27,7 +27,7 @@ deps:
 dev:
     npm run tauri dev
 
-# Frontend-only Vite server on http://localhost:1420.
+# Frontend-only Vite server on http://localhost:5173.
 frontend:
     npm run dev
 
