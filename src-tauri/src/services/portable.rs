@@ -28,6 +28,8 @@ pub struct PromptBundleManifest {
     pub folders: Vec<Folder>,
     #[serde(default)]
     pub type_definitions: Vec<PromptTypeDefinition>,
+    #[serde(default)]
+    pub references: Vec<crate::services::reference::PromptReferenceRecord>,
     pub media_files: Vec<String>,
 }
 
@@ -196,6 +198,8 @@ pub fn export_bundle(
     }
     media_files.sort();
 
+    let prompt_ids: Vec<String> = prompts.iter().map(|prompt| prompt.id.clone()).collect();
+    let references = crate::services::reference::list_for_prompts(conn, &prompt_ids)?;
     let manifest = PromptBundleManifest {
         format_version: FORMAT_VERSION,
         exported_at: crate::storage::time::millis_to_iso8601(now_millis()),
@@ -203,6 +207,7 @@ pub fn export_bundle(
         revisions,
         folders,
         type_definitions,
+        references,
         media_files,
     };
     validate_manifest(&manifest)?;
@@ -821,6 +826,41 @@ fn replace_prompt(
     Ok(())
 }
 
+fn import_references(
+    tx: &Transaction<'_>,
+    records: &[crate::services::reference::PromptReferenceRecord],
+    prompt_map: &HashMap<String, String>,
+    skipped_sources: &HashSet<String>,
+    replaced_sources: &HashSet<String>,
+) -> Result<(), AppError> {
+    for original_id in replaced_sources {
+        let Some(new_id) = prompt_map.get(original_id) else {
+            continue;
+        };
+        crate::services::reference::delete_outgoing(tx, new_id)?;
+    }
+    for record in records {
+        if skipped_sources.contains(&record.source_prompt_id) {
+            continue;
+        }
+        let Some(source_id) = prompt_map.get(&record.source_prompt_id) else {
+            continue;
+        };
+        let remapped_target = record
+            .target_prompt_id
+            .as_ref()
+            .and_then(|id| prompt_map.get(id).map(String::as_str));
+        crate::services::reference::insert_imported(
+            tx,
+            source_id,
+            remapped_target,
+            &record.token_title,
+            &record.resolution,
+        )?;
+    }
+    Ok(())
+}
+
 pub fn import_bundle(
     conn: &Connection,
     path: &Path,
@@ -904,6 +944,7 @@ pub fn import_bundle(
         let mut skipped = 0;
         let mut replaced = 0;
         let mut skipped_prompt_ids = HashSet::new();
+        let mut replaced_prompt_ids = HashSet::new();
         for prompt in &loaded.manifest.prompts {
             let exists: bool = tx
                 .query_row(
@@ -925,7 +966,7 @@ pub fn import_bundle(
                     .map(String::as_str);
                 replace_prompt(&tx, prompt, type_definition_id)?;
                 replaced += 1;
-                skipped_prompt_ids.insert(prompt.id.clone());
+                replaced_prompt_ids.insert(prompt.id.clone());
                 continue;
             }
             let folder = prompt
@@ -948,7 +989,9 @@ pub fn import_bundle(
             added += 1;
         }
         for revision in &loaded.manifest.revisions {
-            if skipped_prompt_ids.contains(&revision.prompt_id) {
+            if skipped_prompt_ids.contains(&revision.prompt_id)
+                || replaced_prompt_ids.contains(&revision.prompt_id)
+            {
                 continue;
             }
             let parent = revision
@@ -996,6 +1039,14 @@ pub fn import_bundle(
             })?;
             created_media.push(destination);
         }
+
+        import_references(
+            &tx,
+            &loaded.manifest.references,
+            &prompt_map,
+            &skipped_prompt_ids,
+            &replaced_prompt_ids,
+        )?;
 
         tx.commit()
             .map_err(|error| db_err("failed to commit bundle import", error))?;
@@ -1124,6 +1175,7 @@ mod tests {
             revisions,
             folders,
             type_definitions,
+            references: Vec::new(),
             media_files: Vec::new(),
         };
 
@@ -1152,6 +1204,7 @@ mod tests {
             revisions: valid.revisions,
             folders: valid.folders,
             type_definitions: valid.type_definitions,
+            references: Vec::new(),
             media_files: Vec::new(),
         };
         let path = root.path().join("extra-media.prompthub");
@@ -1480,5 +1533,133 @@ mod tests {
         .unwrap_err();
         assert_eq!(error.code_str(), "CONFLICT");
         assert!(!backups.exists());
+    }
+
+    #[test]
+    fn old_manifest_without_references_defaults_empty() {
+        let json = r#"{
+            "formatVersion":2,
+            "exportedAt":"2020-01-01T00:00:00.000Z",
+            "prompts":[],
+            "revisions":[],
+            "folders":[],
+            "mediaFiles":[]
+        }"#;
+        let manifest: PromptBundleManifest = serde_json::from_str(json).unwrap();
+        assert!(manifest.references.is_empty());
+        assert_eq!(manifest.format_version, FORMAT_VERSION);
+    }
+
+    #[test]
+    fn references_round_trip_under_skip_duplicate_and_replace() {
+        let source_pool = create_memory_pool().unwrap();
+        let source = source_pool.get().unwrap();
+        init_schema(&source).unwrap();
+        prompt::create(
+            &source,
+            PromptCreate {
+                title: "A".into(),
+                user_prompt: "body-a".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        prompt::create(
+            &source,
+            PromptCreate {
+                title: "S".into(),
+                user_prompt: "see @@A".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let root = tempfile::tempdir().unwrap();
+        let bundle = root.path().join("refs.prompthub");
+        export_bundle(&source, &root.path().join("source-media"), &bundle).unwrap();
+
+        let target_pool = create_memory_pool().unwrap();
+        let target = target_pool.get().unwrap();
+        init_schema(&target).unwrap();
+        let data = root.path().join("data");
+        fs::create_dir_all(&data).unwrap();
+        import_bundle(
+            &target,
+            &bundle,
+            ImportConflictPolicy::Skip,
+            &data,
+            &root.path().join("backups-skip"),
+            &root.path().join("media-skip"),
+            None,
+        )
+        .unwrap();
+        let prompts = prompt::list(&target).unwrap();
+        let source_prompt = prompts.iter().find(|item| item.title == "S").unwrap();
+        let listed = crate::services::reference::list(&target, &source_prompt.id).unwrap();
+        assert_eq!(listed.outgoing.len(), 1);
+        assert_eq!(listed.outgoing[0].resolution, "resolved");
+
+        let skip_again = import_bundle(
+            &target,
+            &bundle,
+            ImportConflictPolicy::Skip,
+            &data,
+            &root.path().join("backups-skip-2"),
+            &root.path().join("media-skip-2"),
+            None,
+        )
+        .unwrap();
+        assert_eq!(skip_again.skipped, 2);
+        assert_eq!(
+            crate::services::reference::list(&target, &source_prompt.id)
+                .unwrap()
+                .outgoing
+                .len(),
+            1
+        );
+
+        import_bundle(
+            &target,
+            &bundle,
+            ImportConflictPolicy::Duplicate,
+            &data,
+            &root.path().join("backups-dup"),
+            &root.path().join("media-dup"),
+            None,
+        )
+        .unwrap();
+        let after_dup = prompt::list(&target).unwrap();
+        assert_eq!(after_dup.len(), 4);
+        let copies: Vec<_> = after_dup.iter().filter(|item| item.title == "S").collect();
+        assert_eq!(copies.len(), 2);
+        for copy in copies {
+            let listed = crate::services::reference::list(&target, &copy.id).unwrap();
+            assert_eq!(listed.outgoing.len(), 1);
+            assert_eq!(listed.outgoing[0].resolution, "resolved");
+        }
+
+        prompt::update(
+            &target,
+            &source_prompt.id,
+            prompt::PromptUpdate {
+                user_prompt: Some("changed".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        import_bundle(
+            &target,
+            &bundle,
+            ImportConflictPolicy::Replace,
+            &data,
+            &root.path().join("backups-replace"),
+            &root.path().join("media-replace"),
+            None,
+        )
+        .unwrap();
+        let replaced = prompt::get(&target, &source_prompt.id).unwrap();
+        assert_eq!(replaced.user_prompt, "see @@A");
+        let listed = crate::services::reference::list(&target, &source_prompt.id).unwrap();
+        assert_eq!(listed.outgoing.len(), 1);
+        assert_eq!(listed.outgoing[0].resolution, "resolved");
     }
 }

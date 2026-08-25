@@ -30,6 +30,18 @@ interface FolderTreeProps {
   onReorder: (orderedIds: string[]) => void;
   /** Reparents a folder onto a drop target, or to root when `null` (Req 8.3). */
   onReparent: (id: string, parentId: string | null) => void;
+  /** Direct-membership totals keyed by folder id. */
+  counts?: Record<string, number>;
+}
+
+/** Decorative hue derived from the folder id so the same folder keeps the same dot. */
+export function folderAccentHue(id: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < id.length; i += 1) {
+    hash ^= id.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) % 360;
 }
 
 /**
@@ -47,6 +59,7 @@ export function FolderTree({
   onDeleteFolder,
   onReorder,
   onReparent,
+  counts,
 }: FolderTreeProps) {
   const { t } = useTranslation();
   const tree = useMemo(() => buildFolderTree(folders), [folders]);
@@ -179,10 +192,28 @@ export function FolderTree({
               <button
                 type="button"
                 onClick={() => onSelectFolder(node.id)}
+                aria-pressed={isSelected}
                 className="flex min-w-0 flex-1 items-center gap-2 text-left"
               >
+                <span
+                  aria-hidden="true"
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{
+                    backgroundColor: `hsl(${folderAccentHue(node.id)} 42% 58%)`,
+                  }}
+                />
                 <FolderIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
                 <span className="truncate">{node.name}</span>
+                {counts?.[node.id] != null && (
+                  <span
+                    className="ml-auto font-mono text-xs text-muted-foreground-subtle"
+                    title={t("promptsView.library.bucketCount", {
+                      count: counts[node.id],
+                    })}
+                  >
+                    {counts[node.id]}
+                  </span>
+                )}
               </button>
               <span className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
                 <button

@@ -30,7 +30,9 @@ src/
   styles/globals.css          # Tailwind layers and CSS-variable tokens
   locales/*.json              # seven translation bundles
   components/
-    layout/                   # app shell, sidebar, header, nav config
+    layout/                   # app shell, sidebar slot, header, nav config
+                              # Sidebar does not import the prompt store; it
+                              # renders PromptLibraryNav as a child slot.
     views/                    # shared top-level view placeholders
   features/
     prompts/

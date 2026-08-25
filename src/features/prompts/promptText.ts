@@ -135,23 +135,39 @@ function formatLabeledBlock(label: string, content: string): string {
  * labeled message blocks. Text mode emits `[System]` / `[User]` when a
  * non-whitespace system prompt exists, otherwise the user prompt only.
  */
-export function buildPromptCopyText(source: PromptCopySource): string {
-  const values = defaultVariableValues(source.variables);
-  if (source.messages.length > 0) {
-    return source.messages
+export function formatCopiedPrompt(parts: {
+  systemPrompt?: string | null;
+  userPrompt: string;
+  messages: readonly { role: PromptMessageRole; content: string }[];
+}): string {
+  if (parts.messages.length > 0) {
+    return parts.messages
       .map((message) =>
-        formatLabeledBlock(
-          COPY_ROLE_LABELS[message.role],
-          substituteVariables(message.content, values),
-        ),
+        formatLabeledBlock(COPY_ROLE_LABELS[message.role], message.content),
       )
       .join("\n\n");
   }
-
-  const system = substituteVariables(source.systemPrompt ?? "", values);
-  const user = substituteVariables(source.userPrompt, values);
+  const system = parts.systemPrompt ?? "";
   if (system.trim() === "") {
-    return user;
+    return parts.userPrompt;
   }
-  return `${formatLabeledBlock("System", system)}\n\n${formatLabeledBlock("User", user)}`;
+  return `${formatLabeledBlock("System", system)}\n\n${formatLabeledBlock("User", parts.userPrompt)}`;
+}
+
+export function buildPromptCopyText(source: PromptCopySource): string {
+  const values = defaultVariableValues(source.variables);
+  if (source.messages.length > 0) {
+    return formatCopiedPrompt({
+      userPrompt: "",
+      messages: source.messages.map((message) => ({
+        role: message.role,
+        content: substituteVariables(message.content, values),
+      })),
+    });
+  }
+  return formatCopiedPrompt({
+    systemPrompt: substituteVariables(source.systemPrompt ?? "", values),
+    userPrompt: substituteVariables(source.userPrompt, values),
+    messages: [],
+  });
 }

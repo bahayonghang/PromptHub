@@ -186,6 +186,8 @@ describe("Appearance normalization properties (P1-P5)", () => {
       Mocha: "dark",
       "Claude Light": "light",
       "Claude Dark": "dark",
+      "PromptHub Light": "light",
+      "PromptHub Dark": "dark",
     };
     fc.assert(
       fc.property(fc.constantFrom(...FLAVORS), (flavor) => {

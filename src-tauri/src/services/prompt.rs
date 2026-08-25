@@ -216,6 +216,15 @@ fn validate_messages(messages: &[PromptMessage]) -> Result<(), AppError> {
 /// to `text`, and persists variables, tags, image/video references, the
 /// favorite/pinned flags, usage count, source, and notes (Req 6.7).
 pub fn create(conn: &Connection, input: PromptCreate) -> Result<Prompt, AppError> {
+    let scan = crate::services::reference::ReferenceScan::from_create(&input);
+    create_inner(conn, input, scan)
+}
+
+pub fn create_inner(
+    conn: &Connection,
+    input: PromptCreate,
+    scan: crate::services::reference::ReferenceScan,
+) -> Result<Prompt, AppError> {
     if input.title.trim().is_empty() {
         return Err(AppError::validation("title is required"));
     }
@@ -293,6 +302,7 @@ pub fn create(conn: &Connection, input: PromptCreate) -> Result<Prompt, AppError
         PromptRevisionSource::Create,
         None,
     )?;
+    crate::services::reference::resolve_and_store(&tx, &id, &scan)?;
     tx.commit()
         .map_err(|e| db_err("failed to commit create-prompt transaction", e))?;
     get(conn, &id)
@@ -328,6 +338,17 @@ pub fn list(conn: &Connection) -> Result<Vec<Prompt>, AppError> {
 /// the prompt does not exist (Req 6.12); a supplied invalid `promptType` is
 /// rejected with `VALIDATION` before any write (Req 6.14).
 pub fn update(conn: &Connection, id: &str, patch: PromptUpdate) -> Result<Prompt, AppError> {
+    let existing = get(conn, id)?;
+    let scan = crate::services::reference::ReferenceScan::from_update(&patch, &existing);
+    update_inner(conn, id, patch, scan)
+}
+
+pub fn update_inner(
+    conn: &Connection,
+    id: &str,
+    patch: PromptUpdate,
+    scan: crate::services::reference::ReferenceScan,
+) -> Result<Prompt, AppError> {
     // Validate the optional promptType before touching the database so a rejected
     // request never mutates stored data (Req 2.3).
     let new_prompt_type = match patch.prompt_type.as_deref() {
@@ -447,6 +468,7 @@ pub fn update(conn: &Connection, id: &str, patch: PromptUpdate) -> Result<Prompt
             None,
         )?;
     }
+    crate::services::reference::resolve_and_store(&tx, id, &scan)?;
     tx.commit()
         .map_err(|e| db_err("failed to commit update-prompt transaction", e))?;
     get(conn, id)
@@ -556,6 +578,7 @@ pub fn create_secure(
     encryption: &Mutex<EncryptionState>,
     mut input: PromptCreate,
 ) -> Result<Prompt, AppError> {
+    let scan = crate::services::reference::ReferenceScan::from_create(&input);
     if input.is_private.unwrap_or(false) {
         let key = required_private_key(encryption)?;
         input.description = encrypt_optional(input.description, &key)?;
@@ -565,7 +588,7 @@ pub fn create_secure(
         input.source = encrypt_optional(input.source, &key)?;
         input.notes = encrypt_optional(input.notes, &key)?;
     }
-    let stored = create(conn, input)?;
+    let stored = create_inner(conn, input, scan)?;
     let key = crate::services::security::unlocked_key(encryption)?;
     present_prompt(stored, key.as_deref())
 }
@@ -576,6 +599,8 @@ pub fn update_secure(
     id: &str,
     mut patch: PromptUpdate,
 ) -> Result<Prompt, AppError> {
+    let existing = get_secure(conn, encryption, id)?;
+    let scan = crate::services::reference::ReferenceScan::from_update(&patch, &existing);
     let existing = get(conn, id)?;
     let desired_private = patch.is_private.unwrap_or(existing.is_private);
 
@@ -653,7 +678,7 @@ pub fn update_secure(
         (false, false) => {}
     }
 
-    let stored = update(conn, id, patch)?;
+    let stored = update_inner(conn, id, patch, scan)?;
     let key = crate::services::security::unlocked_key(encryption)?;
     present_prompt(stored, key.as_deref())
 }
@@ -699,12 +724,19 @@ pub fn search_secure(
 /// version history as part of the same delete (Req 4.4). Returns `NOT_FOUND`
 /// when the prompt does not exist (Req 6.12).
 pub fn delete(conn: &Connection, id: &str) -> Result<(), AppError> {
-    let affected = conn
+    get(conn, id)?;
+    let tx = conn
+        .unchecked_transaction()
+        .map_err(|e| db_err("failed to begin delete-prompt transaction", e))?;
+    crate::services::reference::mark_incoming_missing(&tx, id)?;
+    let affected = tx
         .execute("DELETE FROM prompts WHERE id = ?1", [id])
         .map_err(|e| db_err("failed to delete prompt", e))?;
     if affected == 0 {
         return Err(AppError::not_found(format!("prompt `{id}` not found")));
     }
+    tx.commit()
+        .map_err(|e| db_err("failed to commit delete-prompt transaction", e))?;
     Ok(())
 }
 
@@ -752,6 +784,15 @@ pub fn duplicate(conn: &Connection, id: &str) -> Result<Prompt, AppError> {
         PromptRevisionSource::Create,
         None,
     )?;
+    if source.is_private {
+        crate::services::reference::copy_outgoing(&tx, &source.id, &duplicate_id)?;
+    } else {
+        crate::services::reference::resolve_and_store(
+            &tx,
+            &duplicate_id,
+            &crate::services::reference::ReferenceScan::from_prompt(&source),
+        )?;
+    }
     tx.commit()
         .map_err(|error| db_err("failed to commit duplicate transaction", error))?;
     get(conn, &duplicate_id)
@@ -842,6 +883,7 @@ pub fn batch_delete(conn: &Connection, ids: &[String]) -> Result<(), AppError> {
         .unchecked_transaction()
         .map_err(|error| db_err("failed to begin batch delete", error))?;
     for prompt in prompts {
+        crate::services::reference::mark_incoming_missing(&tx, &prompt.id)?;
         tx.execute("DELETE FROM prompts WHERE id = ?1", [&prompt.id])
             .map_err(|error| db_err("failed to delete prompt", error))?;
     }
@@ -1036,6 +1078,12 @@ pub struct PromptCopy {
     pub system_prompt: Option<String>,
     /// User prompt with placeholders substituted.
     pub user_prompt: String,
+    /// Chat messages after expansion then substitution.
+    #[serde(default)]
+    pub messages: Vec<crate::models::PromptMessage>,
+    /// Tokens that could not be expanded.
+    #[serde(default)]
+    pub unexpanded: Vec<crate::services::reference::UnexpandedReference>,
 }
 
 /// Substitutes `{{name}}` placeholders in `text` using `values` (Req 6.11).
@@ -1095,14 +1143,11 @@ pub fn copy(
     id: &str,
     values: &std::collections::HashMap<String, String>,
 ) -> Result<PromptCopy, AppError> {
-    let prompt = get(conn, id)?;
-    Ok(PromptCopy {
-        system_prompt: prompt
-            .system_prompt
-            .as_deref()
-            .map(|text| substitute_placeholders(text, values)),
-        user_prompt: substitute_placeholders(&prompt.user_prompt, values),
-    })
+    let encryption = Mutex::new(EncryptionState {
+        derived_key: None,
+        locked: false,
+    });
+    copy_secure(conn, &encryption, id, values)
 }
 
 pub fn copy_secure(
@@ -1117,12 +1162,26 @@ pub fn copy_secure(
             "unlock the prompt library to copy private content",
         ));
     }
+    // Expand @@references first, then substitute {{placeholders}} once over the
+    // assembled text, including chat messages. Expanded bodies use this prompt's
+    // values, not the referenced prompt's declared defaults.
+    let (expanded, unexpanded) =
+        crate::services::reference::expand_copy(conn, encryption, &prompt)?;
     Ok(PromptCopy {
-        system_prompt: prompt
+        system_prompt: expanded
             .system_prompt
             .as_deref()
             .map(|text| substitute_placeholders(text, values)),
-        user_prompt: substitute_placeholders(&prompt.user_prompt, values),
+        user_prompt: substitute_placeholders(&expanded.user_prompt, values),
+        messages: expanded
+            .messages
+            .into_iter()
+            .map(|message| crate::models::PromptMessage {
+                role: message.role,
+                content: substitute_placeholders(&message.content, values),
+            })
+            .collect(),
+        unexpanded,
     })
 }
 
@@ -1732,6 +1791,39 @@ mod tests {
         let conn = pool.get().unwrap();
         let err = copy(&conn, "missing", &HashMap::new()).unwrap_err();
         assert_eq!(err.code, ErrorCode::NotFound);
+    }
+
+    #[test]
+    fn copy_without_references_is_byte_for_byte_with_substitution() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let created = create(
+            &conn,
+            PromptCreate {
+                title: "T".into(),
+                user_prompt: "Hello {{name}}".into(),
+                system_prompt: Some("Be {{role}}".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let result = copy(&conn, &created.id, &values(&[("name", "Ada")])).unwrap();
+        assert_eq!(result.user_prompt, "Hello Ada");
+        assert_eq!(result.system_prompt.as_deref(), Some("Be {{role}}"));
+        assert!(result.messages.is_empty());
+        assert!(result.unexpanded.is_empty());
+    }
+
+    #[test]
+    fn batch_delete_marks_incoming_references_missing() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let target = create_tagged(&conn, "A", "body-a", &[]);
+        let source = create_tagged(&conn, "S", "see @@A", &[]);
+        batch_delete(&conn, std::slice::from_ref(&target.id)).unwrap();
+        let listed = crate::services::reference::list(&conn, &source.id).unwrap();
+        assert_eq!(listed.outgoing[0].resolution, "missing");
+        assert!(listed.outgoing[0].target_prompt_id.is_none());
     }
 
     #[test]

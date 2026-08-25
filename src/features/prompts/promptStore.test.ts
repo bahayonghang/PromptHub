@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildSearchQuery,
+  COUNT_QUERY_CONCURRENCY,
   DEFAULT_FILTERS,
   PROMPT_PAGE_SIZE,
+  resolveLibraryScope,
   selectSelectedPrompt,
   usePromptStore,
   type PromptFilters,
@@ -14,6 +16,7 @@ import type {
   PromptPage,
   PromptTypeDefinition,
   PromptVersion,
+  SearchQuery,
 } from "./types";
 
 function makePrompt(partial: Partial<Prompt> & { id: string }): Prompt {
@@ -103,7 +106,13 @@ function makeApi(overrides: Partial<PromptApi> = {}): PromptApi {
     batchMove: vi.fn(async () => undefined),
     batchTag: vi.fn(async () => undefined),
     batchDelete: vi.fn(async () => undefined),
-    copyPrompt: vi.fn(async () => "copied"),
+    copyPrompt: vi.fn(async () => ({
+      systemPrompt: null,
+      userPrompt: "copied",
+      messages: [],
+      unexpanded: [],
+    })),
+    listReferences: vi.fn(async () => ({ outgoing: [], incoming: [] })),
     listPromptTypes: vi.fn(async () => []),
     createPromptType: vi.fn(async (input) => ({
       id: "type-1",
@@ -160,6 +169,11 @@ function resetStore(api: PromptApi) {
     tags: [],
     promptTypeDefinitions: [],
     filters: { ...DEFAULT_FILTERS },
+    activeView: "all",
+    libraryCounts: { views: {}, folders: {}, tags: {} },
+    countsLoading: false,
+    batchMode: false,
+    viewMode: "list",
     selectedPromptId: null,
     selectedPrompt: null,
     versions: [],
@@ -252,6 +266,251 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
     expect(usePromptStore.getState().filters.tags).toEqual([]);
   });
 
+  it("applies the D4b library-scope transition table", async () => {
+    const search = vi.fn(async () => makePage([]));
+    resetStore(makeApi({ searchPrompts: search }));
+    usePromptStore.setState({ folders: [makeFolder("f1")] });
+
+    await usePromptStore.getState().selectView("favorites");
+    expect(usePromptStore.getState().activeView).toBe("favorites");
+    expect(usePromptStore.getState().filters).toMatchObject({
+      folderId: null,
+      tags: [],
+      favoritesOnly: true,
+    });
+
+    await usePromptStore.getState().selectFolder("f1");
+    expect(usePromptStore.getState().activeView).toBeNull();
+    expect(usePromptStore.getState().filters.folderId).toBe("f1");
+    expect(usePromptStore.getState().filters.favoritesOnly).toBe(true);
+
+    await usePromptStore.getState().toggleTagFilter("writing");
+    expect(usePromptStore.getState().activeView).toBeNull();
+    expect(usePromptStore.getState().filters.folderId).toBe("f1");
+    expect(usePromptStore.getState().filters.tags).toEqual(["writing"]);
+    expect(buildSearchQuery(usePromptStore.getState().filters)).toMatchObject({
+      folderId: "f1",
+      tags: ["writing"],
+      isFavorite: true,
+    });
+
+    await usePromptStore.getState().setFilters({ keyword: "alpha" });
+    expect(usePromptStore.getState().activeView).toBeNull();
+    expect(usePromptStore.getState().filters.folderId).toBe("f1");
+    expect(usePromptStore.getState().filters.keyword).toBe("alpha");
+
+    await usePromptStore.getState().selectView("recent");
+    expect(usePromptStore.getState().activeView).toBe("recent");
+    expect(usePromptStore.getState().filters.folderId).toBeNull();
+    expect(usePromptStore.getState().filters.tags).toEqual([]);
+    expect(usePromptStore.getState().filters.sortBy).toBe("updatedAt");
+    expect(usePromptStore.getState().filters.sortOrder).toBe("desc");
+
+    await usePromptStore.getState().setFilters({ sortBy: "title" });
+    expect(usePromptStore.getState().activeView).toBeNull();
+
+    await usePromptStore.getState().selectView("all");
+    expect(usePromptStore.getState().activeView).toBe("all");
+    expect(usePromptStore.getState().filters.favoritesOnly).toBe(false);
+    expect(usePromptStore.getState().filters.folderId).toBeNull();
+    expect(usePromptStore.getState().filters.tags).toEqual([]);
+
+    await usePromptStore.getState().selectFolder("f1");
+    await usePromptStore.getState().selectFolder("f1");
+    expect(usePromptStore.getState().filters.folderId).toBeNull();
+  });
+
+  it("titles the library scope as view, then folder, then a single tag", () => {
+    const folder = makeFolder("f1");
+    folder.name = "Shipping";
+    expect(
+      resolveLibraryScope({
+        activeView: "favorites",
+        filters: { ...DEFAULT_FILTERS, folderId: "f1" },
+        folders: [folder],
+      }),
+    ).toEqual({ kind: "view", view: "favorites" });
+    expect(
+      resolveLibraryScope({
+        activeView: null,
+        filters: { ...DEFAULT_FILTERS, folderId: "f1" },
+        folders: [folder],
+      }),
+    ).toEqual({ kind: "folder", folder });
+    expect(
+      resolveLibraryScope({
+        activeView: null,
+        filters: { ...DEFAULT_FILTERS, tags: ["alpha"] },
+        folders: [],
+      }),
+    ).toEqual({ kind: "tag", tag: "alpha" });
+    expect(
+      resolveLibraryScope({
+        activeView: null,
+        filters: { ...DEFAULT_FILTERS, tags: ["alpha", "beta"] },
+        folders: [],
+      }),
+    ).toEqual({ kind: "all" });
+  });
+
+  it("refreshCounts issues one limit-1 query per bucket and skips recent", async () => {
+    const queries: SearchQuery[] = [];
+    const searchPrompts = vi.fn(async (query: SearchQuery) => {
+      queries.push(query);
+      if (query.isFavorite) return makePage([], 4);
+      if (query.folderId === "f1") return makePage([], 12);
+      if (query.tags?.[0] === "a") return makePage([], 3);
+      return makePage([], 20);
+    });
+    resetStore(makeApi({ searchPrompts }));
+    usePromptStore.setState({
+      folders: [makeFolder("f1")],
+      tags: ["a"],
+    });
+
+    await usePromptStore.getState().refreshCounts();
+
+    expect(queries.every((query) => query.limit === 1)).toBe(true);
+    expect(queries.some((query) => query.sortBy === "updatedAt" && !query.folderId && !query.tags && !query.isFavorite && !query.keyword)).toBe(false);
+    expect(queries).toEqual(
+      expect.arrayContaining([
+        { limit: 1 },
+        { isFavorite: true, limit: 1 },
+        { folderId: "f1", limit: 1 },
+        { tags: ["a"], limit: 1 },
+      ]),
+    );
+    expect(usePromptStore.getState().libraryCounts).toEqual({
+      views: { all: 20, favorites: 4 },
+      folders: { f1: 12 },
+      tags: { a: 3 },
+    });
+  });
+
+  it("keeps the prior count when a bucket query rejects", async () => {
+    const searchPrompts = vi.fn(async (query: SearchQuery) => {
+      if (query.isFavorite) throw new Error("unavailable");
+      return makePage([], 5);
+    });
+    resetStore(makeApi({ searchPrompts }));
+    usePromptStore.setState({
+      libraryCounts: { views: { all: 1, favorites: 9 }, folders: {}, tags: {} },
+    });
+
+    await usePromptStore.getState().refreshCounts();
+
+    expect(usePromptStore.getState().libraryCounts.views.favorites).toBe(9);
+    expect(usePromptStore.getState().libraryCounts.views.all).toBe(5);
+  });
+
+  it("discards an older refreshPrompts result that arrives last", async () => {
+    const pages = [
+      makePage([makePrompt({ id: "old" })], 1),
+      makePage([makePrompt({ id: "new" })], 1),
+    ];
+    const deferred: Array<{ resolve: (page: PromptPage) => void }> = [];
+    const searchPrompts = vi.fn(
+      () =>
+        new Promise<PromptPage>((resolve) => {
+          deferred.push({ resolve });
+        }),
+    );
+    resetStore(makeApi({ searchPrompts }));
+    const first = usePromptStore.getState().refreshPrompts();
+    const second = usePromptStore.getState().refreshPrompts();
+    deferred[1].resolve(pages[1]);
+    await second;
+    deferred[0].resolve(pages[0]);
+    await first;
+    expect(usePromptStore.getState().prompts.map((item) => item.id)).toEqual(["new"]);
+  });
+
+  it("keeps a search issued during load after load resolves", async () => {
+    let resolveLoadPage!: (page: PromptPage) => void;
+    let n = 0;
+    const searchPrompts = vi.fn(async () => {
+      n += 1;
+      if (n === 1) {
+        return new Promise<PromptPage>((resolve) => {
+          resolveLoadPage = resolve;
+        });
+      }
+      return makePage([makePrompt({ id: "typed" })], 1);
+    });
+    resetStore(
+      makeApi({
+        searchPrompts,
+        listFolders: vi.fn(async () => [makeFolder("f1")]),
+        listTags: vi.fn(async () => ["t1"]),
+      }),
+    );
+    const loading = usePromptStore.getState().load();
+    await usePromptStore.getState().refreshPrompts();
+    resolveLoadPage(makePage([makePrompt({ id: "initial" })], 1));
+    await loading;
+    expect(usePromptStore.getState().prompts.map((item) => item.id)).toEqual(["typed"]);
+    expect(usePromptStore.getState().folders).toHaveLength(1);
+    expect(usePromptStore.getState().tags).toEqual(["t1"]);
+  });
+
+  it("debounces keyword keystrokes into one search", async () => {
+    vi.useFakeTimers();
+    const searchPrompts = vi.fn(async () => makePage([]));
+    resetStore(makeApi({ searchPrompts }));
+    searchPrompts.mockClear();
+    usePromptStore.getState().setKeyword("a");
+    usePromptStore.getState().setKeyword("ab");
+    usePromptStore.getState().setKeyword("abc");
+    usePromptStore.getState().setKeyword("abcd");
+    expect(searchPrompts).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(200);
+    expect(searchPrompts).toHaveBeenCalledTimes(1);
+    expect(searchPrompts).toHaveBeenCalledWith(expect.objectContaining({ keyword: "abcd" }));
+    vi.useRealTimers();
+  });
+
+  it("clears the selection when leaving batch mode", () => {
+    resetStore(makeApi());
+    usePromptStore.setState({ selectedPromptIds: ["p1", "p2"], batchMode: true });
+    usePromptStore.getState().setBatchMode(false);
+    expect(usePromptStore.getState().batchMode).toBe(false);
+    expect(usePromptStore.getState().selectedPromptIds).toEqual([]);
+  });
+
+  it("resetLibraryFilters restores the all view and default filters", async () => {
+    resetStore(makeApi());
+    usePromptStore.setState({
+      activeView: null,
+      filters: { ...DEFAULT_FILTERS, keyword: "x", folderId: "f1", tags: ["a"], favoritesOnly: true },
+    });
+    await usePromptStore.getState().resetLibraryFilters();
+    expect(usePromptStore.getState().activeView).toBe("all");
+    expect(usePromptStore.getState().filters).toEqual(DEFAULT_FILTERS);
+  });
+
+  it("caps count refresh concurrency at 8", async () => {
+    const folders = Array.from({ length: 20 }, (_, index) => makeFolder(`f${index}`));
+    const tags = Array.from({ length: 40 }, (_, index) => `t${index}`);
+    let inflight = 0;
+    let peak = 0;
+    const searchPrompts = vi.fn(async () => {
+      inflight += 1;
+      peak = Math.max(peak, inflight);
+      await Promise.resolve();
+      inflight -= 1;
+      return makePage([], 1);
+    });
+    resetStore(makeApi({ searchPrompts }));
+    usePromptStore.setState({ folders, tags });
+
+    const started = Date.now();
+    await usePromptStore.getState().refreshCounts();
+    const elapsedMs = Date.now() - started;
+
+    expect(peak).toBeLessThanOrEqual(COUNT_QUERY_CONCURRENCY);
+    expect(elapsedMs).toBeLessThan(200);
+  });
+
   it("selectPrompt() loads the prompt's version history (Req 7.1)", async () => {
     const versions: PromptVersion[] = [makeVersion()];
     resetStore(makeApi({ listVersions: vi.fn(async () => versions) }));
@@ -260,6 +519,19 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
 
     expect(usePromptStore.getState().selectedPromptId).toBe("p1");
     expect(usePromptStore.getState().versions).toEqual(versions);
+  });
+
+  it("requestSelectPrompt() waits for a registered navigation guard", async () => {
+    resetStore(makeApi());
+    const guard = vi.fn(async () => "cancel" as const);
+    usePromptStore.getState().registerNavigationGuard(guard);
+    const ok = await usePromptStore.getState().requestSelectPrompt("p1");
+    expect(ok).toBe(false);
+    expect(usePromptStore.getState().selectedPromptId).toBeNull();
+    usePromptStore.getState().registerNavigationGuard(async () => "proceed");
+    const next = await usePromptStore.getState().requestSelectPrompt("p1");
+    expect(next).toBe(true);
+    expect(usePromptStore.getState().selectedPromptId).toBe("p1");
   });
 
   it("createPrompt() refreshes the list and selects the new prompt (Req 6.1)", async () => {

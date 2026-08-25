@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Forbidden patterns, required tests, and verification commands"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Rules for a change that crosses the frontend/backend boundary"}

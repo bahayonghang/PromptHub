@@ -55,7 +55,85 @@ export const DEFAULT_FILTERS: PromptFilters = {
   sortOrder: "desc",
 };
 
+/** Named library scope presets rendered in the sidebar (not AppView). */
+export type SavedView = "all" | "favorites" | "recent";
+
+export interface LibraryCounts {
+  views: Partial<Record<SavedView, number>>;
+  folders: Record<string, number>;
+  tags: Record<string, number>;
+}
+
+export const DEFAULT_LIBRARY_COUNTS: LibraryCounts = {
+  views: {},
+  folders: {},
+  tags: {},
+};
+
+export const COUNT_QUERY_CONCURRENCY = 8;
+
 export const PROMPT_PAGE_SIZE = 50;
+
+export type SaveResult = { ok: true } | { ok: false; errors: Record<string, unknown> };
+export type NavigationGuard = () => Promise<"proceed" | "cancel">;
+export type DetailActions = {
+  save: () => Promise<SaveResult>;
+  copy: () => Promise<void>;
+};
+
+export function resolveLibraryScope(state: {
+  activeView: SavedView | null;
+  filters: PromptFilters;
+  folders: Folder[];
+}):
+  | { kind: "view"; view: SavedView }
+  | { kind: "folder"; folder: Folder }
+  | { kind: "tag"; tag: string }
+  | { kind: "all" } {
+  if (state.activeView != null) return { kind: "view", view: state.activeView };
+  if (state.filters.folderId != null) {
+    const folder = state.folders.find((item) => item.id === state.filters.folderId);
+    if (folder) return { kind: "folder", folder };
+  }
+  if (state.filters.tags.length === 1) {
+    return { kind: "tag", tag: state.filters.tags[0] };
+  }
+  return { kind: "all" };
+}
+
+async function runPool<T>(
+  items: readonly T[],
+  limit: number,
+  worker: (item: T) => Promise<void>,
+): Promise<void> {
+  if (items.length === 0) return;
+  let index = 0;
+  const runners = Array.from(
+    { length: Math.min(limit, items.length) },
+    async () => {
+      while (index < items.length) {
+        const current = items[index];
+        index += 1;
+        await worker(current);
+      }
+    },
+  );
+  await Promise.all(runners);
+}
+
+let countsGeneration = 0;
+let searchGeneration = 0;
+let keywordTimer: ReturnType<typeof setTimeout> | null = null;
+
+export const KEYWORD_DEBOUNCE_MS = 200;
+export type LibraryViewMode = "grid" | "list";
+
+function cancelKeywordRefresh(): void {
+  if (keywordTimer != null) {
+    clearTimeout(keywordTimer);
+    keywordTimer = null;
+  }
+}
 
 /**
  * Builds the {@link SearchQuery} sent to `prompt.search` from the view filters
@@ -86,6 +164,12 @@ interface PromptStoreState {
   tags: string[];
   promptTypeDefinitions: PromptTypeDefinition[];
   filters: PromptFilters;
+  /** Presentation preset over `filters`. Null when a folder or tag is the scope. */
+  activeView: SavedView | null;
+  libraryCounts: LibraryCounts;
+  countsLoading: boolean;
+  batchMode: boolean;
+  viewMode: LibraryViewMode;
 
   /** The id of the prompt open in the editor, or `null` when none is selected. */
   selectedPromptId: string | null;
@@ -97,18 +181,38 @@ interface PromptStoreState {
   loading: boolean;
   error: string | null;
 
+  navigationGuard: NavigationGuard | null;
+  detailActions: DetailActions | null;
+  registerNavigationGuard: (guard: NavigationGuard | null) => void;
+  registerDetailActions: (actions: DetailActions | null) => void;
+  requestSelectPrompt: (id: string | null) => Promise<boolean>;
+  createPromptAction: (() => void) | null;
+  registerCreatePromptAction: (action: (() => void) | null) => void;
+
   /** Loads folders, tags, and the filtered prompt list (Req 6.3, 6.8, 8.2). */
   load: () => Promise<void>;
   /** Re-runs the search with the current filters (Req 5.3). */
   refreshPrompts: () => Promise<void>;
   /** Replaces the active filters and re-runs the search. */
   setFilters: (patch: Partial<PromptFilters>) => Promise<void>;
+  /** Updates the keyword immediately and debounces the search. */
+  setKeyword: (value: string) => void;
+  /** Restores DEFAULT_FILTERS and the all view. */
+  resetLibraryFilters: () => Promise<void>;
+  setBatchMode: (next: boolean) => void;
+  setViewMode: (next: LibraryViewMode) => void;
+  /** Applies a saved-view preset and clears folder/tag axes. */
+  selectView: (view: SavedView) => Promise<void>;
+  /** Sets or toggles the folder filter and clears the saved-view row. */
+  selectFolder: (folderId: string | null) => Promise<void>;
   /** Toggles a tag in the conjunctive tag filter (Req 5.4). */
   toggleTagFilter: (tag: string) => Promise<void>;
+  /** Refreshes per-bucket totals; never derived from the loaded page. */
+  refreshCounts: () => Promise<void>;
   loadPreviousPage: () => Promise<void>;
   loadNextPage: () => Promise<void>;
 
-  /** Selects a prompt and loads its version history (Req 7.1). */
+  /** Unguarded selection primitive. Prefer `requestSelectPrompt` from the UI. */
   selectPrompt: (id: string | null) => Promise<void>;
 
   /** Creates a prompt, refreshes the list, and selects it (Req 6.1). */
@@ -172,6 +276,11 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
   tags: [],
   promptTypeDefinitions: [],
   filters: { ...DEFAULT_FILTERS },
+  activeView: "all",
+  libraryCounts: { views: {}, folders: {}, tags: {} },
+  countsLoading: false,
+  batchMode: false,
+  viewMode: "list",
 
   selectedPromptId: null,
   selectedPrompt: null,
@@ -180,9 +289,26 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
 
   loading: false,
   error: null,
+  navigationGuard: null,
+  detailActions: null,
+
+  registerNavigationGuard: (guard) => set({ navigationGuard: guard }),
+  registerDetailActions: (actions) => set({ detailActions: actions }),
+  createPromptAction: null,
+  registerCreatePromptAction: (action) => set({ createPromptAction: action }),
+  requestSelectPrompt: async (id) => {
+    const guard = get().navigationGuard;
+    if (guard) {
+      const result = await guard();
+      if (result === "cancel") return false;
+    }
+    await get().selectPrompt(id);
+    return true;
+  },
 
   load: async () => {
     const { api, filters, offset } = get();
+    const sequence = ++searchGeneration;
     set({ loading: true, error: null });
     try {
       const [folders, tags, promptTypeDefinitions, page] = await Promise.all([
@@ -195,15 +321,20 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
           offset,
         }),
       ]);
-      set({
-        folders,
-        tags,
-        promptTypeDefinitions,
-        prompts: page.items,
-        total: page.total,
-        offset: page.offset,
-        loading: false,
-      });
+      if (sequence === searchGeneration) {
+        set({
+          folders,
+          tags,
+          promptTypeDefinitions,
+          prompts: page.items,
+          total: page.total,
+          offset: page.offset,
+          loading: false,
+        });
+      } else {
+        set({ folders, tags, promptTypeDefinitions, loading: false });
+      }
+      await get().refreshCounts();
     } catch (err) {
       set({ error: errorMessage(err), loading: false });
     }
@@ -211,12 +342,14 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
 
   refreshPrompts: async () => {
     const { api, filters, offset } = get();
+    const sequence = ++searchGeneration;
     try {
       let page = await api.searchPrompts({
         ...buildSearchQuery(filters),
         limit: PROMPT_PAGE_SIZE,
         offset,
       });
+      if (sequence !== searchGeneration) return;
       if (page.items.length === 0 && page.total > 0 && page.offset > 0) {
         const lastOffset =
           Math.floor((page.total - 1) / PROMPT_PAGE_SIZE) * PROMPT_PAGE_SIZE;
@@ -226,15 +359,79 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
           offset: lastOffset,
         });
       }
+      if (sequence !== searchGeneration) return;
       set({ prompts: page.items, total: page.total, offset: page.offset });
     } catch (err) {
+      if (sequence !== searchGeneration) return;
       set({ error: errorMessage(err) });
     }
   },
 
   setFilters: async (patch) => {
-    set({ filters: { ...get().filters, ...patch }, offset: 0 });
+    cancelKeywordRefresh();
+    const current = get();
+    let activeView = current.activeView;
+    if (
+      activeView === "recent" &&
+      (patch.sortBy !== undefined || patch.sortOrder !== undefined)
+    ) {
+      const sortBy = patch.sortBy ?? current.filters.sortBy;
+      const sortOrder = patch.sortOrder ?? current.filters.sortOrder;
+      if (sortBy !== "updatedAt" || sortOrder !== "desc") {
+        activeView = null;
+      }
+    }
+    set({
+      filters: { ...current.filters, ...patch },
+      offset: 0,
+      activeView,
+    });
     await get().refreshPrompts();
+  },
+
+  setKeyword: (value) => {
+    set({ filters: { ...get().filters, keyword: value } });
+    cancelKeywordRefresh();
+    keywordTimer = setTimeout(() => {
+      keywordTimer = null;
+      void get().refreshPrompts();
+    }, KEYWORD_DEBOUNCE_MS);
+  },
+
+  resetLibraryFilters: async () => {
+    cancelKeywordRefresh();
+    set({ activeView: "all", filters: { ...DEFAULT_FILTERS }, offset: 0 });
+    await get().refreshPrompts();
+  },
+
+  setBatchMode: (next) => {
+    set({ batchMode: next });
+    if (!next) get().clearPromptSelection();
+  },
+
+  setViewMode: (next) => {
+    set({ viewMode: next });
+  },
+
+  selectView: async (view) => {
+    const preset: Partial<PromptFilters> = {
+      folderId: null,
+      tags: [],
+      favoritesOnly: view === "favorites",
+    };
+    if (view === "recent") {
+      preset.sortBy = "updatedAt";
+      preset.sortOrder = "desc";
+    }
+    set({ activeView: view });
+    await get().setFilters(preset);
+  },
+
+  selectFolder: async (folderId) => {
+    const current = get().filters.folderId;
+    const next = folderId != null && folderId === current ? null : folderId;
+    set({ activeView: null });
+    await get().setFilters({ folderId: next });
   },
 
   toggleTagFilter: async (tag) => {
@@ -242,7 +439,49 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
     const tags = current.includes(tag)
       ? current.filter((t) => t !== tag)
       : [...current, tag];
+    set({ activeView: null });
     await get().setFilters({ tags });
+  },
+
+  refreshCounts: async () => {
+    const generation = ++countsGeneration;
+    const { api, folders, tags, libraryCounts } = get();
+    set({ countsLoading: true });
+    const next: LibraryCounts = {
+      views: { ...libraryCounts.views },
+      folders: { ...libraryCounts.folders },
+      tags: { ...libraryCounts.tags },
+    };
+    type Bucket =
+      | { kind: "view"; view: Exclude<SavedView, "recent">; query: SearchQuery }
+      | { kind: "folder"; id: string; query: SearchQuery }
+      | { kind: "tag"; tag: string; query: SearchQuery };
+    const buckets: Bucket[] = [
+      { kind: "view", view: "all", query: {} },
+      { kind: "view", view: "favorites", query: { isFavorite: true } },
+      ...folders.map((folder) => ({
+        kind: "folder" as const,
+        id: folder.id,
+        query: { folderId: folder.id },
+      })),
+      ...tags.map((tag) => ({
+        kind: "tag" as const,
+        tag,
+        query: { tags: [tag] },
+      })),
+    ];
+    await runPool(buckets, COUNT_QUERY_CONCURRENCY, async (bucket) => {
+      try {
+        const page = await api.searchPrompts({ ...bucket.query, limit: 1 });
+        if (bucket.kind === "view") next.views[bucket.view] = page.total;
+        else if (bucket.kind === "folder") next.folders[bucket.id] = page.total;
+        else next.tags[bucket.tag] = page.total;
+      } catch {
+        // Keep the previous count for this bucket.
+      }
+    });
+    if (generation !== countsGeneration) return;
+    set({ libraryCounts: next, countsLoading: false });
   },
 
   loadPreviousPage: async () => {
@@ -281,6 +520,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
     try {
       const prompt = await api.createPrompt(input);
       await get().refreshPrompts();
+      await get().refreshCounts();
       await get().selectPrompt(prompt.id);
       return prompt;
     } catch (err) {
@@ -302,6 +542,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
       } catch {
         // Tag refresh is best-effort; the save itself already succeeded.
       }
+      await get().refreshCounts();
       return prompt;
     } catch (err) {
       set({ error: errorMessage(err) });
@@ -323,6 +564,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
         ),
       });
       await get().refreshPrompts();
+      await get().refreshCounts();
     } catch (err) {
       set({ error: errorMessage(err) });
     }
@@ -334,6 +576,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
       const prompt = await get().api.duplicatePrompt(id);
       set({ offset: 0 });
       await get().refreshPrompts();
+      await get().refreshCounts();
       await get().selectPrompt(prompt.id);
       return prompt;
     } catch (err) {
@@ -364,6 +607,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
     try {
       await get().api.batchMove(ids, folderId);
       await get().refreshPrompts();
+      await get().refreshCounts();
       set({ selectedPromptIds: [] });
     } catch (err) {
       set({ error: errorMessage(err) });
@@ -378,6 +622,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
       await get().api.batchTag(ids, tags);
       await get().refreshPrompts();
       set({ tags: await get().api.listTags(), selectedPromptIds: [] });
+      await get().refreshCounts();
     } catch (err) {
       set({ error: errorMessage(err) });
     }
@@ -395,6 +640,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
       }
       set({ selectedPromptIds: [] });
       await get().refreshPrompts();
+      await get().refreshCounts();
     } catch (err) {
       set({ error: errorMessage(err) });
     }
@@ -406,6 +652,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
       await get().api.renameTag(old, next);
       set({ tags: await get().api.listTags() });
       await get().refreshPrompts();
+      await get().refreshCounts();
     } catch (err) {
       set({ error: errorMessage(err) });
     }
@@ -419,6 +666,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
       await get().setFilters({
         tags: get().filters.tags.filter((selected) => selected !== tag),
       });
+      await get().refreshCounts();
     } catch (err) {
       set({ error: errorMessage(err) });
     }
@@ -476,6 +724,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
     try {
       const folder = await api.createFolder(input);
       set({ folders: await api.listFolders() });
+      await get().refreshCounts();
       return folder;
     } catch (err) {
       set({ error: errorMessage(err) });
@@ -506,6 +755,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
       } else {
         await get().refreshPrompts();
       }
+      await get().refreshCounts();
     } catch (err) {
       set({ error: errorMessage(err) });
     }

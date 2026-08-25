@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/cross-layer/index.md", "reason": "Command naming, CommandResult envelope, and event contracts every child must keep (CC4)"}
+{"file": ".trellis/spec/frontend/directory-structure.md", "reason": "Where the children's new modules belong; the parent checks placement at integration (CC5)"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "Store ownership rules; the parent arbitrates which child owns a shared store field"}
+{"file": ".trellis/spec/cross-layer/prompt-library-foundations.md", "reason": "The prompt-library domain terms the refactor must keep using"}
+{"file": ".trellis/tasks/08-24-ui-refactor/research/design-concept-values.md", "reason": "The concept values the children's designs cite, recorded so review does not need the login-gated design link"}
+{"file": ".trellis/tasks/08-24-ui-refactor/research/shared-ownership.md", "reason": "Which child owns each shared file, store field, and primitive; the parent enforces this at integration"}

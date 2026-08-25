@@ -1,0 +1,117 @@
+import { useTranslation } from "react-i18next";
+import { LayoutGridIcon, LayoutListIcon, SearchIcon } from "lucide-react";
+import { usePromptStore, type LibraryViewMode } from "../promptStore";
+import type { SortField, SortOrder } from "../types";
+
+const SORT_FIELDS: { value: SortField; labelKey: string }[] = [
+  { value: "updatedAt", labelKey: "promptsView.sortUpdated" },
+  { value: "createdAt", labelKey: "promptsView.sortCreated" },
+  { value: "title", labelKey: "promptsView.sortTitle" },
+  { value: "usageCount", labelKey: "promptsView.sortUsage" },
+];
+
+export function LibraryToolbar() {
+  const { t } = useTranslation();
+  const filters = usePromptStore((state) => state.filters);
+  const prompts = usePromptStore((state) => state.prompts);
+  const total = usePromptStore((state) => state.total);
+  const viewMode = usePromptStore((state) => state.viewMode);
+  const batchMode = usePromptStore((state) => state.batchMode);
+  const setKeyword = usePromptStore((state) => state.setKeyword);
+  const setFilters = usePromptStore((state) => state.setFilters);
+  const setViewMode = usePromptStore((state) => state.setViewMode);
+  const setBatchMode = usePromptStore((state) => state.setBatchMode);
+
+  const shown = prompts.length;
+  const countLabel = t("promptsView.chrome.resultCount", { shown, total });
+
+  const setMode = (next: LibraryViewMode) => setViewMode(next);
+
+  return (
+    <div className="flex flex-col gap-2 border-b border-border px-3 py-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="relative min-w-0 flex-1">
+          <SearchIcon
+            className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <input
+            type="search"
+            value={filters.keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder={t("promptsView.searchPlaceholder")}
+            aria-label={t("promptsView.searchPlaceholder")}
+            className="h-8 w-full rounded-md border border-input bg-background py-1 pl-7 pr-16 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          <span
+            className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[11px] text-muted-foreground-subtle"
+            aria-live="polite"
+          >
+            {countLabel}
+          </span>
+        </label>
+        <select
+          value={filters.sortBy}
+          aria-label={t("promptsView.sortBy")}
+          onChange={(event) => void setFilters({ sortBy: event.target.value as SortField })}
+          className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
+        >
+          {SORT_FIELDS.map((field) => (
+            <option key={field.value} value={field.value}>
+              {t(field.labelKey)}
+            </option>
+          ))}
+        </select>
+        <select
+          value={filters.sortOrder}
+          aria-label={t("promptsView.sortDirection")}
+          onChange={(event) => void setFilters({ sortOrder: event.target.value as SortOrder })}
+          className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
+        >
+          <option value="desc">{t("promptsView.sortDesc")}</option>
+          <option value="asc">{t("promptsView.sortAsc")}</option>
+        </select>
+        <div className="inline-flex rounded-md border border-input p-0.5" role="group" aria-label={t("promptsView.chrome.viewMode")}>
+          <button
+            type="button"
+            aria-pressed={viewMode === "list"}
+            aria-label={t("promptsView.chrome.viewList")}
+            onClick={() => setMode("list")}
+            className={`flex h-7 w-7 items-center justify-center rounded ${
+              viewMode === "list" ? "bg-primary/15 text-foreground" : "text-muted-foreground hover:bg-accent"
+            }`}
+          >
+            <LayoutListIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            aria-pressed={viewMode === "grid"}
+            aria-label={t("promptsView.chrome.viewGrid")}
+            onClick={() => setMode("grid")}
+            className={`flex h-7 w-7 items-center justify-center rounded ${
+              viewMode === "grid" ? "bg-primary/15 text-foreground" : "text-muted-foreground hover:bg-accent"
+            }`}
+          >
+            <LayoutGridIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        </div>
+        <button
+          type="button"
+          aria-pressed={batchMode}
+          aria-label={t("promptsView.chrome.batchToggle")}
+          onClick={() => setBatchMode(!batchMode)}
+          className={`h-8 rounded-md border px-2 text-xs ${
+            batchMode
+              ? "border-primary bg-primary/15 text-foreground"
+              : "border-input text-muted-foreground hover:bg-accent hover:text-foreground"
+          }`}
+        >
+          {t("promptsView.chrome.batchToggle")}
+        </button>
+        <span className="sr-only" aria-live="polite">
+          {batchMode ? t("promptsView.chrome.batchOn") : t("promptsView.chrome.batchOff")}
+        </span>
+      </div>
+    </div>
+  );
+}

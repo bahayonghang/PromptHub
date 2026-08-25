@@ -296,6 +296,11 @@ pub fn rollback(conn: &Connection, prompt_id: &str, version: i64) -> Result<Prom
         PromptRevisionSource::Rollback,
         Some(&snapshot.id),
     )?;
+    crate::services::reference::resolve_and_store(
+        &tx,
+        prompt_id,
+        &crate::services::reference::ReferenceScan::from_prompt(&restored),
+    )?;
     tx.commit()
         .map_err(|e| db_err("failed to commit rollback transaction", e))?;
     get_prompt(conn, prompt_id)
@@ -523,6 +528,61 @@ mod tests {
         let conn = pool.get().unwrap();
         let err = rollback(&conn, "nope", 1).unwrap_err();
         assert_eq!(err.code, ErrorCode::NotFound);
+    }
+
+    #[test]
+    fn rollback_re_resolves_reference_edges_from_restored_body() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        prompt::create(
+            &conn,
+            PromptCreate {
+                title: "A".into(),
+                user_prompt: "body-a".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        prompt::create(
+            &conn,
+            PromptCreate {
+                title: "B".into(),
+                user_prompt: "body-b".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let source = prompt::create(
+            &conn,
+            PromptCreate {
+                title: "S".into(),
+                user_prompt: "@@A".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let original_version = list(&conn, &source.id).unwrap()[0].version;
+        prompt::update(
+            &conn,
+            &source.id,
+            PromptUpdate {
+                user_prompt: Some("@@B".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            crate::services::reference::list(&conn, &source.id)
+                .unwrap()
+                .outgoing[0]
+                .token_title,
+            "B"
+        );
+        rollback(&conn, &source.id, original_version).unwrap();
+        let listed = crate::services::reference::list(&conn, &source.id).unwrap();
+        assert_eq!(listed.outgoing.len(), 1);
+        assert_eq!(listed.outgoing[0].token_title, "A");
+        assert_eq!(listed.outgoing[0].resolution, "resolved");
     }
 
     #[test]

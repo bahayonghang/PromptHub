@@ -15,7 +15,7 @@ with CSS-variable design tokens. i18n: i18next + react-i18next (7 locales).
 
 All run from the repository root (the frontend shares the root `package.json`):
 
-- `npm run dev` — Vite dev server on `http://localhost:1420`.
+- `npm run dev` — Vite dev server on `http://localhost:5173`.
 - `npm run build` — `tsc` typecheck + Vite build; this is the static gate.
 - `npm run test` — Vitest (`src/**/*.test.ts`), Node environment.
 - `npx vitest run <path>` — run a single test file while iterating.

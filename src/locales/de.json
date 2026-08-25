@@ -20,10 +20,12 @@
       "themeFamily": "Theme-Familie",
       "themeFamilyHint": "Wähle die Palette unabhängig vom hellen, dunklen oder Systemmodus.",
       "familyOption": {
+        "prompthub": "PromptHub",
         "catppuccin": "Catppuccin",
         "claude": "Claude"
       },
       "familyDescription": {
+        "prompthub": "Helle und dunkle Paletten der Neugestaltung 2026",
         "catppuccin": "Offizielle Paletten Latte, Frappé, Macchiato und Mocha",
         "claude": "Warme, fokussierte helle und dunkle Paletten"
       },
@@ -80,7 +82,8 @@
         "Sky": "Sky",
         "Sapphire": "Sapphire",
         "Blue": "Blue",
-        "Lavender": "Lavender"
+        "Lavender": "Lavender",
+        "Violet": "Violet"
       },
       "fontOption": {
         "System": "System",
@@ -1590,12 +1593,61 @@
       "delete": "Tag loschen",
       "deleteConfirm": "Tag {{tag}} aus allen Prompts loschen?"
     },
+    "library": {
+      "nav": "Prompt-Bibliothek",
+      "savedViews": "Bibliothek",
+      "all": "Alle Prompts",
+      "favorites": "Favoriten",
+      "recent": "Zuletzt",
+      "folders": "Ordner",
+      "tags": "Tags",
+      "addFolder": "Neuer Ordner",
+      "commandPalette": "Befehlspalette",
+      "commandPaletteUnavailable": "Die Befehlspalette kommt in einem spateren Update. Tastenkuerzel: Ctrl+K oder Command+K.",
+      "themeToggle": "Farbmodus",
+      "themeToLight": "Zum hellen Modus wechseln",
+      "themeToDark": "Zum dunklen Modus wechseln",
+      "bucketCount": "{{count}} in dieser Gruppe",
+      "productVersion": "1.0.0"
+    },
+    "chrome": {
+      "subtitleCount": "{{count}} Prompts",
+      "subtitleWithPath": "{{count}} Prompts · {{path}}",
+      "resultCount": "{{shown}} / {{total}}",
+      "viewMode": "Bibliotheksansicht",
+      "viewList": "Listenansicht",
+      "viewGrid": "Rasteransicht",
+      "batchToggle": "Stapelbearbeitung",
+      "batchOn": "Stapelmodus an",
+      "batchOff": "Stapelmodus aus",
+      "batchExit": "Stapel beenden",
+      "chipKeyword": "Stichwort {{value}}",
+      "chipFolder": "Ordner {{value}}",
+      "chipTag": "Tag {{value}}",
+      "chipFavorites": "Favoriten",
+      "removeChip": "{{label}} entfernen",
+      "clearAll": "Alles loschen"
+    },
+    "items": {
+      "pinned": "Angeheftet",
+      "moreTags": "+{{count}}",
+      "columns": {
+        "select": "Auswahlen",
+        "title": "Titel",
+        "description": "Beschreibung",
+        "tags": "Tags",
+        "type": "Typ",
+        "usage": "Nutzung",
+        "version": "Version",
+        "updated": "Aktualisiert"
+      }
+    },
     "editor": {
       "sections": {
         "identity": "Grundlagen",
         "definition": "Prompt-Inhalt",
         "organization": "Organisation",
-        "references": "Zusätzliche Angaben"
+        "attachments": "Zusätzliche Angaben"
       },
       "privatePrompt": "Prompt-Inhalt verschlusseln",
       "privatePromptHint": "Ein entsperrtes Master-Passwort ist erforderlich.",
@@ -1661,6 +1713,53 @@
       "create": "Erstellen",
       "saved": "Gespeichert",
       "unsaved": "Ungespeicherte Änderungen"
+    },
+    "detail": {
+      "content": "Inhalt",
+      "versions": "Versionsverlauf",
+      "run": "Laufvergleich",
+      "references": "Referenzen",
+      "close": "Schliessen",
+      "edit": "Bearbeiten",
+      "readOnly": "Nur lesen",
+      "moreActions": "Weitere Aktionen",
+      "dirtyTitle": "Ungespeicherte Anderungen",
+      "dirtyMessage": "Dieser Prompt hat ungespeicherte Bearbeitungen.",
+      "saveAndClose": "Speichern und schliessen",
+      "discardAndClose": "Verwerfen und schliessen",
+      "keepEditing": "Weiter bearbeiten",
+      "versionChip": "v{{version}}",
+      "lockedTabsHint": "Entsperren Sie die Bibliothek, um diesen Tab zu offnen.",
+      "fillAndCopy": "Variablen fullen und kopieren",
+      "characterCount": "{{count}} Zeichen",
+      "insertReference": "Referenz einfugen",
+      "outgoing": "Ausgehend",
+      "incoming": "Eingehend",
+      "picker": "Prompt-Referenz einfugen",
+      "pickerPlaceholder": "Prompt wahlen, um @@Title@@ einzufugen",
+      "unresolvedMissing": "Fehlt",
+      "unresolvedAmbiguous": "Titel mehrdeutig",
+      "unresolvedLocked": "Gesperrt",
+      "noOutgoing": "Keine ausgehenden Referenzen",
+      "noIncoming": "Keine eingehenden Referenzen",
+      "saveHint": "{{mod}}+S",
+      "copyHint": "{{mod}}+Enter",
+      "newPrompt": "Neuer Prompt"
+    },
+    "palette": {
+      "placeholder": "Prompts und Aktionen suchen",
+      "groupPrompts": "Prompt",
+      "groupActions": "Aktionen",
+      "newPrompt": "Neuer Prompt",
+      "favorites": "Nur Favoriten zeigen",
+      "toggleView": "Liste und Raster wechseln",
+      "toggleTheme": "Hell und dunkel wechseln",
+      "empty": "Keine Prompts passen zu diesen Begriffen"
+    },
+    "toast": {
+      "dismiss": "Benachrichtigung schliessen",
+      "saved": "Prompt gespeichert",
+      "batchDeleted": "Ausgewaehlte Prompts geloescht"
     },
     "history": {
       "title": "Versionsverlauf",

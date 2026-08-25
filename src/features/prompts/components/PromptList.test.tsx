@@ -2,8 +2,13 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import i18n, { ensureBundle } from "../../../runtime/i18n";
+import { toLibraryItem } from "../libraryItem";
 import type { Prompt } from "../types";
 import { PromptList } from "./PromptList";
+
+function itemsFrom(prompts: Prompt[]) {
+  return prompts.map((prompt) => toLibraryItem(prompt, [], (key) => i18n.t(key)));
+}
 
 function makePrompt(overrides: Partial<Prompt> = {}): Prompt {
   return {
@@ -45,18 +50,17 @@ describe("PromptList preview", () => {
   it("shows the description instead of the prompt body", () => {
     render(
       <PromptList
-        prompts={[
+        items={itemsFrom([
           makePrompt({
             description: "A short card summary",
             userPrompt: "This body must not appear in the list",
           }),
-        ]}
-        promptTypeDefinitions={[]}
+        ])}
         selectedPromptId={null}
         selectedPromptIds={[]}
-        loading={false}
         onSelect={vi.fn()}
         onToggleSelection={vi.fn()}
+        onToggleFavorite={vi.fn()}
       />,
     );
 
@@ -69,13 +73,12 @@ describe("PromptList preview", () => {
   it("shows a placeholder when the description is empty", () => {
     render(
       <PromptList
-        prompts={[makePrompt({ description: "  ", userPrompt: "Hidden body" })]}
-        promptTypeDefinitions={[]}
+        items={itemsFrom([makePrompt({ description: "  ", userPrompt: "Hidden body" })])}
         selectedPromptId={null}
         selectedPromptIds={[]}
-        loading={false}
         onSelect={vi.fn()}
         onToggleSelection={vi.fn()}
+        onToggleFavorite={vi.fn()}
       />,
     );
 
@@ -99,14 +102,19 @@ describe("PromptList copy control", () => {
 
     render(
       <PromptList
-        prompts={[first, second]}
-        promptTypeDefinitions={[]}
+        items={itemsFrom([first, second])}
         selectedPromptId={null}
         selectedPromptIds={[]}
-        loading={false}
         onSelect={onSelect}
         onToggleSelection={onToggleSelection}
+        onToggleFavorite={vi.fn()}
         writeText={writeText}
+        copyPrompt={async () => ({
+          systemPrompt: "Be terse.",
+          userPrompt: "Argue both sides.",
+          messages: [],
+          unexpanded: [],
+        })}
       />,
     );
 
@@ -129,13 +137,12 @@ describe("PromptList copy control", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     render(
       <PromptList
-        prompts={[makePrompt()]}
-        promptTypeDefinitions={[]}
+        items={itemsFrom([makePrompt()])}
         selectedPromptId={null}
         selectedPromptIds={[]}
-        loading={false}
         onSelect={onSelect}
         onToggleSelection={vi.fn()}
+        onToggleFavorite={vi.fn()}
         writeText={writeText}
       />,
     );
@@ -149,19 +156,18 @@ describe("PromptList copy control", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     render(
       <PromptList
-        prompts={[
+        items={itemsFrom([
           makePrompt({
             isPrivate: true,
             isLocked: true,
             userPrompt: "",
           }),
-        ]}
-        promptTypeDefinitions={[]}
+        ])}
         selectedPromptId={null}
         selectedPromptIds={[]}
-        loading={false}
         onSelect={vi.fn()}
         onToggleSelection={vi.fn()}
+        onToggleFavorite={vi.fn()}
         writeText={writeText}
       />,
     );
@@ -172,5 +178,28 @@ describe("PromptList copy control", () => {
     expect((copy as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(copy);
     expect(writeText).not.toHaveBeenCalled();
+    expect(screen.queryByText("SECRET BODY")).toBeNull();
+  });
+
+  it("does not open the prompt from checkbox or favorite", () => {
+    const onSelect = vi.fn();
+    const onToggleSelection = vi.fn();
+    const onToggleFavorite = vi.fn();
+    render(
+      <PromptList
+        items={itemsFrom([makePrompt({ isFavorite: false })])}
+        selectedPromptId={null}
+        selectedPromptIds={[]}
+        batchMode
+        onSelect={onSelect}
+        onToggleSelection={onToggleSelection}
+        onToggleFavorite={onToggleFavorite}
+      />,
+    );
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Steelman" }));
+    fireEvent.click(screen.getByRole("button", { name: "Favorite" }));
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onToggleSelection).toHaveBeenCalledWith("prompt-1");
+    expect(onToggleFavorite).toHaveBeenCalledWith("prompt-1", true);
   });
 });

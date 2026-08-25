@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url("@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2") format("woff2");
+}
+
 /*
  * Design tokens (Requirement 22.1).
  *
@@ -14,6 +30,11 @@
  * Theme switching is a single `.dark` class toggle on `document.documentElement`
  * (see src/theme/index.ts), which re-points these variables and repaints every
  * view without a restart (Requirement 22.2).
+ *
+ * Ownership: `src/appearance/preferences.ts` overrides 21 of these tokens at
+ * runtime (16 flavor surface/text/border tokens plus 5 accent tokens). This
+ * file owns the remaining tokens — status, diff, elevation, radius, the extra
+ * greys the flavor swatch set cannot carry, and font/density defaults.
  */
 @layer base {
   :root {
@@ -30,47 +51,56 @@
      * controller runs; the same token names are mirrored under `.dark`.
      */
     --font-scale: 1;
-    --font-display: ui-sans-serif, system-ui, sans-serif;
-    --font-body: ui-sans-serif, system-ui, sans-serif;
+    --font-display: var(--font-interface);
+    --font-body: var(--font-interface);
     --font-interface: ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --density-padding: 0.625rem;
     --density-gap: 1rem;
 
     /* Light surfaces and text. */
-    --background: 220 14% 96%;
-    --foreground: 220 20% 25%;
+    --background: 220 37% 97%;
+    --foreground: 223 24% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 220 20% 25%;
+    --card-foreground: 223 24% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 25%;
+    --popover-foreground: 223 24% 11%;
+    --surface-inset: 228 45% 98%;
 
     /* Accents. */
-    --primary: var(--theme-hue) var(--theme-saturation) 55%;
+    --primary: 247 67% 59%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 220 20% 25%;
-    --muted: 220 14% 94%;
-    --muted-foreground: 220 12% 50%;
-    --accent: var(--theme-hue) 18% 94%;
-    --accent-foreground: var(--theme-hue) var(--theme-saturation) 40%;
-    --destructive: 0 45% 55%;
+    --secondary: 227 36% 95%;
+    --secondary-foreground: 223 24% 11%;
+    --muted: 227 36% 95%;
+    --muted-foreground: 222 13% 41%;
+    --muted-foreground-subtle: 222 13% 60%;
+    --accent: 247 27% 92%;
+    --accent-foreground: 247 67% 35%;
+    --accent-alt: 331 48% 55%;
+    --destructive: 352 58% 55%;
     --destructive-foreground: 0 0% 100%;
+    --success: 159 54% 40%;
+    --warning: 39 63% 44%;
+    --diff-added: 159 54% 40%;
+    --diff-removed: 352 58% 55%;
 
     /* Lines and focus rings. */
-    --border: 220 13% 90%;
-    --input: 220 13% 90%;
-    --ring: var(--theme-hue) var(--theme-saturation) 55%;
+    --border: 225 27% 91%;
+    --border-strong: 224 28% 86%;
+    --input: 225 27% 91%;
+    --ring: 247 67% 59%;
 
     /* Sidebar surfaces. */
     --sidebar: 0 0% 100%;
-    --sidebar-foreground: 220 20% 25%;
-    --sidebar-accent: 220 14% 95%;
-    --sidebar-border: 220 13% 90%;
+    --sidebar-foreground: 223 24% 11%;
+    --sidebar-accent: 227 36% 95%;
+    --sidebar-border: 225 27% 91%;
 
     /* Elevation. */
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
     --shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 24px 70px rgba(20, 25, 45, 0.16);
   }
 
   .dark {
@@ -83,47 +113,56 @@
 
     /* Appearance defaults (mirror of `:root`; overridden by the controller). */
     --font-scale: 1;
-    --font-display: ui-sans-serif, system-ui, sans-serif;
-    --font-body: ui-sans-serif, system-ui, sans-serif;
+    --font-display: var(--font-interface);
+    --font-body: var(--font-interface);
     --font-interface: ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --density-padding: 0.625rem;
     --density-gap: 1rem;
 
     /* Dark surfaces and text. */
-    --background: 220 25% 7%;
-    --foreground: 220 15% 92%;
-    --card: 220 22% 10%;
-    --card-foreground: 220 15% 92%;
-    --popover: 220 22% 12%;
-    --popover-foreground: 220 15% 92%;
+    --background: 225 27% 6%;
+    --foreground: 225 33% 93%;
+    --card: 225 25% 9%;
+    --card-foreground: 225 33% 93%;
+    --popover: 225 25% 9%;
+    --popover-foreground: 225 33% 93%;
+    --surface-inset: 224 25% 12%;
 
     /* Accents. */
-    --primary: var(--theme-hue) var(--theme-saturation) 55%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 220 20% 12%;
-    --secondary-foreground: 220 15% 92%;
-    --muted: 220 20% 12%;
-    --muted-foreground: 220 12% 60%;
-    --accent: var(--theme-hue) 20% 15%;
-    --accent-foreground: var(--theme-hue) var(--theme-saturation) 85%;
-    --destructive: 0 70% 55%;
+    --primary: 248 89% 73%;
+    --primary-foreground: 240 21% 15%;
+    --secondary: 224 24% 15%;
+    --secondary-foreground: 225 33% 93%;
+    --muted: 224 24% 15%;
+    --muted-foreground: 223 16% 65%;
+    --muted-foreground-subtle: 222 11% 47%;
+    --accent: 248 27% 18%;
+    --accent-foreground: 248 89% 85%;
+    --accent-alt: 332 64% 72%;
+    --destructive: 352 67% 66%;
     --destructive-foreground: 0 0% 100%;
+    --success: 158 49% 56%;
+    --warning: 40 67% 62%;
+    --diff-added: 158 49% 56%;
+    --diff-removed: 352 67% 66%;
 
     /* Lines and focus rings. */
-    --border: 220 20% 14%;
-    --input: 220 20% 14%;
-    --ring: var(--theme-hue) var(--theme-saturation) 55%;
+    --border: 223 22% 19%;
+    --border-strong: 223 21% 23%;
+    --input: 223 22% 19%;
+    --ring: 248 89% 73%;
 
     /* Sidebar surfaces. */
-    --sidebar: 220 25% 7%;
-    --sidebar-foreground: 220 15% 92%;
-    --sidebar-accent: 220 20% 14%;
-    --sidebar-border: 220 20% 12%;
+    --sidebar: 225 25% 9%;
+    --sidebar-foreground: 225 33% 93%;
+    --sidebar-accent: 224 24% 15%;
+    --sidebar-border: 223 22% 19%;
 
     /* Elevation. */
     --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
     --shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
-    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 24px 80px rgba(0, 0, 0, 0.62);
   }
 }
 
@@ -187,61 +226,23 @@
   container-type: inline-size;
 }
 
-@container prompt-workspace (min-width: 48rem) {
-  .prompt-workspace__detail-header {
-    padding-inline: 1rem;
+@keyframes prompt-detail-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@container prompt-workspace (max-width: 31.999rem) {
-  .prompt-workspace__detail-title {
-    flex-basis: 100%;
-    overflow: visible;
-    white-space: normal;
-  }
+.prompt-detail-modal {
+  animation: prompt-detail-enter 160ms ease-out;
 }
 
-@container prompt-workspace (min-width: 56rem) {
-  .prompt-workspace__folders {
-    position: static;
-    z-index: auto;
-    width: 13rem;
-    visibility: visible;
-    pointer-events: auto;
-    transform: none;
-    background-color: hsl(var(--card) / 0.4);
-    box-shadow: none;
-  }
-
-  .prompt-workspace__discovery {
-    display: flex;
-    width: 18rem;
-  }
-
-  .prompt-workspace__detail {
-    display: flex;
-  }
-
-  .prompt-workspace__compact-control {
-    display: none;
-  }
-}
-
-@container prompt-workspace (min-width: 80rem) {
-  .prompt-workspace__folders {
-    width: 14rem;
-  }
-
-  .prompt-workspace__discovery {
-    width: 20rem;
-  }
-
-  .prompt-workspace__history {
-    position: static;
-    width: 18rem;
-    background-color: hsl(var(--card) / 0.4);
-    box-shadow: none;
-  }
+.toast-item {
+  animation: prompt-detail-enter 160ms ease-out;
 }
 
 @container prompt-editor (min-width: 32rem) {

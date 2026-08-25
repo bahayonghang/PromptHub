@@ -101,6 +101,14 @@ pub fn prompt_copy(
     )
 }
 
+#[tauri::command(rename = "reference.list")]
+pub fn reference_list(
+    prompt_id: String,
+    state: tauri::State<'_, AppState>,
+) -> CommandResult<crate::services::reference::ReferenceList> {
+    into_command(conn(&state).and_then(|conn| crate::services::reference::list(&conn, &prompt_id)))
+}
+
 #[tauri::command(rename = "tag.list")]
 pub fn prompt_tag_list(state: tauri::State<'_, AppState>) -> CommandResult<Vec<String>> {
     into_command(conn(&state).and_then(|conn| prompt::tag_list(&conn)))

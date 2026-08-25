@@ -1,11 +1,16 @@
 import type { ReactElement } from "react";
 import { useAppStore, type AppView } from "../../store/appStore";
 import { Sidebar } from "./Sidebar";
+import { PromptLibraryNav } from "../../features/prompts/components/PromptLibraryNav";
 import { Header } from "./Header";
 import { PromptsView } from "../views/PromptsView";
 import { SettingsView } from "../views/SettingsView";
 import { TitleBar } from "../../features/system/components/TitleBar";
 import { CloseDialog } from "../../features/system/components/CloseDialog";
+import { ToastHost } from "../../features/notifications/ToastHost";
+import { CommandPalette } from "../../features/prompts/components/CommandPalette";
+import { useGlobalShortcuts } from "../../shortcuts/useGlobalShortcuts";
+import { usePaletteStore } from "../../features/prompts/paletteStore";
 
 /** Maps each major view to the component rendered in the content region. */
 const VIEW_COMPONENTS: Record<AppView, () => ReactElement> = {
@@ -25,12 +30,17 @@ const VIEW_COMPONENTS: Record<AppView, () => ReactElement> = {
 export function AppShell() {
   const activeView = useAppStore((state) => state.activeView);
   const ActiveView = VIEW_COMPONENTS[activeView];
+  useGlobalShortcuts();
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background text-foreground">
       <TitleBar />
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <Sidebar />
+      <div id="app-content" className="flex min-h-0 flex-1 overflow-hidden">
+        <Sidebar
+          onOpenCommandPalette={() => usePaletteStore.getState().toggle()}
+        >
+          <PromptLibraryNav />
+        </Sidebar>
         <div className="flex min-w-0 flex-1 flex-col">
           <Header />
           <main className="min-h-0 flex-1 overflow-auto">
@@ -39,6 +49,8 @@ export function AppShell() {
         </div>
       </div>
       <CloseDialog />
+      <CommandPalette />
+      <ToastHost />
     </div>
   );
 }

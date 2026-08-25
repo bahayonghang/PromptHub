@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/frontend/directory-structure.md", "reason": "Where new modules and components belong in src/**"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "Component props, composition, styling, and accessibility rules"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "TypeScript strictness and DTO mirror rules"}
+{"file": ".trellis/spec/frontend/hook-guidelines.md", "reason": "Hook usage rules for the new interactive surfaces"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Reuse existing components and actions instead of duplicating them"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "Feature store, selector, and server-backed state rules"}

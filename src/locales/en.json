@@ -1392,12 +1392,61 @@
       "delete": "Delete tag",
       "deleteConfirm": "Delete tag {{tag}} from every prompt?"
     },
+    "library": {
+      "nav": "Prompt library",
+      "savedViews": "Library",
+      "all": "All prompts",
+      "favorites": "Favorites",
+      "recent": "Recent",
+      "folders": "Folders",
+      "tags": "Tags",
+      "addFolder": "New folder",
+      "commandPalette": "Command palette",
+      "commandPaletteUnavailable": "Command palette arrives in a later update. Shortcut: Ctrl+K or Command+K.",
+      "themeToggle": "Color mode",
+      "themeToLight": "Switch to light mode",
+      "themeToDark": "Switch to dark mode",
+      "bucketCount": "{{count}} in this group",
+      "productVersion": "1.0.0"
+    },
+    "chrome": {
+      "subtitleCount": "{{count}} prompts",
+      "subtitleWithPath": "{{count}} prompts · {{path}}",
+      "resultCount": "{{shown}} / {{total}}",
+      "viewMode": "Library layout",
+      "viewList": "List view",
+      "viewGrid": "Grid view",
+      "batchToggle": "Batch edit",
+      "batchOn": "Batch mode on",
+      "batchOff": "Batch mode off",
+      "batchExit": "Exit batch",
+      "chipKeyword": "Keyword {{value}}",
+      "chipFolder": "Folder {{value}}",
+      "chipTag": "Tag {{value}}",
+      "chipFavorites": "Favorites",
+      "removeChip": "Remove {{label}}",
+      "clearAll": "Clear all"
+    },
+    "items": {
+      "pinned": "Pinned",
+      "moreTags": "+{{count}}",
+      "columns": {
+        "select": "Select",
+        "title": "Title",
+        "description": "Description",
+        "tags": "Tags",
+        "type": "Type",
+        "usage": "Uses",
+        "version": "Version",
+        "updated": "Updated"
+      }
+    },
     "editor": {
       "sections": {
         "identity": "Basics",
         "definition": "Prompt content",
         "organization": "Organization",
-        "references": "Supporting details"
+        "attachments": "Supporting details"
       },
       "privatePrompt": "Encrypt prompt content",
       "privatePromptHint": "Requires an unlocked master password.",
@@ -1464,6 +1513,53 @@
       "saved": "Saved",
       "unsaved": "Unsaved changes"
     },
+    "detail": {
+      "content": "Content",
+      "versions": "Version history",
+      "run": "Run comparison",
+      "references": "References",
+      "close": "Close",
+      "edit": "Edit",
+      "readOnly": "Read only",
+      "moreActions": "More actions",
+      "dirtyTitle": "Unsaved changes",
+      "dirtyMessage": "This prompt has unsaved edits.",
+      "saveAndClose": "Save and close",
+      "discardAndClose": "Discard and close",
+      "keepEditing": "Keep editing",
+      "versionChip": "v{{version}}",
+      "lockedTabsHint": "Unlock the prompt library to open this tab.",
+      "fillAndCopy": "Fill variables and copy",
+      "characterCount": "{{count}} characters",
+      "insertReference": "Insert reference",
+      "outgoing": "Outgoing",
+      "incoming": "Incoming",
+      "picker": "Insert a prompt reference",
+      "pickerPlaceholder": "Choose a prompt to insert @@Title@@",
+      "unresolvedMissing": "Missing",
+      "unresolvedAmbiguous": "Ambiguous title",
+      "unresolvedLocked": "Locked",
+      "noOutgoing": "No outgoing references",
+      "noIncoming": "No incoming references",
+      "saveHint": "{{mod}}+S",
+      "copyHint": "{{mod}}+Enter",
+      "newPrompt": "New prompt"
+    },
+    "palette": {
+      "placeholder": "Search prompts and actions",
+      "groupPrompts": "Prompt",
+      "groupActions": "Actions",
+      "newPrompt": "New prompt",
+      "favorites": "Show favorites only",
+      "toggleView": "Switch list and grid",
+      "toggleTheme": "Toggle light and dark",
+      "empty": "No prompts match these terms"
+    },
+    "toast": {
+      "dismiss": "Dismiss notification",
+      "saved": "Prompt saved",
+      "batchDeleted": "Selected prompts deleted"
+    },
     "history": {
       "title": "Version History",
       "empty": "No versions yet",
@@ -1526,10 +1622,12 @@
       "themeFamily": "Theme family",
       "themeFamilyHint": "Choose a palette family independently from light, dark, or system mode.",
       "familyOption": {
+        "prompthub": "PromptHub",
         "catppuccin": "Catppuccin",
         "claude": "Claude"
       },
       "familyDescription": {
+        "prompthub": "Light and dark palettes from the 2026 redesign",
         "catppuccin": "Official Latte, Frappé, Macchiato, and Mocha palettes",
         "claude": "Warm, focused light and dark palettes"
       },
@@ -1586,7 +1684,8 @@
         "Sky": "Sky",
         "Sapphire": "Sapphire",
         "Blue": "Blue",
-        "Lavender": "Lavender"
+        "Lavender": "Lavender",
+        "Violet": "Violet"
       },
       "fontOption": {
         "System": "System",

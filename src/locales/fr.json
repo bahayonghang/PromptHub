@@ -20,10 +20,12 @@
       "themeFamily": "Famille de thème",
       "themeFamilyHint": "Choisissez la palette indépendamment du mode clair, sombre ou système.",
       "familyOption": {
+        "prompthub": "PromptHub",
         "catppuccin": "Catppuccin",
         "claude": "Claude"
       },
       "familyDescription": {
+        "prompthub": "Palettes claire et sombre de la refonte 2026",
         "catppuccin": "Palettes officielles Latte, Frappé, Macchiato et Mocha",
         "claude": "Palettes claires et sombres, chaleureuses et concentrées"
       },
@@ -80,7 +82,8 @@
         "Sky": "Sky",
         "Sapphire": "Sapphire",
         "Blue": "Blue",
-        "Lavender": "Lavender"
+        "Lavender": "Lavender",
+        "Violet": "Violet"
       },
       "fontOption": {
         "System": "System",
@@ -1593,12 +1596,61 @@
       "delete": "Supprimer l'etiquette",
       "deleteConfirm": "Supprimer l'etiquette {{tag}} de tous les prompts ?"
     },
+    "library": {
+      "nav": "Bibliotheque de prompts",
+      "savedViews": "Bibliotheque",
+      "all": "Tous les prompts",
+      "favorites": "Favoris",
+      "recent": "Recents",
+      "folders": "Dossiers",
+      "tags": "Etiquettes",
+      "addFolder": "Nouveau dossier",
+      "commandPalette": "Palette de commandes",
+      "commandPaletteUnavailable": "La palette de commandes arrivera dans une mise a jour ulterieure. Raccourci : Ctrl+K ou Command+K.",
+      "themeToggle": "Mode couleur",
+      "themeToLight": "Passer en mode clair",
+      "themeToDark": "Passer en mode sombre",
+      "bucketCount": "{{count}} dans ce groupe",
+      "productVersion": "1.0.0"
+    },
+    "chrome": {
+      "subtitleCount": "{{count}} prompts",
+      "subtitleWithPath": "{{count}} prompts · {{path}}",
+      "resultCount": "{{shown}} / {{total}}",
+      "viewMode": "Disposition de la bibliotheque",
+      "viewList": "Vue liste",
+      "viewGrid": "Vue grille",
+      "batchToggle": "Edition par lot",
+      "batchOn": "Mode lot active",
+      "batchOff": "Mode lot desactive",
+      "batchExit": "Quitter le lot",
+      "chipKeyword": "Mot-cle {{value}}",
+      "chipFolder": "Dossier {{value}}",
+      "chipTag": "Etiquette {{value}}",
+      "chipFavorites": "Favoris",
+      "removeChip": "Retirer {{label}}",
+      "clearAll": "Tout effacer"
+    },
+    "items": {
+      "pinned": "Epingle",
+      "moreTags": "+{{count}}",
+      "columns": {
+        "select": "Selectionner",
+        "title": "Titre",
+        "description": "Description",
+        "tags": "Etiquettes",
+        "type": "Type",
+        "usage": "Usages",
+        "version": "Version",
+        "updated": "Mis a jour"
+      }
+    },
     "editor": {
       "sections": {
         "identity": "Informations générales",
         "definition": "Contenu du prompt",
         "organization": "Organisation",
-        "references": "Informations complémentaires"
+        "attachments": "Informations complémentaires"
       },
       "privatePrompt": "Chiffrer le contenu",
       "privatePromptHint": "Necessite un mot de passe principal deverrouille.",
@@ -1664,6 +1716,53 @@
       "create": "Créer",
       "saved": "Enregistré",
       "unsaved": "Modifications non enregistrées"
+    },
+    "detail": {
+      "content": "Contenu",
+      "versions": "Historique des versions",
+      "run": "Comparaison d'essais",
+      "references": "References",
+      "close": "Fermer",
+      "edit": "Modifier",
+      "readOnly": "Lecture seule",
+      "moreActions": "Plus d'actions",
+      "dirtyTitle": "Modifications non enregistrees",
+      "dirtyMessage": "Ce prompt a des modifications non enregistrees.",
+      "saveAndClose": "Enregistrer et fermer",
+      "discardAndClose": "Abandonner et fermer",
+      "keepEditing": "Continuer l'edition",
+      "versionChip": "v{{version}}",
+      "lockedTabsHint": "Deverrouillez la bibliotheque pour ouvrir cet onglet.",
+      "fillAndCopy": "Remplir les variables et copier",
+      "characterCount": "{{count}} caracteres",
+      "insertReference": "Inserer une reference",
+      "outgoing": "Sortantes",
+      "incoming": "Entrantes",
+      "picker": "Inserer une reference de prompt",
+      "pickerPlaceholder": "Choisir un prompt pour inserer @@Title@@",
+      "unresolvedMissing": "Manquante",
+      "unresolvedAmbiguous": "Titre ambigu",
+      "unresolvedLocked": "Verrouillee",
+      "noOutgoing": "Aucune reference sortante",
+      "noIncoming": "Aucune reference entrante",
+      "saveHint": "{{mod}}+S",
+      "copyHint": "{{mod}}+Enter",
+      "newPrompt": "Nouveau prompt"
+    },
+    "palette": {
+      "placeholder": "Rechercher des prompts et des actions",
+      "groupPrompts": "Prompt",
+      "groupActions": "Actions",
+      "newPrompt": "Nouveau prompt",
+      "favorites": "Afficher uniquement les favoris",
+      "toggleView": "Basculer liste et grille",
+      "toggleTheme": "Basculer clair et sombre",
+      "empty": "Aucun prompt ne correspond a ces termes"
+    },
+    "toast": {
+      "dismiss": "Fermer la notification",
+      "saved": "Prompt enregistre",
+      "batchDeleted": "Prompts selectionnes supprimes"
     },
     "history": {
       "title": "Historique des versions",

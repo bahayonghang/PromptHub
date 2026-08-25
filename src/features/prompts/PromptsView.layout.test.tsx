@@ -76,20 +76,47 @@ afterEach(() => {
 });
 
 describe("PromptsView responsive workspace", () => {
-  it("opens and dismisses the compact folder navigation", () => {
+  it("does not mount the folder tree or tag manager in the prompts view", () => {
     render(<PromptsView />);
 
-    const foldersButton = screen.getByRole("button", { name: "Folders" });
-    expect(foldersButton.getAttribute("aria-expanded")).toBe("false");
-
-    fireEvent.click(foldersButton);
-    expect(foldersButton.getAttribute("aria-expanded")).toBe("true");
-
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    expect(foldersButton.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("button", { name: "Folders" })).toBeNull();
+    expect(screen.queryByRole("navigation", { name: "Prompt library" })).toBeNull();
+    expect(screen.queryByText("Manage tags")).toBeNull();
+    expect(screen.getByRole("searchbox", { name: "Search prompts..." })).toBeTruthy();
   });
 
-  it("preserves the selected prompt and draft across compact pane switches", async () => {
+  it("shows the empty state only when loading is false", () => {
+    usePromptStore.setState({ loading: true, prompts: [], total: 0 });
+    const { rerender } = render(<PromptsView />);
+    expect(screen.getByText("Loading...")).toBeTruthy();
+    expect(screen.queryByText("No prompts found")).toBeNull();
+
+    usePromptStore.setState({ loading: false, prompts: [], total: 0 });
+    rerender(<PromptsView />);
+    expect(screen.getByText("No prompts found")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Clear all" })).toBeTruthy();
+  });
+
+  it("keeps selection and filters when switching grid and list", async () => {
+    usePromptStore.setState({
+      viewMode: "list",
+      selectedPromptIds: [prompt.id],
+      filters: { ...DEFAULT_FILTERS, keyword: "Release" },
+      setViewMode: (next) => {
+        usePromptStore.setState({ viewMode: next });
+      },
+    });
+    render(<PromptsView />);
+    fireEvent.click(screen.getByRole("button", { name: "Grid view" }));
+    expect(usePromptStore.getState().viewMode).toBe("grid");
+    expect(usePromptStore.getState().selectedPromptIds).toEqual([prompt.id]);
+    expect(usePromptStore.getState().filters.keyword).toBe("Release");
+    fireEvent.click(screen.getByRole("button", { name: "List view" }));
+    expect(usePromptStore.getState().viewMode).toBe("list");
+    expect(usePromptStore.getState().selectedPromptIds).toEqual([prompt.id]);
+  });
+
+  it("opens the detail overlay and keeps the draft until close", async () => {
     render(<PromptsView />);
 
     fireEvent.click(screen.getByRole("button", { name: "Release notes" }));
@@ -105,16 +132,76 @@ describe("PromptsView responsive workspace", () => {
     expect(
       screen.getByRole("heading", { name: "Supporting details" }),
     ).toBeTruthy();
+    expect(screen.getByRole("dialog")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Prompts" }));
-    expect(usePromptStore.getState().selectedPromptId).toBe(prompt.id);
+    fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0]);
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Discard and close" }),
+      ).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+    expect(
+      (screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement)
+        .value,
+    ).toBe("Unpublished draft");
+  });
 
+  it("leaves create mode when a library prompt is selected", async () => {
+    render(<PromptsView />);
+    fireEvent.click(screen.getByRole("button", { name: "New Prompt" }));
+    await screen.findByRole("textbox", { name: "Title" });
     fireEvent.click(screen.getByRole("button", { name: "Release notes" }));
     await waitFor(() => {
       expect(
         (screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement)
           .value,
-      ).toBe("Unpublished draft");
+      ).toBe("Release notes");
     });
+    expect(usePromptStore.getState().selectedPromptId).toBe(prompt.id);
+  });
+
+  it("keeps a dirty new-prompt overlay when keep-editing after a library select", async () => {
+    render(<PromptsView />);
+    fireEvent.click(screen.getByRole("button", { name: "New Prompt" }));
+    const title = await screen.findByRole("textbox", { name: "Title" });
+    fireEvent.change(title, { target: { value: "Draft create" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Release notes" }));
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Keep editing" }),
+      ).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+
+    expect(
+      (screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement)
+        .value,
+    ).toBe("Draft create");
+    expect(usePromptStore.getState().selectedPromptId).toBeNull();
+  });
+
+  it("opens a library prompt after a new-prompt overlay is discarded", async () => {
+    render(<PromptsView />);
+    fireEvent.click(screen.getByRole("button", { name: "New Prompt" }));
+    const title = await screen.findByRole("textbox", { name: "Title" });
+    fireEvent.change(title, { target: { value: "Draft create" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Release notes" }));
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Discard and close" }),
+      ).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Discard and close" }));
+
+    await waitFor(() => {
+      expect(
+        (screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement)
+          .value,
+      ).toBe("Release notes");
+    });
+    expect(usePromptStore.getState().selectedPromptId).toBe(prompt.id);
   });
 });

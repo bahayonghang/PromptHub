@@ -46,7 +46,7 @@ Prefer the checked-in `justfile` from the repo root:
 - `just deps` - install frontend dependencies.
 - `just install` - build and install PromptHub on this machine.
 - `just dev` - full desktop dev environment (Vite + native window + Rust backend).
-- `just frontend` - frontend-only Vite dev server on `http://localhost:1420`.
+- `just frontend` - frontend-only Vite dev server on `http://localhost:5173`.
 - `just build` - frontend gate: `tsc` typecheck + Vite production build.
 - `just test` - frontend Vitest suite.
 - `just test-rust` - backend unit + property tests.
@@ -96,3 +96,18 @@ when a narrower command is needed while iterating.
 
 This rewrite intentionally does not migrate old Electron data. CLI and Web
 variants are out of scope for this repository.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues on `bahayonghang/PromptHub`, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary, label string equals role name: `needs-triage`, `needs-info`,
+`ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout: root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.

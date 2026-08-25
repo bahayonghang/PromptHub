@@ -111,6 +111,17 @@ describe("Appearance value maps (P7, token completeness)", () => {
     expect(failures).toEqual([]);
   });
 
+  it("maps the Violet accent to the design HSL and a contrast-passing foreground", () => {
+    expect(ACCENT_PALETTE.dark.Violet["--primary"]).toBe("248 89% 73%");
+    expect(ACCENT_PALETTE.light.Violet["--primary"]).toBe("247 67% 59%");
+    expect(
+      contrast(ACCENT_PALETTE.dark.Violet["--primary"], ACCENT_PALETTE.dark.Violet["--primary-foreground"]),
+    ).toBeGreaterThanOrEqual(4.5);
+    expect(
+      contrast(ACCENT_PALETTE.light.Violet["--primary"], ACCENT_PALETTE.light.Violet["--primary-foreground"]),
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
   it("keeps every primary accent foreground at WCAG AA contrast", () => {
     const failures: string[] = [];
     for (const base of BASES) {

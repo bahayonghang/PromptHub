@@ -16,8 +16,10 @@ import type {
   PromptPage,
   PromptTypeDefinition,
   PromptVersion,
+  PromptCopyResult,
   PortableExportResult,
   PortableImportResult,
+  ReferenceList,
   SearchQuery,
   UpdateFolderInput,
   UpdatePromptInput,
@@ -35,7 +37,8 @@ export interface PromptApi {
   batchMove(ids: string[], folderId: string | null): Promise<void>;
   batchTag(ids: string[], tags: string[]): Promise<void>;
   batchDelete(ids: string[]): Promise<void>;
-  copyPrompt(id: string, values: Record<string, string>): Promise<string>;
+  copyPrompt(id: string, values: Record<string, string>): Promise<PromptCopyResult>;
+  listReferences(promptId: string): Promise<ReferenceList>;
 
   listPromptTypes(): Promise<PromptTypeDefinition[]>;
   createPromptType(input: CreatePromptTypeInput): Promise<PromptTypeDefinition>;
@@ -82,7 +85,9 @@ export function createPromptApi(bridge: RuntimeBridge = runtime): PromptApi {
       bridge.invoke<void>("prompt.batchTag", { ids, tags }),
     batchDelete: (ids) => bridge.invoke<void>("prompt.batchDelete", { ids }),
     copyPrompt: (id, values) =>
-      bridge.invoke<string>("prompt.copy", { id, values }),
+      bridge.invoke<PromptCopyResult>("prompt.copy", { id, values }),
+    listReferences: (promptId) =>
+      bridge.invoke<ReferenceList>("reference.list", { promptId }),
 
     listPromptTypes: () =>
       bridge.invoke<PromptTypeDefinition[]>("promptType.list"),

@@ -54,9 +54,9 @@ describe("AppearancePanel", () => {
   it("renders the independent theme, mode, accent, font, scale, and density controls", async () => {
     render(<AppearancePanel />);
 
-    expect(within(screen.getByRole("group", { name: "Theme family" })).getAllByRole("button")).toHaveLength(2);
+    expect(within(screen.getByRole("group", { name: "Theme family" })).getAllByRole("button")).toHaveLength(3);
     expect(within(screen.getByRole("group", { name: "Color mode" })).getAllByRole("button")).toHaveLength(3);
-    expect(within(screen.getByRole("group", { name: "Accent color" })).getAllByRole("button")).toHaveLength(14);
+    expect(within(screen.getByRole("group", { name: "Accent color" })).getAllByRole("button")).toHaveLength(15);
     expect(within(screen.getByRole("group", { name: "Font scale" })).getAllByRole("button")).toHaveLength(4);
     expect(within(screen.getByRole("group", { name: "Density" })).getAllByRole("button")).toHaveLength(3);
     expect(screen.getByRole("combobox", { name: "Catppuccin dark variant" })).toBeTruthy();

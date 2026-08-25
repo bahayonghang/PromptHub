@@ -15,10 +15,16 @@ Runtime Bridge through which all backend access flows.
 - `features/` — business modules (`prompts/`, `settings/`, `system/`),
   each self-contained; start here for feature behavior.
 - `components/` — shared layout (`layout/`) and top-level views (`views/`).
+  The sidebar rail is app-wide; library saved views, folders, and tags live in
+  `features/prompts/components/PromptLibraryNav.tsx`.
 - `store/` — app-level Zustand store (readiness, fatal init error).
 - `theme/` — light/dark/system theme application and persistence.
+- `appearance/` — theme family catalogs, accent palettes, and the live paint
+  controller (`preferences.ts`). New installs default to the PromptHub family.
 - `locales/` — the 7 translation bundles (`en`, `zh`, `zh-TW`, `ja`, `fr`, `de`, `es`).
-- `styles/globals.css` — Tailwind layers + design-token CSS variables.
+- `styles/globals.css` — Tailwind layers + design-token CSS variables. Color
+  tokens are channel-only HSL; `src/appearance/preferences.ts` overrides 21 of
+  them at runtime. Token list: `.trellis/spec/frontend/design-tokens.md`.
 
 ## Key Files
 
@@ -32,6 +38,15 @@ Runtime Bridge through which all backend access flows.
 - `features/<name>/<name>Store.ts` — that feature's Zustand store.
 - `features/prompts/PromptsView.tsx` — prompt paging, portable bundle controls,
   tag management, and batch-action orchestration.
+- `features/prompts/libraryItem.ts` — shared projection for grid and list
+  library items.
+- `features/prompts/components/detail/` — prompt overlay, tabs, and pickers.
+- `components/ui/Modal.tsx` — shared dialog primitive with a focus stack.
+- `shortcuts/useGlobalShortcuts.ts` — one document keydown table for palette,
+  save, copy, new prompt, and theme.
+- `features/notifications/` — toast store and host.
+- `features/prompts/promptText.ts` — clipboard formatting for `prompt.copy`;
+  `@@Title` expansion lives in the backend (`reference.list` / `prompt.copy`).
 - `features/prompts/versionDiff.ts` — structured immutable-revision diffing.
 - `features/evaluation/` — typed bridge API, Zustand orchestration, and the
   playground/matrix/history workbench.

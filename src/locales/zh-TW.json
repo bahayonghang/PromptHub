@@ -20,10 +20,12 @@
       "themeFamily": "主題家族",
       "themeFamilyHint": "主題配色與淺色、深色或跟隨系統模式分開設定。",
       "familyOption": {
+        "prompthub": "PromptHub",
         "catppuccin": "Catppuccin",
         "claude": "Claude"
       },
       "familyDescription": {
+        "prompthub": "2026 介面重設計的淺色與深色配色",
         "catppuccin": "官方 Latte、Frappé、Macchiato 與 Mocha 配色",
         "claude": "溫暖、專注的淺色與深色配色"
       },
@@ -80,7 +82,8 @@
         "Sky": "Sky",
         "Sapphire": "Sapphire",
         "Blue": "Blue",
-        "Lavender": "Lavender"
+        "Lavender": "Lavender",
+        "Violet": "Violet"
       },
       "fontOption": {
         "System": "System",
@@ -1595,12 +1598,61 @@
       "delete": "刪除標籤",
       "deleteConfirm": "從所有 Prompt 中刪除標籤 {{tag}}？"
     },
+    "library": {
+      "nav": "Prompt 庫",
+      "savedViews": "資料庫",
+      "all": "全部 Prompt",
+      "favorites": "收藏",
+      "recent": "最近",
+      "folders": "資料夾",
+      "tags": "標籤",
+      "addFolder": "新增資料夾",
+      "commandPalette": "命令面板",
+      "commandPaletteUnavailable": "命令面板將在後續更新提供。快捷鍵：Ctrl+K 或 Command+K。",
+      "themeToggle": "色彩模式",
+      "themeToLight": "切換到淺色模式",
+      "themeToDark": "切換到深色模式",
+      "bucketCount": "此分組共 {{count}} 筆",
+      "productVersion": "1.0.0"
+    },
+    "chrome": {
+      "subtitleCount": "{{count}} 則 Prompt",
+      "subtitleWithPath": "{{count}} 則 Prompt · {{path}}",
+      "resultCount": "{{shown}} / {{total}}",
+      "viewMode": "庫佈局",
+      "viewList": "列表檢視",
+      "viewGrid": "網格檢視",
+      "batchToggle": "批次整理",
+      "batchOn": "已進入批次模式",
+      "batchOff": "已離開批次模式",
+      "batchExit": "離開批次",
+      "chipKeyword": "關鍵字 {{value}}",
+      "chipFolder": "資料夾 {{value}}",
+      "chipTag": "標籤 {{value}}",
+      "chipFavorites": "收藏",
+      "removeChip": "移除 {{label}}",
+      "clearAll": "全部清除"
+    },
+    "items": {
+      "pinned": "置頂",
+      "moreTags": "+{{count}}",
+      "columns": {
+        "select": "選擇",
+        "title": "標題",
+        "description": "描述",
+        "tags": "標籤",
+        "type": "類型",
+        "usage": "使用",
+        "version": "版本",
+        "updated": "更新"
+      }
+    },
     "editor": {
       "sections": {
         "identity": "基本資訊",
         "definition": "提示詞內容",
         "organization": "組織方式",
-        "references": "補充資訊"
+        "attachments": "補充資訊"
       },
       "privatePrompt": "加密 Prompt 內容",
       "privatePromptHint": "需要已解鎖的主密碼。",
@@ -1666,6 +1718,53 @@
       "create": "建立",
       "saved": "已儲存",
       "unsaved": "有未儲存的變更"
+    },
+    "detail": {
+      "content": "內容",
+      "versions": "版本歷史",
+      "run": "試跑對比",
+      "references": "引用",
+      "close": "關閉",
+      "edit": "編輯",
+      "readOnly": "唯讀",
+      "moreActions": "更多動作",
+      "dirtyTitle": "未儲存的變更",
+      "dirtyMessage": "此 Prompt 有未儲存的編輯。",
+      "saveAndClose": "儲存並關閉",
+      "discardAndClose": "捨棄並關閉",
+      "keepEditing": "繼續編輯",
+      "versionChip": "v{{version}}",
+      "lockedTabsHint": "解鎖 Prompt 庫後才能開啟此分頁。",
+      "fillAndCopy": "填入變數並複製",
+      "characterCount": "{{count}} 個字元",
+      "insertReference": "插入引用",
+      "outgoing": "傳出",
+      "incoming": "傳入",
+      "picker": "插入 Prompt 引用",
+      "pickerPlaceholder": "選擇一個 Prompt 以插入 @@Title@@",
+      "unresolvedMissing": "缺失",
+      "unresolvedAmbiguous": "標題有歧義",
+      "unresolvedLocked": "已鎖定",
+      "noOutgoing": "沒有傳出引用",
+      "noIncoming": "沒有傳入引用",
+      "saveHint": "{{mod}}+S",
+      "copyHint": "{{mod}}+Enter",
+      "newPrompt": "新增 Prompt"
+    },
+    "palette": {
+      "placeholder": "搜尋 Prompt 與操作",
+      "groupPrompts": "Prompt",
+      "groupActions": "操作",
+      "newPrompt": "新增 Prompt",
+      "favorites": "只看收藏",
+      "toggleView": "切換清單與網格",
+      "toggleTheme": "切換淺色與深色",
+      "empty": "沒有符合這些詞的 Prompt"
+    },
+    "toast": {
+      "dismiss": "關閉通知",
+      "saved": "Prompt 已儲存",
+      "batchDeleted": "已刪除所選 Prompt"
     },
     "history": {
       "title": "版本歷史",
