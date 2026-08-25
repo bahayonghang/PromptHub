@@ -1614,7 +1614,7 @@
       "themeToLight": "ライトモードに切り替え",
       "themeToDark": "ダークモードに切り替え",
       "bucketCount": "このグループは {{count}} 件",
-      "productVersion": "0.4.0"
+      "productVersion": "1.0.0"
     },
     "chrome": {
       "subtitleCount": "{{count}} 件の Prompt",

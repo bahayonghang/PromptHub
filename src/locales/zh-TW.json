@@ -1613,7 +1613,7 @@
       "themeToLight": "切換到淺色模式",
       "themeToDark": "切換到深色模式",
       "bucketCount": "此分組共 {{count}} 筆",
-      "productVersion": "0.4.0"
+      "productVersion": "1.0.0"
     },
     "chrome": {
       "subtitleCount": "{{count}} 則 Prompt",

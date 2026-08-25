@@ -1647,7 +1647,7 @@
       "themeToLight": "切换到浅色模式",
       "themeToDark": "切换到深色模式",
       "bucketCount": "此分组共 {{count}} 条",
-      "productVersion": "0.4.0"
+      "productVersion": "1.0.0"
     },
     "chrome": {
       "subtitleCount": "{{count}} 条 Prompt",

@@ -1407,7 +1407,7 @@
       "themeToLight": "Switch to light mode",
       "themeToDark": "Switch to dark mode",
       "bucketCount": "{{count}} in this group",
-      "productVersion": "0.4.0"
+      "productVersion": "1.0.0"
     },
     "chrome": {
       "subtitleCount": "{{count}} prompts",

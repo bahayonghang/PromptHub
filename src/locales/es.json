@@ -1609,7 +1609,7 @@
       "themeToLight": "Cambiar a modo claro",
       "themeToDark": "Cambiar a modo oscuro",
       "bucketCount": "{{count}} en este grupo",
-      "productVersion": "0.4.0"
+      "productVersion": "1.0.0"
     },
     "chrome": {
       "subtitleCount": "{{count}} prompts",
