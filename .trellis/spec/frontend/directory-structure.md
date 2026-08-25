@@ -48,8 +48,8 @@ src/
 ```
 
 Generated or local-only files are not source: `dist/`, `src-tauri/target/`,
-`src-tauri/gen/schemas/`, `node_modules/`, `.omx/state/`, and `ref/` must not be
-edited for frontend work.
+`src-tauri/gen/schemas/`, `node_modules/`, and `ref/` must not be edited for
+frontend work.
 
 ---
 

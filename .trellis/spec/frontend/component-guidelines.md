@@ -263,7 +263,7 @@ When adding or renaming keys:
 ## Common Mistakes
 
 - Hardcoding English labels in JSX.
-- Importing `@tauri-apps/api` or calling the backend from a component.
+- Calling the backend from a component instead of the feature `api.ts`.
 - Using raw color classes when a token class exists.
 - Adding an icon from a library other than `lucide-react`.
 - Letting a component grow both backend orchestration and detailed rendering;

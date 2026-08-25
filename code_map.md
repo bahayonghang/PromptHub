@@ -51,21 +51,15 @@ commands, and safety constraints live in `AGENTS.md`.
 
 ## Generated, Vendored, and Ignored Paths
 
-- `dist/` — Vite build output; do not edit by hand.
-- `src-tauri/target/` — Cargo build output; do not edit.
+Skip these during search and navigation. The rules about which of them must not
+be edited live in `AGENTS.md`.
+
+- `dist/` — Vite build output.
+- `src-tauri/target/` — Cargo build output.
 - `src-tauri/gen/schemas/` — Tauri-generated ACL/capability schemas; regenerated on build.
-- `node_modules/` — installed dependencies; skip during guidance/navigation.
-- `ref/` — read-only reference tree; gitignored, excluded from the build.
+- `node_modules/` — installed dependencies.
+- `ref/` — read-only Electron reference tree; gitignored, excluded from the build.
 - `.agents/`, `.codex/`, `.claude/` — local agent/platform tooling; inspect only
   for agent workflow changes and do not treat as application source.
-- `.trellis/workspace/` — per-developer journals/session traces; prefer Trellis
-  scripts for lifecycle edits.
-- `.omx/state/`, `.kiro/`, `.vscode/` — local tooling/editor state.
-
-## Verification Command Index
-
-- `just build` — frontend typecheck + production build (run from root).
-- `just test` — frontend Vitest suite (run from root).
-- `just test-rust` — backend tests (run from root via `src-tauri/Cargo.toml`).
-- `just fmt-check` / `just clippy` — backend format/lint gates.
-- `just ci` — full local gate for broad or cross-boundary changes.
+- `.trellis/workspace/` — per-developer journals/session traces.
+- `.kiro/`, `.vscode/` — local editor state.
