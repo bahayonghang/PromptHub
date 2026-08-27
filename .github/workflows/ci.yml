@@ -1,13 +1,12 @@
 name: CI
 
+# Full gate on PRs into main or dev. Direct branch pushes do not run this workflow.
 on:
-  push:
-    branches: [main, dev]
   pull_request:
     branches: [main, dev]
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
