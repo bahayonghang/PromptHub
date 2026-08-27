@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     include: [
-      ".trellis/tasks/08-27-fix-new-prompt-title-focus/research/*.test.tsx",
+      ".trellis/tasks/archive/2026-08/08-27-fix-new-prompt-title-focus/research/*.test.tsx",
     ],
   },
 });

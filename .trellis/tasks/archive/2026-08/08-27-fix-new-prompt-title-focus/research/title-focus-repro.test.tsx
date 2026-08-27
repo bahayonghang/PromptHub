@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import i18n, { ensureBundle } from "../../../../src/runtime/i18n";
-import { usePromptStore } from "../../../../src/features/prompts/promptStore";
-import { PromptDetailModal } from "../../../../src/features/prompts/components/detail/PromptDetailModal";
+import i18n, { ensureBundle } from "../../../../../../src/runtime/i18n";
+import { usePromptStore } from "../../../../../../src/features/prompts/promptStore";
+import { PromptDetailModal } from "../../../../../../src/features/prompts/components/detail/PromptDetailModal";
 
 const initialStore = usePromptStore.getState();
 

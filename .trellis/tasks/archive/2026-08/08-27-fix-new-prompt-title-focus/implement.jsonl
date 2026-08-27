@@ -1,3 +1,3 @@
 {"file":".trellis/spec/frontend/component-guidelines.md","reason":"Preserve the repository's component, focus, and accessibility patterns while changing the shared modal lifecycle."}
 {"file":".trellis/spec/frontend/hook-guidelines.md","reason":"Apply the repository's effect-dependency guidance at the confirmed focus-reset boundary."}
-{"file":".trellis/tasks/08-27-fix-new-prompt-title-focus/research/title-focus-repro.test.tsx","reason":"Use the red-capable real-component reproduction as the implementation feedback loop."}
+{"file":".trellis/tasks/archive/2026-08/08-27-fix-new-prompt-title-focus/research/root-cause.md","reason":"Use the confirmed focus-loss causal chain and red-to-green reproduction evidence as the implementation feedback loop."}
