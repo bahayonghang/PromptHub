@@ -371,3 +371,26 @@ Added deterministic paging, immutable revisions, portable bundles, private promp
 ### Status
 
 [OK] **Completed**
+
+
+## Session 12: 修复新建 Prompt 标题焦点并升级 Trellis
+
+**Date**: 2026-08-27
+**Task**: 修复新建 Prompt 标题焦点并升级 Trellis
+**Branch**: `dev`
+
+### Summary
+
+升级 Trellis 运行时至 0.7.0-beta.3；修复新建 Prompt 首字符后焦点跳到铅笔按钮的问题；补齐回归测试、Hook 契约和归档复验路径。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c5ca31212adcadeb2c636a49686e46beebae02a4` | (see git log) |
+| `133a4d45e59284179c427bd3869f74e85e935be2` | (see git log) |
+| `0fbe0ef` | (see git log) |
+
+### Status
+
+[OK] **Completed**
