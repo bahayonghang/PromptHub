@@ -52,6 +52,48 @@ afterEach(() => {
 });
 
 describe("PromptDetailModal", () => {
+  it("keeps focus on the new Prompt title while typing", async () => {
+    render(
+      <PromptDetailModal
+        open
+        creating
+        prompt={null}
+        prompts={[]}
+        versions={[]}
+        folders={[]}
+        promptTypeDefinitions={[]}
+        knownTags={[]}
+        onClose={vi.fn()}
+        onCreate={vi.fn()}
+        onSave={vi.fn()}
+        onCreateFolder={vi.fn(async () => null)}
+        onCreatePromptType={vi.fn(async () => null)}
+        onToggleFavorite={vi.fn()}
+        onTogglePin={vi.fn()}
+        onDuplicate={vi.fn()}
+        onDelete={vi.fn()}
+        onCreateVersion={vi.fn()}
+        onRollback={vi.fn()}
+      />,
+    );
+
+    const pencil = screen.getByRole("button", { name: "Read only" });
+    await waitFor(() => expect(document.activeElement).toBe(pencil));
+
+    const title = screen.getByLabelText("Title") as HTMLInputElement;
+    title.focus();
+    expect(document.activeElement).toBe(title);
+
+    fireEvent.change(title, { target: { value: "u" } });
+    await act(async () => {
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 20));
+    });
+
+    expect(title.value).toBe("u");
+    expect(screen.getByLabelText("Title")).toBe(title);
+    expect(document.activeElement).toBe(title);
+  });
+
   it("saves with the same update payload as the inline editor", async () => {
     const onSave = vi.fn(async () => savedPrompt());
     render(

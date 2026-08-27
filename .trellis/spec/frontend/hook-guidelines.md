@@ -46,6 +46,40 @@ Use `useState` for transient UI state only:
 Do not store backend-backed data in component `useState` when a feature store
 already owns that domain.
 
+### Keep Overlay Lifecycle Effects Independent from Callback Identity
+
+Effects that acquire and release overlay lifecycle state, such as initial focus,
+focus restoration, inert regions, or modal-stack membership, must be keyed to
+the overlay's actual open/closed transition. Do not make that lifecycle depend
+on an inline callback prop when the effect does not need to capture the callback.
+Otherwise every parent render can run the cleanup and entry behavior again,
+moving focus away from the control the user is editing.
+
+```tsx
+// Wrong: a new onClose identity restarts entry focus while the modal is open.
+useEffect(() => {
+  stack.push({ id, onClose });
+  focusFirstControl();
+  return restorePreviousFocus;
+}, [open, onClose]);
+
+// Correct: lifecycle follows open; rendered handlers use the current callback.
+useEffect(() => {
+  stack.push({ id });
+  focusFirstControl();
+  return restorePreviousFocus;
+}, [open]);
+
+const onKeyDown = () => onClose();
+```
+
+If an external subscription or registry genuinely needs the latest callback,
+update a ref or the registered entry without tearing down the overlay lifecycle.
+Regression tests must re-render an open overlay through a real editing path,
+wait for pending focus work, and assert both that the edited value is retained
+and that focus remains on the edited control. Existing entry focus, Tab trap,
+Escape, stacked-overlay, and close-time restoration tests must also keep passing.
+
 ---
 
 ## Zustand Hook Patterns
