@@ -1,0 +1,4 @@
+{"file":".trellis/spec/frontend/quality-guidelines.md","reason":"Verify Runtime Bridge boundary, colocated tests, and required frontend gates."}
+{"file":".trellis/spec/frontend/state-management.md","reason":"Verify overlay-open is store state and selectPrompt does not open the overlay."}
+{"file":".trellis/spec/frontend/component-guidelines.md","reason":"Verify palette still opens via requestSelectPrompt and close still deselects in edit mode."}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"Confirm we reuse requestSelectPrompt instead of a second open API for the palette."}

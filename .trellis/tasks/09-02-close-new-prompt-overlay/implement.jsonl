@@ -1,0 +1,5 @@
+{"file":".trellis/spec/frontend/index.md","reason":"Pre-development checklist for frontend view and store work."}
+{"file":".trellis/spec/frontend/state-management.md","reason":"detailOpen is shared overlay-open state; must live in the prompt store, not PromptsView local state."}
+{"file":".trellis/spec/frontend/component-guidelines.md","reason":"Overlay, palette, and library remain props-and-callbacks components; do not add a new hook layer."}
+{"file":".trellis/spec/frontend/quality-guidelines.md","reason":"Colocated tests, preserve Req comments, run just build and just test."}
+{"file":".trellis/spec/frontend/hook-guidelines.md","reason":"creating stays component-local; do not introduce a custom hook for overlay visibility."}
