@@ -34,6 +34,7 @@ Use component-local state for:
 Use a Zustand store for:
 - data loaded from backend commands
 - selected entity ids shared by multiple child components
+- overlay-open flags shared by library, palette, and shortcuts
 - active filters that affect backend search
 - capability-unavailable flags
 - durable error/loading/restart indicators
@@ -74,6 +75,7 @@ createPrompt: async (input) => {
     const prompt = await api.createPrompt(input);
     await get().refreshPrompts();
     await get().selectPrompt(prompt.id);
+    get().closeDetail();
     return prompt;
   } catch (err) {
     set({ error: errorMessage(err) });
@@ -128,6 +130,34 @@ it inside a store action rather than recomputing in multiple components.
 
 ---
 
+## Prompt detail overlay
+
+`detailOpen` is independent of `selectedPromptId`. `CommandPalette` is a sibling
+of `PromptsView` and opens a Prompt through `requestSelectPrompt`, so overlay
+visibility cannot live only in the view.
+
+```text
+open = creating || (detailOpen && selectedPrompt != null)
+```
+
+`creating` stays local in `PromptsView` (a create draft is not a selected row).
+
+| Action | Selection | Overlay |
+|---|---|---|
+| `selectPrompt(id)` | loads the row | unchanged |
+| `requestSelectPrompt(id)` when `id != null` | `selectPrompt(id)` after the nav guard | `detailOpen = true` |
+| `requestSelectPrompt(null)` | clears selection after the nav guard | `detailOpen = false` |
+| `createPrompt` | persist, refresh, `selectPrompt(newId)` | `closeDetail()` |
+| `closeDetail()` | unchanged | `detailOpen = false` |
+| view dismiss (`onClose`) | `selectPrompt(null)` | `closeDetail()` plus local `creating = false` |
+
+Create-mode **Create**, `Ctrl+S`, and dirty **Save and close** must not call
+`onClose`. That callback deselects. After a successful create the library keeps
+the new row highlighted and the overlay stays closed until
+`requestSelectPrompt(id)` runs again.
+
+---
+
 ## Error and Capability Patterns
 
 Bridge failures are turned into strings through local `errorMessage(err)`
@@ -155,3 +185,6 @@ backup failure as non-fatal.
   dedicated unavailable flag.
 - Duplicating selector logic in JSX instead of exporting a selector or pure
   helper.
+- Deriving the Prompt detail overlay from `selectedPrompt != null`.
+  `createPrompt` selects the new row (Req 6.1); that derivation keeps the
+  overlay open as an editor after **Create**. Use `detailOpen` instead.
