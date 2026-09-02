@@ -394,3 +394,26 @@ Added deterministic paging, immutable revisions, portable bundles, private promp
 ### Status
 
 [OK] **Completed**
+
+
+## Session 13: 新建 Prompt 创建后关闭弹窗
+
+**Date**: 2026-09-02
+**Task**: 新建 Prompt 创建后关闭弹窗
+**Branch**: `dev`
+
+### Summary
+
+新建 Prompt 点击创建后保存并关闭弹窗，库列表保持选中新行；detailOpen 与选中态拆开，命令面板仍通过 requestSelectPrompt 打开弹窗。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `857aee1` | (see git log) |
+| `8af4a27` | (see git log) |
+| `85c3101` | (see git log) |
+
+### Status
+
+[OK] **Completed**

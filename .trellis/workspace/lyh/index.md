@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 12
-- **Last Active**: 2026-08-27
+- **Total Sessions**: 13
+- **Last Active**: 2026-09-02
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~396 | Active |
+| `journal-1.md` | ~419 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 13 | 2026-09-02 | 新建 Prompt 创建后关闭弹窗 | `857aee1`, `8af4a27`, `85c3101` | `dev` |
 | 12 | 2026-08-27 | 修复新建 Prompt 标题焦点并升级 Trellis | `c5ca31212adcadeb2c636a49686e46beebae02a4`, `133a4d45e59284179c427bd3869f74e85e935be2`, `0fbe0ef` | `dev` |
 | 11 | 2026-08-24 | Prompt 一键复制与默认对话 | `647a468`, `2086fc5` | `main` |
 | 10 | 2026-07-15 | Prompt 工作区 UX 优化父任务收尾 | `105da0c`, `fa8082c`, `d844f34`, `7da169c`, `621f446`, `1369a0a`, `a258ae8`, `4a0cb50` | `main` |
