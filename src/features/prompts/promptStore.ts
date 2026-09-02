@@ -175,6 +175,8 @@ interface PromptStoreState {
   selectedPromptId: string | null;
   selectedPrompt: Prompt | null;
   selectedPromptIds: string[];
+  /** Overlay visibility; independent of `selectedPromptId`. */
+  detailOpen: boolean;
   /** Version history of the selected prompt (Req 7.1), ascending by version. */
   versions: PromptVersion[];
 
@@ -186,6 +188,8 @@ interface PromptStoreState {
   registerNavigationGuard: (guard: NavigationGuard | null) => void;
   registerDetailActions: (actions: DetailActions | null) => void;
   requestSelectPrompt: (id: string | null) => Promise<boolean>;
+  /** Hides the detail overlay without changing selection. */
+  closeDetail: () => void;
   createPromptAction: (() => void) | null;
   registerCreatePromptAction: (action: (() => void) | null) => void;
 
@@ -285,6 +289,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
   selectedPromptId: null,
   selectedPrompt: null,
   selectedPromptIds: [],
+  detailOpen: false,
   versions: [],
 
   loading: false,
@@ -303,8 +308,10 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
       if (result === "cancel") return false;
     }
     await get().selectPrompt(id);
+    set({ detailOpen: id != null });
     return true;
   },
+  closeDetail: () => set({ detailOpen: false }),
 
   load: async () => {
     const { api, filters, offset } = get();
@@ -522,6 +529,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
       await get().refreshPrompts();
       await get().refreshCounts();
       await get().selectPrompt(prompt.id);
+      get().closeDetail();
       return prompt;
     } catch (err) {
       set({ error: errorMessage(err) });
@@ -556,7 +564,12 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
     try {
       await api.deletePrompt(id);
       if (get().selectedPromptId === id) {
-        set({ selectedPromptId: null, selectedPrompt: null, versions: [] });
+        set({
+          selectedPromptId: null,
+          selectedPrompt: null,
+          versions: [],
+          detailOpen: false,
+        });
       }
       set({
         selectedPromptIds: get().selectedPromptIds.filter(
@@ -636,7 +649,12 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
       await get().api.batchDelete(ids);
       const selectedPromptId = get().selectedPromptId;
       if (selectedPromptId != null && ids.includes(selectedPromptId)) {
-        set({ selectedPromptId: null, selectedPrompt: null, versions: [] });
+        set({
+          selectedPromptId: null,
+          selectedPrompt: null,
+          versions: [],
+          detailOpen: false,
+        });
       }
       set({ selectedPromptIds: [] });
       await get().refreshPrompts();

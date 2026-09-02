@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import i18n, { ensureBundle } from "../../runtime/i18n";
 import { PromptsView } from "./PromptsView";
+import { resetPreferredChatModeForTests } from "./definitionMode";
 import {
   DEFAULT_FILTERS,
   usePromptStore,
 } from "./promptStore";
-import type { Prompt } from "./types";
+import type { CreatePromptInput, Prompt } from "./types";
 
 const initialStore = usePromptStore.getState();
 
@@ -46,6 +47,7 @@ const prompt: Prompt = {
 beforeEach(async () => {
   await ensureBundle("en");
   await i18n.changeLanguage("en");
+  resetPreferredChatModeForTests();
   usePromptStore.setState({
     folders: [],
     prompts: [prompt],
@@ -57,13 +59,19 @@ beforeEach(async () => {
     selectedPrompt: null,
     selectedPromptIds: [],
     versions: [],
+    detailOpen: false,
     loading: false,
     error: null,
     load: async () => {},
     selectPrompt: async (id) => {
+      const found =
+        id == null
+          ? null
+          : (usePromptStore.getState().prompts.find((item) => item.id === id) ??
+            null);
       usePromptStore.setState({
         selectedPromptId: id,
-        selectedPrompt: id === prompt.id ? prompt : null,
+        selectedPrompt: found,
         versions: [],
       });
     },
@@ -204,4 +212,107 @@ describe("PromptsView responsive workspace", () => {
     });
     expect(usePromptStore.getState().selectedPromptId).toBe(prompt.id);
   });
+
+  it("clears library selection when the detail overlay is closed", async () => {
+    render(<PromptsView />);
+    fireEvent.click(screen.getByRole("button", { name: "Release notes" }));
+    await screen.findByRole("textbox", { name: "Title" });
+    fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0]);
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    expect(usePromptStore.getState().selectedPromptId).toBeNull();
+    expect(usePromptStore.getState().detailOpen).toBe(false);
+  });
+
+  it("closes the overlay after Create and keeps the new prompt selected", async () => {
+    stubCreatePrompt();
+    render(<PromptsView />);
+    fireEvent.click(screen.getByRole("button", { name: "New Prompt" }));
+    const title = await screen.findByRole("textbox", { name: "Title" });
+    fireEvent.change(title, { target: { value: "Created prompt" } });
+    fireEvent.change(screen.getByLabelText("Content for message 1"), {
+      target: { value: "Created body" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    expect(usePromptStore.getState().selectedPromptId).toBe("created-1");
+    expect(usePromptStore.getState().detailOpen).toBe(false);
+    expect(screen.queryByRole("heading", { name: "Created prompt" })).toBeNull();
+    expect(screen.queryByText("Created prompt")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Created prompt" }));
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeTruthy();
+    });
+    expect(
+      (screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement).value,
+    ).toBe("Created prompt");
+  });
+
+  it("keeps the new prompt selected after create-mode Save and close", async () => {
+    stubCreatePrompt();
+    render(<PromptsView />);
+    fireEvent.click(screen.getByRole("button", { name: "New Prompt" }));
+    const title = await screen.findByRole("textbox", { name: "Title" });
+    fireEvent.change(title, { target: { value: "Created prompt" } });
+    fireEvent.change(screen.getByLabelText("Content for message 1"), {
+      target: { value: "Created body" },
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Save and close" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    expect(usePromptStore.getState().selectedPromptId).toBe("created-1");
+    expect(usePromptStore.getState().detailOpen).toBe(false);
+  });
+
+  it("closes the overlay after create-mode registered save and keeps selection", async () => {
+    stubCreatePrompt();
+    render(<PromptsView />);
+    fireEvent.click(screen.getByRole("button", { name: "New Prompt" }));
+    const title = await screen.findByRole("textbox", { name: "Title" });
+    fireEvent.change(title, { target: { value: "Created prompt" } });
+    fireEvent.change(screen.getByLabelText("Content for message 1"), {
+      target: { value: "Created body" },
+    });
+    await waitFor(() => {
+      expect(usePromptStore.getState().detailActions).not.toBeNull();
+    });
+    await act(async () => {
+      await usePromptStore.getState().detailActions?.save();
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    expect(usePromptStore.getState().selectedPromptId).toBe("created-1");
+    expect(screen.queryByRole("heading", { name: "Created prompt" })).toBeNull();
+  });
 });
+
+function stubCreatePrompt() {
+  usePromptStore.setState({
+    createPrompt: async (input: CreatePromptInput) => {
+      const created: Prompt = {
+        ...prompt,
+        id: "created-1",
+        title: input.title,
+        userPrompt: input.userPrompt,
+        messages: input.messages ?? [],
+      };
+      usePromptStore.setState({
+        prompts: [...usePromptStore.getState().prompts, created],
+        total: usePromptStore.getState().prompts.length + 1,
+      });
+      await usePromptStore.getState().selectPrompt(created.id);
+      usePromptStore.getState().closeDetail();
+      return created;
+    },
+  });
+}

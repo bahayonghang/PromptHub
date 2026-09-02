@@ -3,7 +3,8 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import i18n, { ensureBundle } from "../../../../runtime/i18n";
 import type { Folder, Prompt, PromptTypeDefinition } from "../../types";
-import { PromptDetailModal } from "./PromptDetailModal";
+import { PromptDetailModal, type PromptDetailModalProps } from "./PromptDetailModal";
+import { resetPreferredChatModeForTests } from "../../definitionMode";
 import { usePromptStore } from "../../promptStore";
 
 const initialStore = usePromptStore.getState();
@@ -44,6 +45,7 @@ function savedPrompt(): Prompt {
 beforeEach(async () => {
   await ensureBundle("en");
   await i18n.changeLanguage("en");
+  resetPreferredChatModeForTests();
 });
 
 afterEach(() => {
@@ -207,4 +209,100 @@ describe("PromptDetailModal", () => {
       (screen.getByLabelText("Title") as HTMLInputElement).value,
     ).toBe("Dirty");
   });
+
+  it("calls onCreate and not onClose when Create succeeds", async () => {
+    const { onClose, onCreate } = renderCreateModal();
+    fillCreateDraft();
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+    await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("saves through the registered detail action without closing", async () => {
+    const { onClose, onCreate } = renderCreateModal();
+    fillCreateDraft();
+    await waitFor(() => {
+      expect(usePromptStore.getState().detailActions).not.toBeNull();
+    });
+    await act(async () => {
+      await usePromptStore.getState().detailActions?.save();
+    });
+    expect(onCreate).toHaveBeenCalledOnce();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("keeps the overlay open when create validation fails", () => {
+    const { onClose, onCreate } = renderCreateModal();
+    fireEvent.change(screen.getByLabelText("Title"), { target: { value: "   " } });
+    fireEvent.change(screen.getByLabelText("Content for message 1"), {
+      target: { value: "Body" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+    expect(onCreate).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("keeps the overlay open when onCreate fails", async () => {
+    const { onClose, onCreate } = renderCreateModal({
+      onCreate: vi.fn(async () => null),
+    });
+    fillCreateDraft();
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+    await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("does not call onClose after create-mode Save and close", async () => {
+    const { onClose, onCreate } = renderCreateModal();
+    fillCreateDraft();
+    fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Save and close" }));
+    await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.queryByRole("heading", { name: "Unsaved changes" })).toBeNull();
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
 });
+
+function renderCreateModal(
+  overrides: {
+    onClose?: PromptDetailModalProps["onClose"];
+    onCreate?: PromptDetailModalProps["onCreate"];
+  } = {},
+) {
+  const onClose = overrides.onClose ?? vi.fn();
+  const onCreate = overrides.onCreate ?? vi.fn(async () => ({ id: "new" }));
+  render(
+    <PromptDetailModal
+      open
+      creating
+      prompt={null}
+      prompts={[]}
+      versions={[]}
+      folders={[]}
+      promptTypeDefinitions={[]}
+      knownTags={[]}
+      onClose={onClose}
+      onCreate={onCreate}
+      onSave={vi.fn()}
+      onCreateFolder={vi.fn(async () => null)}
+      onCreatePromptType={vi.fn(async () => null)}
+      onToggleFavorite={vi.fn()}
+      onTogglePin={vi.fn()}
+      onDuplicate={vi.fn()}
+      onDelete={vi.fn()}
+      onCreateVersion={vi.fn()}
+      onRollback={vi.fn()}
+    />,
+  );
+  return { onClose, onCreate };
+}
+
+function fillCreateDraft(title = "New title", body = "New body") {
+  fireEvent.change(screen.getByLabelText("Title"), { target: { value: title } });
+  fireEvent.change(screen.getByLabelText("Content for message 1"), {
+    target: { value: body },
+  });
+}

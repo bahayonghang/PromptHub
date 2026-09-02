@@ -699,8 +699,17 @@ export function PromptDetailModal({
               type="button"
               onClick={() => {
                 void save().then((result) => {
-                  if (result.ok) finishProceed();
-                  else resolvePending("cancel");
+                  if (!result.ok) {
+                    resolvePending("cancel");
+                    return;
+                  }
+                  // Create already selected the new Prompt; onClose would deselect it.
+                  if (creating) {
+                    closeIntent.current = null;
+                    resolvePending("proceed");
+                    return;
+                  }
+                  finishProceed();
                 });
               }}
               className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"

@@ -177,6 +177,7 @@ function resetStore(api: PromptApi) {
     selectedPromptId: null,
     selectedPrompt: null,
     versions: [],
+    detailOpen: false,
     loading: false,
     error: null,
   });
@@ -528,9 +529,41 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
     const ok = await usePromptStore.getState().requestSelectPrompt("p1");
     expect(ok).toBe(false);
     expect(usePromptStore.getState().selectedPromptId).toBeNull();
+    expect(usePromptStore.getState().detailOpen).toBe(false);
     usePromptStore.getState().registerNavigationGuard(async () => "proceed");
     const next = await usePromptStore.getState().requestSelectPrompt("p1");
     expect(next).toBe(true);
+    expect(usePromptStore.getState().selectedPromptId).toBe("p1");
+    expect(usePromptStore.getState().detailOpen).toBe(true);
+  });
+
+  it("requestSelectPrompt() sets detailOpen and selectPrompt() does not", async () => {
+    resetStore(makeApi());
+    await usePromptStore.getState().selectPrompt("p1");
+    expect(usePromptStore.getState().detailOpen).toBe(false);
+
+    usePromptStore.setState({ detailOpen: true });
+    await usePromptStore.getState().selectPrompt("p1");
+    expect(usePromptStore.getState().detailOpen).toBe(true);
+
+    const opened = await usePromptStore.getState().requestSelectPrompt("p1");
+    expect(opened).toBe(true);
+    expect(usePromptStore.getState().detailOpen).toBe(true);
+
+    const closed = await usePromptStore.getState().requestSelectPrompt(null);
+    expect(closed).toBe(true);
+    expect(usePromptStore.getState().selectedPromptId).toBeNull();
+    expect(usePromptStore.getState().detailOpen).toBe(false);
+  });
+
+  it("closeDetail() hides the overlay without changing selection", async () => {
+    resetStore(makeApi());
+    await usePromptStore.getState().selectPrompt("p1");
+    usePromptStore.setState({ detailOpen: true });
+
+    usePromptStore.getState().closeDetail();
+
+    expect(usePromptStore.getState().detailOpen).toBe(false);
     expect(usePromptStore.getState().selectedPromptId).toBe("p1");
   });
 
@@ -543,6 +576,7 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
         getPrompt: vi.fn(async () => created),
       }),
     );
+    usePromptStore.setState({ detailOpen: true });
 
     const result = await usePromptStore
       .getState()
@@ -550,6 +584,7 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
 
     expect(result).toEqual(created);
     expect(usePromptStore.getState().selectedPromptId).toBe("new");
+    expect(usePromptStore.getState().detailOpen).toBe(false);
   });
 
   it("savePrompt() surfaces a BridgeError message on failure (Req 3.5)", async () => {
@@ -571,12 +606,13 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
 
   it("deletePrompt() clears the selection when the deleted prompt was selected (Req 6.5)", async () => {
     resetStore(makeApi());
-    usePromptStore.setState({ selectedPromptId: "p1" });
+    usePromptStore.setState({ selectedPromptId: "p1", detailOpen: true });
 
     await usePromptStore.getState().deletePrompt("p1");
 
     expect(usePromptStore.getState().selectedPromptId).toBeNull();
     expect(usePromptStore.getState().versions).toEqual([]);
+    expect(usePromptStore.getState().detailOpen).toBe(false);
   });
 
   it("createPromptType() refreshes definitions and returns the authoritative row", async () => {
