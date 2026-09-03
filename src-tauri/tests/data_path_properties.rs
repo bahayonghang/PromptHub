@@ -26,7 +26,7 @@ use std::path::Path;
 use proptest::prelude::*;
 use tempfile::TempDir;
 
-use prompthub_lib::services::data_path::preview_change;
+use prompthub_lib::services::data_path::{preview_change, ConfirmTokenRegistry};
 
 // ---------------------------------------------------------------------------
 // Known PromptHub data markers
@@ -273,7 +273,8 @@ proptest! {
 
         // Snapshot the whole tree, run the preview, snapshot again.
         let before = snapshot(root);
-        let result = preview_change(&active, &target).unwrap();
+        let mut tokens = ConfirmTokenRegistry::default();
+        let result = preview_change(&active, &target, &mut tokens).unwrap();
         let after = snapshot(root);
 
         // (1) Read-only: nothing on disk changed.

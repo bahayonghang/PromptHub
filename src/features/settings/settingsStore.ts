@@ -493,10 +493,12 @@ export const useSettingsStore = create<SettingsStoreState>((set, get) => ({
   clearPreview: () => set({ preview: null }),
 
   applyDataChange: async (targetPath, action) => {
-    const { api } = get();
+    const { api, preview } = get();
     set({ error: null });
     try {
-      const result = await api.applyDataChange(targetPath, action);
+      const confirmToken =
+        preview && preview.targetPath === targetPath ? preview.confirmToken : "";
+      const result = await api.applyDataChange(targetPath, action, confirmToken);
       set({ preview: null });
       // Refresh the status first, then assert restart-required from the apply
       // result so the authoritative apply signal is not clobbered (Req 19.5).
@@ -528,7 +530,8 @@ export const useSettingsStore = create<SettingsStoreState>((set, get) => ({
     const { api } = get();
     set({ error: null });
     try {
-      const result = await api.recoveryApply(sourcePath);
+      const preview = await api.recoveryPreview(sourcePath);
+      const result = await api.recoveryApply(sourcePath, preview.confirmToken);
       // Refresh the status first, then assert restart-required from the apply
       // result so the authoritative recovery signal is not clobbered (Req 19.8).
       await get().refreshDataStatus();

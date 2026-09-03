@@ -3,7 +3,7 @@ use std::sync::atomic::Ordering;
 use crate::error::CommandResult;
 use crate::services::sync::{
     self, BackupEntry, ConnectionTestResult, ExportResult, ExportScope, RestoreResult, S3Config,
-    StatResult, WebDavConfig,
+    WebDavConfig,
 };
 use crate::state::AppState;
 
@@ -20,57 +20,6 @@ pub async fn sync_webdav_test<R: tauri::Runtime>(
     }
 }
 
-#[tauri::command(rename = "webdav.upload")]
-pub async fn sync_webdav_upload<R: tauri::Runtime>(
-    config: WebDavConfig,
-    remote_path: String,
-    data: Vec<u8>,
-    app: tauri::AppHandle<R>,
-) -> CommandResult<()> {
-    match ensure_app_ready(&app) {
-        Ok(()) => sync::webdav_upload(&config, &remote_path, data)
-            .await
-            .into(),
-        Err(e) => CommandResult::Err(e),
-    }
-}
-
-#[tauri::command(rename = "webdav.download")]
-pub async fn sync_webdav_download<R: tauri::Runtime>(
-    config: WebDavConfig,
-    remote_path: String,
-    app: tauri::AppHandle<R>,
-) -> CommandResult<Vec<u8>> {
-    match ensure_app_ready(&app) {
-        Ok(()) => sync::webdav_download(&config, &remote_path).await.into(),
-        Err(e) => CommandResult::Err(e),
-    }
-}
-
-#[tauri::command(rename = "webdav.stat")]
-pub async fn sync_webdav_stat<R: tauri::Runtime>(
-    config: WebDavConfig,
-    remote_path: String,
-    app: tauri::AppHandle<R>,
-) -> CommandResult<StatResult> {
-    match ensure_app_ready(&app) {
-        Ok(()) => sync::webdav_stat(&config, &remote_path).await.into(),
-        Err(e) => CommandResult::Err(e),
-    }
-}
-
-#[tauri::command(rename = "webdav.ensureDir")]
-pub async fn sync_webdav_ensure_dir<R: tauri::Runtime>(
-    config: WebDavConfig,
-    remote_path: String,
-    app: tauri::AppHandle<R>,
-) -> CommandResult<()> {
-    match ensure_app_ready(&app) {
-        Ok(()) => sync::webdav_ensure_dir(&config, &remote_path).await.into(),
-        Err(e) => CommandResult::Err(e),
-    }
-}
-
 #[tauri::command(rename = "s3.test")]
 pub async fn sync_s3_test<R: tauri::Runtime>(
     config: S3Config,
@@ -78,43 +27,6 @@ pub async fn sync_s3_test<R: tauri::Runtime>(
 ) -> CommandResult<ConnectionTestResult> {
     match ensure_app_ready(&app) {
         Ok(()) => sync::s3_test(&config).await.into(),
-        Err(e) => CommandResult::Err(e),
-    }
-}
-
-#[tauri::command(rename = "s3.upload")]
-pub async fn sync_s3_upload<R: tauri::Runtime>(
-    config: S3Config,
-    key: String,
-    data: Vec<u8>,
-    app: tauri::AppHandle<R>,
-) -> CommandResult<()> {
-    match ensure_app_ready(&app) {
-        Ok(()) => sync::s3_upload(&config, &key, data).await.into(),
-        Err(e) => CommandResult::Err(e),
-    }
-}
-
-#[tauri::command(rename = "s3.download")]
-pub async fn sync_s3_download<R: tauri::Runtime>(
-    config: S3Config,
-    key: String,
-    app: tauri::AppHandle<R>,
-) -> CommandResult<Vec<u8>> {
-    match ensure_app_ready(&app) {
-        Ok(()) => sync::s3_download(&config, &key).await.into(),
-        Err(e) => CommandResult::Err(e),
-    }
-}
-
-#[tauri::command(rename = "s3.stat")]
-pub async fn sync_s3_stat<R: tauri::Runtime>(
-    config: S3Config,
-    key: String,
-    app: tauri::AppHandle<R>,
-) -> CommandResult<StatResult> {
-    match ensure_app_ready(&app) {
-        Ok(()) => sync::s3_stat(&config, &key).await.into(),
         Err(e) => CommandResult::Err(e),
     }
 }

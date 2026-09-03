@@ -1,6 +1,5 @@
 //! Command_Layer: the thin Tauri adapter over the backend services.
 
-pub mod ai;
 pub mod data_path;
 pub mod evaluation;
 pub mod events;
@@ -27,6 +26,7 @@ use r2d2::PooledConnection;
 use r2d2_sqlite::SqliteConnectionManager;
 
 use crate::error::{AppError, CommandResult};
+use crate::services::data_path::ConfirmTokenRegistry;
 use crate::services::window::{CloseAction, ShortcutRegistry};
 use crate::state::AppState;
 
@@ -37,6 +37,7 @@ pub struct CommandRuntimeState {
     pub shortcuts: Mutex<ShortcutRegistry>,
     pub selected_media_paths: Mutex<HashSet<PathBuf>>,
     pub update_bytes: Mutex<Option<Vec<u8>>>,
+    pub confirm_tokens: Mutex<ConfirmTokenRegistry>,
 }
 
 impl Default for CommandRuntimeState {
@@ -47,6 +48,7 @@ impl Default for CommandRuntimeState {
             shortcuts: Mutex::new(ShortcutRegistry::new()),
             selected_media_paths: Mutex::new(HashSet::new()),
             update_bytes: Mutex::new(None),
+            confirm_tokens: Mutex::new(ConfirmTokenRegistry::default()),
         }
     }
 }

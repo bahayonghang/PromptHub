@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use tauri::Manager;
 use tauri_plugin_autostart::ManagerExt as AutoStartExt;
@@ -302,9 +302,9 @@ pub fn window_get_runtime_paths(
 #[tauri::command(rename = "app.openPath")]
 pub fn window_open_path(path: String, state: tauri::State<'_, AppState>) -> CommandResult<()> {
     into_command(ensure_ready(&state).and_then(|_| {
-        let path = PathBuf::from(path);
-        window::ensure_path_exists(&path)?;
-        open::that(path).map_err(|e| AppError::io(format!("failed to open path: {e}")))
+        window::open_runtime_path(Path::new(&path), &state.paths, |allowed| {
+            open::that(allowed).map_err(|e| AppError::io(format!("failed to open path: {e}")))
+        })
     }))
 }
 

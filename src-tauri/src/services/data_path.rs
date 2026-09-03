@@ -48,6 +48,7 @@
 //! Command_Layer (task 17.1) supplies the resolved runtime paths.
 #![allow(dead_code)]
 
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -228,6 +229,142 @@ fn path_string(p: &Path) -> String {
     p.to_string_lossy().into_owned()
 }
 
+/// Returns `true` when `path` is `root` or a descendant of `root`.
+fn path_is_prefix(root: &Path, path: &Path) -> bool {
+    let root: Vec<_> = root.components().collect();
+    let path: Vec<_> = path.components().collect();
+    path.starts_with(&root)
+}
+
+fn is_under_runtime_paths(canonical: &Path, paths: &RuntimePaths) -> bool {
+    directory_entries(paths).into_iter().any(|(_, root)| {
+        root.canonicalize()
+            .ok()
+            .is_some_and(|root_c| path_is_prefix(&root_c, canonical))
+    })
+}
+
+/// Canonicalizes an existing `path` and requires it to sit under a RuntimePaths
+/// root (data/media/rule/backup/log). Missing paths return `NOT_FOUND`; paths
+/// outside the roots return `VALIDATION`.
+pub fn ensure_existing_under_runtime_paths(
+    path: &Path,
+    paths: &RuntimePaths,
+) -> Result<PathBuf, AppError> {
+    let canonical = path
+        .canonicalize()
+        .map_err(|_| AppError::not_found(format!("path `{}` does not exist", path.display())))?;
+    if is_under_runtime_paths(&canonical, paths) {
+        Ok(canonical)
+    } else {
+        Err(AppError::validation(format!(
+            "path `{}` is outside the allowed application directories",
+            path.display()
+        )))
+    }
+}
+
+/// Resolves `path` even when the final file does not exist yet, then requires
+/// the resolved location to sit under a RuntimePaths root. Used for export
+/// destinations that the caller is about to create.
+pub fn ensure_destination_under_runtime_paths(
+    path: &Path,
+    paths: &RuntimePaths,
+) -> Result<PathBuf, AppError> {
+    let resolved = soft_canonicalize(path)?;
+    if is_under_runtime_paths(&resolved, paths) {
+        Ok(resolved)
+    } else {
+        Err(AppError::validation(format!(
+            "destination `{}` is outside the allowed application directories",
+            path.display()
+        )))
+    }
+}
+
+/// Canonicalizes the longest existing prefix of `path` and rejoins missing
+/// components. Rejects `.` / `..` in the missing suffix so a non-existent
+/// destination cannot walk out of an allowed root.
+fn soft_canonicalize(path: &Path) -> Result<PathBuf, AppError> {
+    let absolute = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .map_err(|e| AppError::io(format!("failed to resolve current directory: {e}")))?
+            .join(path)
+    };
+
+    let mut cursor = absolute.as_path();
+    let mut missing = Vec::new();
+    while !cursor.exists() {
+        match cursor.file_name() {
+            Some(name) => {
+                missing.push(name.to_os_string());
+                cursor = cursor
+                    .parent()
+                    .ok_or_else(|| AppError::validation("destination path is invalid"))?;
+            }
+            None => return Err(AppError::validation("destination path is invalid")),
+        }
+    }
+
+    let mut canonical = cursor
+        .canonicalize()
+        .map_err(|_| AppError::not_found(format!("path `{}` does not exist", path.display())))?;
+    for name in missing.into_iter().rev() {
+        if name == "." || name == ".." {
+            return Err(AppError::validation(
+                "destination path must not contain `.` or `..` after the existing prefix",
+            ));
+        }
+        canonical.push(name);
+    }
+    Ok(canonical)
+}
+
+/// Kind of one-time confirm token issued by a data-path preview.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ConfirmKind {
+    /// Token from `data.previewChange`, consumed by `data.applyChange`.
+    Change,
+    /// Token from `data.recoveryPreview`, consumed by `data.recoveryApply`.
+    Recovery,
+}
+
+/// In-memory one-time tokens that bind a preview to a later apply.
+#[derive(Debug, Default)]
+pub struct ConfirmTokenRegistry {
+    tokens: HashMap<(ConfirmKind, String), String>,
+}
+
+impl ConfirmTokenRegistry {
+    /// Issues a fresh token for `(kind, path)`, replacing any previous token
+    /// for that pair.
+    pub fn issue(&mut self, kind: ConfirmKind, path: &Path) -> String {
+        let token = uuid::Uuid::new_v4().to_string();
+        self.tokens.insert((kind, path_string(path)), token.clone());
+        token
+    }
+
+    /// Consumes `token` for `(kind, path)`. Missing, wrong, or reused tokens
+    /// return `VALIDATION`.
+    pub fn consume(&mut self, kind: ConfirmKind, path: &Path, token: &str) -> Result<(), AppError> {
+        if token.is_empty() {
+            return Err(AppError::validation("confirm token is required"));
+        }
+        let key = (kind, path_string(path));
+        match self.tokens.get(&key) {
+            Some(issued) if issued == token => {
+                self.tokens.remove(&key);
+                Ok(())
+            }
+            _ => Err(AppError::validation(
+                "confirm token is invalid or has already been used",
+            )),
+        }
+    }
+}
+
 // ===========================================================================
 // Data inspection (read-only)
 // ===========================================================================
@@ -348,6 +485,8 @@ pub struct PreviewResult {
     pub recommended_action: String,
     /// PromptHub data markers found at the target.
     pub markers: Vec<DataMarker>,
+    /// One-time token required by the matching `data.applyChange`.
+    pub confirm_token: String,
 }
 
 /// Reports the state of `target` for a prospective data-path change, **without
@@ -355,7 +494,11 @@ pub struct PreviewResult {
 ///
 /// The recommended action is `switch` when the target already holds PromptHub
 /// data (adopt it as-is) and `migrate` otherwise (copy the current data into it).
-pub fn preview_change(active_data_dir: &Path, target: &Path) -> Result<PreviewResult, AppError> {
+pub fn preview_change(
+    active_data_dir: &Path,
+    target: &Path,
+    tokens: &mut ConfirmTokenRegistry,
+) -> Result<PreviewResult, AppError> {
     let exists = target.exists();
     let markers = discover_markers(target);
     let has_prompt_hub_data = !markers.is_empty();
@@ -372,6 +515,7 @@ pub fn preview_change(active_data_dir: &Path, target: &Path) -> Result<PreviewRe
         is_current,
         recommended_action: recommended_action.to_string(),
         markers,
+        confirm_token: tokens.issue(ConfirmKind::Change, target),
     })
 }
 
@@ -406,7 +550,10 @@ pub fn apply_change(
     config_path: &Path,
     target: &Path,
     action: &str,
+    confirm_token: &str,
+    tokens: &mut ConfirmTokenRegistry,
 ) -> Result<ApplyResult, AppError> {
+    tokens.consume(ConfirmKind::Change, target, confirm_token)?;
     match action {
         ACTION_MIGRATE | ACTION_OVERWRITE => {
             promote_into(active_data_dir, target)?;
@@ -487,17 +634,23 @@ pub struct RecoveryPreview {
     pub has_prompt_hub_data: bool,
     /// PromptHub data markers found at the source.
     pub markers: Vec<DataMarker>,
+    /// One-time token required by the matching `data.recoveryApply`.
+    pub confirm_token: String,
 }
 
 /// Reports the recoverable contents of `source` without modifying current data
 /// (19.7).
-pub fn recovery_preview(source: &Path) -> Result<RecoveryPreview, AppError> {
+pub fn recovery_preview(
+    source: &Path,
+    tokens: &mut ConfirmTokenRegistry,
+) -> Result<RecoveryPreview, AppError> {
     let markers = discover_markers(source);
     Ok(RecoveryPreview {
         source_path: path_string(source),
         exists: source.exists(),
         has_prompt_hub_data: !markers.is_empty(),
         markers,
+        confirm_token: tokens.issue(ConfirmKind::Recovery, source),
     })
 }
 
@@ -509,7 +662,13 @@ pub fn recovery_preview(source: &Path) -> Result<RecoveryPreview, AppError> {
 /// source into the active data directory using the same staged promotion as
 /// [`apply_change`], so a failure leaves the active directory unchanged with no
 /// partial state (19.9).
-pub fn recovery_apply(active_data_dir: &Path, source: &Path) -> Result<ApplyResult, AppError> {
+pub fn recovery_apply(
+    active_data_dir: &Path,
+    source: &Path,
+    confirm_token: &str,
+    tokens: &mut ConfirmTokenRegistry,
+) -> Result<ApplyResult, AppError> {
+    tokens.consume(ConfirmKind::Recovery, source, confirm_token)?;
     if discover_markers(source).is_empty() {
         return Err(AppError::validation(
             "recovery source contains no recoverable PromptHub data",
@@ -628,6 +787,10 @@ mod tests {
         fs::write(dir.join("prompthub.db"), b"DB").unwrap();
         fs::create_dir_all(dir.join("data")).unwrap();
         fs::write(dir.join("data").join("prompthub.db"), b"DB").unwrap();
+    }
+
+    fn preview(active: &Path, target: &Path, tokens: &mut ConfirmTokenRegistry) -> PreviewResult {
+        preview_change(active, target, tokens).unwrap()
     }
 
     // --- runtime directory resolution (23.2, 23.3, 20.9) ---
@@ -759,11 +922,13 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let active = tmp.path().join("active");
         let target = tmp.path().join("empty");
-        let preview = preview_change(&active, &target).unwrap();
+        let mut tokens = ConfirmTokenRegistry::default();
+        let preview = preview(&active, &target, &mut tokens);
         assert!(!preview.exists);
         assert!(!preview.has_prompt_hub_data);
         assert!(!preview.is_current);
         assert_eq!(preview.recommended_action, "migrate");
+        assert!(!preview.confirm_token.is_empty());
     }
 
     #[test]
@@ -772,7 +937,8 @@ mod tests {
         let active = tmp.path().join("active");
         let target = tmp.path().join("with-data");
         seed_data(&target);
-        let preview = preview_change(&active, &target).unwrap();
+        let mut tokens = ConfirmTokenRegistry::default();
+        let preview = preview(&active, &target, &mut tokens);
         assert!(preview.exists);
         assert!(preview.has_prompt_hub_data);
         assert_eq!(preview.recommended_action, "switch");
@@ -784,7 +950,8 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let active = tmp.path().join("active");
         seed_data(&active);
-        let preview = preview_change(&active, &active).unwrap();
+        let mut tokens = ConfirmTokenRegistry::default();
+        let preview = preview(&active, &active, &mut tokens);
         assert!(preview.is_current);
     }
 
@@ -795,7 +962,8 @@ mod tests {
         seed_data(&active);
         let target = tmp.path().join("missing");
         let before_active = fs::read_dir(&active).unwrap().count();
-        preview_change(&active, &target).unwrap();
+        let mut tokens = ConfirmTokenRegistry::default();
+        preview_change(&active, &target, &mut tokens).unwrap();
         // Target was not created.
         assert!(!target.exists());
         // Active is unchanged.
@@ -811,8 +979,11 @@ mod tests {
         seed_data(&active);
         let target = tmp.path().join("target");
         let config = tmp.path().join("data-path.json");
+        let mut tokens = ConfirmTokenRegistry::default();
+        let token = preview(&active, &target, &mut tokens).confirm_token;
 
-        let result = apply_change(&active, &config, &target, "migrate").unwrap();
+        let result =
+            apply_change(&active, &config, &target, "migrate", &token, &mut tokens).unwrap();
         assert!(result.restart_required);
         // Data was copied into the target.
         assert!(target.join("prompthub.db").is_file());
@@ -829,8 +1000,11 @@ mod tests {
         seed_data(&active);
         let target = tmp.path().join("target");
         let config = tmp.path().join("data-path.json");
+        let mut tokens = ConfirmTokenRegistry::default();
+        let token = preview(&active, &target, &mut tokens).confirm_token;
 
-        let result = apply_change(&active, &config, &target, "switch").unwrap();
+        let result =
+            apply_change(&active, &config, &target, "switch", &token, &mut tokens).unwrap();
         assert!(result.restart_required);
         // Target dir created but no data copied.
         assert!(target.is_dir());
@@ -848,8 +1022,10 @@ mod tests {
         seed_data(&target);
         fs::write(target.join("stale.txt"), b"OLD").unwrap();
         let config = tmp.path().join("data-path.json");
+        let mut tokens = ConfirmTokenRegistry::default();
+        let token = preview(&active, &target, &mut tokens).confirm_token;
 
-        apply_change(&active, &config, &target, "overwrite").unwrap();
+        apply_change(&active, &config, &target, "overwrite", &token, &mut tokens).unwrap();
         // Target now mirrors the active data; the stale file is gone.
         assert!(target.join("marker-active.txt").is_file());
         assert!(!target.join("stale.txt").exists());
@@ -862,12 +1038,74 @@ mod tests {
         seed_data(&active);
         let target = tmp.path().join("target");
         let config = tmp.path().join("data-path.json");
+        let mut tokens = ConfirmTokenRegistry::default();
+        let token = preview(&active, &target, &mut tokens).confirm_token;
 
-        let err = apply_change(&active, &config, &target, "delete").unwrap_err();
+        let err =
+            apply_change(&active, &config, &target, "delete", &token, &mut tokens).unwrap_err();
         assert_eq!(err.code_str(), "VALIDATION");
         // No target created, no config written, active untouched.
         assert!(!target.exists());
         assert!(!config.exists());
+        assert!(active.join("prompthub.db").is_file());
+    }
+
+    #[test]
+    fn apply_without_token_is_validation_and_does_not_move_data() {
+        let tmp = TempDir::new().unwrap();
+        let active = tmp.path().join("active");
+        seed_data(&active);
+        let target = tmp.path().join("target");
+        let config = tmp.path().join("data-path.json");
+        let mut tokens = ConfirmTokenRegistry::default();
+
+        let err = apply_change(&active, &config, &target, "migrate", "", &mut tokens).unwrap_err();
+        assert_eq!(err.code_str(), "VALIDATION");
+        assert!(!target.exists());
+        assert!(!config.exists());
+        assert!(active.join("prompthub.db").is_file());
+    }
+
+    #[test]
+    fn apply_with_wrong_token_is_validation_and_does_not_move_data() {
+        let tmp = TempDir::new().unwrap();
+        let active = tmp.path().join("active");
+        seed_data(&active);
+        let target = tmp.path().join("target");
+        let config = tmp.path().join("data-path.json");
+        let mut tokens = ConfirmTokenRegistry::default();
+        let _issued = preview(&active, &target, &mut tokens).confirm_token;
+
+        let err = apply_change(
+            &active,
+            &config,
+            &target,
+            "migrate",
+            "not-the-issued-token",
+            &mut tokens,
+        )
+        .unwrap_err();
+        assert_eq!(err.code_str(), "VALIDATION");
+        assert!(!target.exists());
+        assert!(active.join("prompthub.db").is_file());
+    }
+
+    #[test]
+    fn apply_with_reused_token_is_validation_and_does_not_move_data() {
+        let tmp = TempDir::new().unwrap();
+        let active = tmp.path().join("active");
+        seed_data(&active);
+        let target = tmp.path().join("target");
+        let config = tmp.path().join("data-path.json");
+        let mut tokens = ConfirmTokenRegistry::default();
+        let token = preview(&active, &target, &mut tokens).confirm_token;
+        apply_change(&active, &config, &target, "migrate", &token, &mut tokens).unwrap();
+        fs::write(target.join("only-on-target.txt"), b"keep").unwrap();
+
+        let err =
+            apply_change(&active, &config, &target, "overwrite", &token, &mut tokens).unwrap_err();
+        assert_eq!(err.code_str(), "VALIDATION");
+        assert!(target.join("only-on-target.txt").is_file());
         assert!(active.join("prompthub.db").is_file());
     }
 
@@ -905,10 +1143,12 @@ mod tests {
         let source = tmp.path().join("source");
         seed_data(&source);
         let before = fs::read_dir(&source).unwrap().count();
-        let preview = recovery_preview(&source).unwrap();
+        let mut tokens = ConfirmTokenRegistry::default();
+        let preview = recovery_preview(&source, &mut tokens).unwrap();
         assert!(preview.exists);
         assert!(preview.has_prompt_hub_data);
         assert!(!preview.markers.is_empty());
+        assert!(!preview.confirm_token.is_empty());
         assert_eq!(fs::read_dir(&source).unwrap().count(), before);
     }
 
@@ -920,8 +1160,12 @@ mod tests {
         let source = tmp.path().join("source");
         seed_data(&source);
         fs::write(source.join("recovered.txt"), b"R").unwrap();
+        let mut tokens = ConfirmTokenRegistry::default();
+        let token = recovery_preview(&source, &mut tokens)
+            .unwrap()
+            .confirm_token;
 
-        let result = recovery_apply(&active, &source).unwrap();
+        let result = recovery_apply(&active, &source, &token, &mut tokens).unwrap();
         assert!(result.restart_required);
         assert!(active.join("recovered.txt").is_file());
         assert!(active.join("prompthub.db").is_file());
@@ -936,10 +1180,104 @@ mod tests {
         seed_data(&active);
         let source = tmp.path().join("empty");
         fs::create_dir_all(&source).unwrap();
+        let mut tokens = ConfirmTokenRegistry::default();
+        let token = recovery_preview(&source, &mut tokens)
+            .unwrap()
+            .confirm_token;
 
-        let err = recovery_apply(&active, &source).unwrap_err();
+        let err = recovery_apply(&active, &source, &token, &mut tokens).unwrap_err();
         assert_eq!(err.code_str(), "VALIDATION");
         // Active data unchanged.
         assert!(active.join("prompthub.db").is_file());
+    }
+
+    #[test]
+    fn recovery_apply_without_token_does_not_move_data() {
+        let tmp = TempDir::new().unwrap();
+        let active = tmp.path().join("active");
+        fs::create_dir_all(&active).unwrap();
+        let source = tmp.path().join("source");
+        seed_data(&source);
+        let mut tokens = ConfirmTokenRegistry::default();
+
+        let err = recovery_apply(&active, &source, "", &mut tokens).unwrap_err();
+        assert_eq!(err.code_str(), "VALIDATION");
+        assert!(!active.join("prompthub.db").exists());
+    }
+
+    #[test]
+    fn recovery_apply_with_reused_token_does_not_move_data() {
+        let tmp = TempDir::new().unwrap();
+        let active = tmp.path().join("active");
+        fs::create_dir_all(&active).unwrap();
+        let source = tmp.path().join("source");
+        seed_data(&source);
+        fs::write(source.join("recovered.txt"), b"R").unwrap();
+        let mut tokens = ConfirmTokenRegistry::default();
+        let token = recovery_preview(&source, &mut tokens)
+            .unwrap()
+            .confirm_token;
+        recovery_apply(&active, &source, &token, &mut tokens).unwrap();
+        fs::write(active.join("only-on-active.txt"), b"keep").unwrap();
+
+        let err = recovery_apply(&active, &source, &token, &mut tokens).unwrap_err();
+        assert_eq!(err.code_str(), "VALIDATION");
+        assert!(active.join("only-on-active.txt").is_file());
+    }
+
+    // --- runtime path allowlist ---
+
+    #[test]
+    fn existing_path_under_media_is_allowed() {
+        let tmp = TempDir::new().unwrap();
+        let paths = resolve_runtime_paths(tmp.path());
+        ensure_directories(&paths).unwrap();
+        let file = paths.media.join("photo.png");
+        fs::write(&file, b"img").unwrap();
+        let canonical = ensure_existing_under_runtime_paths(&file, &paths).unwrap();
+        assert_eq!(canonical, file.canonicalize().unwrap());
+    }
+
+    #[test]
+    fn existing_path_outside_runtime_roots_is_validation() {
+        let tmp = TempDir::new().unwrap();
+        let paths = resolve_runtime_paths(&tmp.path().join("app"));
+        ensure_directories(&paths).unwrap();
+        let outside = tmp.path().join("outside.txt");
+        fs::write(&outside, b"x").unwrap();
+        let err = ensure_existing_under_runtime_paths(&outside, &paths).unwrap_err();
+        assert_eq!(err.code_str(), "VALIDATION");
+    }
+
+    #[test]
+    fn missing_path_under_runtime_root_is_not_found() {
+        let tmp = TempDir::new().unwrap();
+        let paths = resolve_runtime_paths(tmp.path());
+        ensure_directories(&paths).unwrap();
+        let err = ensure_existing_under_runtime_paths(&paths.media.join("missing.png"), &paths)
+            .unwrap_err();
+        assert_eq!(err.code_str(), "NOT_FOUND");
+    }
+
+    #[test]
+    fn destination_under_backup_is_allowed_when_file_is_absent() {
+        let tmp = TempDir::new().unwrap();
+        let paths = resolve_runtime_paths(tmp.path());
+        ensure_directories(&paths).unwrap();
+        let dest = paths.backup.join("bundle.prompthub");
+        let resolved = ensure_destination_under_runtime_paths(&dest, &paths).unwrap();
+        assert!(resolved.starts_with(paths.backup.canonicalize().unwrap()));
+        assert!(!dest.exists());
+    }
+
+    #[test]
+    fn destination_outside_runtime_roots_is_validation() {
+        let tmp = TempDir::new().unwrap();
+        let paths = resolve_runtime_paths(&tmp.path().join("app"));
+        ensure_directories(&paths).unwrap();
+        let dest = tmp.path().join("outside.prompthub");
+        let err = ensure_destination_under_runtime_paths(&dest, &paths).unwrap_err();
+        assert_eq!(err.code_str(), "VALIDATION");
+        assert!(!dest.exists());
     }
 }

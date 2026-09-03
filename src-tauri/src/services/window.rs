@@ -26,8 +26,9 @@
 //!   media, rule, backup, and log paths (Req 20.9).
 //! - **Cache size / clear** ([`get_cache_size`], [`clear_cache`]) over a directory
 //!   (Req 20.8).
-//! - **Path-existence checks** ([`ensure_path_exists`]) for open/reveal, returning
-//!   `NOT_FOUND` for a missing target (Req 20.10, 20.12).
+//! - **Path-existence checks** ([`ensure_path_exists`]) and the open/reveal
+//!   allowlist ([`open_runtime_path`]) that require a RuntimePaths prefix and
+//!   reject executable suffixes (Req 20.10, 20.12).
 //! - **Platform capability degradation** ([`PlatformCapabilities`],
 //!   [`probe_capabilities`]): a per-feature availability probe for auto-launch,
 //!   tray, shortcuts, and notifications; unsupported features are reported through
@@ -52,7 +53,8 @@
 //!   surfaced via [`notification_permission_denied`]) goes through
 //!   `tauri-plugin-notification` (Req 20.13).
 //! - Opening/revealing a path in the system shell happens after
-//!   [`ensure_path_exists`] confirms the target is present.
+//!   [`open_runtime_path`] confirms the target is present, under RuntimePaths,
+//!   and is not an executable. The Command_Layer injects the OS opener.
 #![allow(dead_code)]
 
 use std::collections::BTreeMap;
@@ -490,6 +492,41 @@ pub fn ensure_path_exists(path: &Path) -> Result<(), AppError> {
     }
 }
 
+const BLOCKED_EXECUTABLE_EXTENSIONS: &[&str] = &["exe", "bat", "cmd", "ps1", "msi", "com", "scr"];
+
+fn reject_executable_suffix(path: &Path) -> Result<(), AppError> {
+    let blocked = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| {
+            BLOCKED_EXECUTABLE_EXTENSIONS.contains(&ext.to_ascii_lowercase().as_str())
+        });
+    if blocked {
+        Err(AppError::validation(format!(
+            "opening executable path `{}` is not allowed",
+            path.display()
+        )))
+    } else {
+        Ok(())
+    }
+}
+
+/// Opens `path` after the RuntimePaths allowlist and executable-suffix checks.
+///
+/// `opener` is injected so tests can record the allowed path without spawning
+/// a process. The Command_Layer supplies `open::that`.
+pub fn open_runtime_path(
+    path: &Path,
+    runtime_paths: &RuntimePaths,
+    opener: impl FnOnce(&Path) -> Result<(), AppError>,
+) -> Result<(), AppError> {
+    reject_executable_suffix(path)?;
+    let canonical =
+        crate::services::data_path::ensure_existing_under_runtime_paths(path, runtime_paths)?;
+    reject_executable_suffix(&canonical)?;
+    opener(&canonical)
+}
+
 // ===========================================================================
 // Platform capability degradation (Req 23.4, 23.5)
 // ===========================================================================
@@ -667,6 +704,7 @@ fn probe_capabilities_for(os: &str) -> PlatformCapabilities {
 mod tests {
     use super::*;
     use serde_json::json;
+    use std::path::PathBuf;
     use tempfile::TempDir;
 
     // --- event payloads (Req 20.2, 20.3, 20.4, 20.6) ---
@@ -984,6 +1022,60 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let err = ensure_path_exists(&tmp.path().join("missing")).unwrap_err();
         assert_eq!(err.code_str(), "NOT_FOUND");
+    }
+
+    fn test_runtime_paths(tmp: &TempDir) -> RuntimePaths {
+        let paths = crate::services::data_path::resolve_runtime_paths(tmp.path());
+        crate::services::data_path::ensure_directories(&paths).unwrap();
+        paths
+    }
+
+    #[test]
+    fn open_runtime_path_rejects_os_executable_without_spawning() {
+        let tmp = TempDir::new().unwrap();
+        let paths = test_runtime_paths(&tmp);
+        let forbidden = if cfg!(windows) {
+            PathBuf::from(r"C:\Windows\System32\cmd.exe")
+        } else {
+            PathBuf::from("/bin/sh")
+        };
+        let err = open_runtime_path(&forbidden, &paths, |_| {
+            panic!("opener must not run for a blocked executable");
+        })
+        .unwrap_err();
+        assert!(
+            err.code_str() == "VALIDATION" || err.code_str() == "NOT_FOUND",
+            "{}",
+            err.code_str()
+        );
+    }
+
+    #[test]
+    fn open_runtime_path_allows_file_under_media_via_injected_opener() {
+        let tmp = TempDir::new().unwrap();
+        let paths = test_runtime_paths(&tmp);
+        let file = paths.media.join("photo.png");
+        fs::write(&file, b"img").unwrap();
+        let mut opened = None;
+        open_runtime_path(&file, &paths, |allowed| {
+            opened = Some(allowed.to_path_buf());
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(opened.unwrap(), file.canonicalize().unwrap());
+    }
+
+    #[test]
+    fn open_runtime_path_rejects_executable_suffix_under_media() {
+        let tmp = TempDir::new().unwrap();
+        let paths = test_runtime_paths(&tmp);
+        let exe = paths.media.join("payload.EXE");
+        fs::write(&exe, b"x").unwrap();
+        let err = open_runtime_path(&exe, &paths, |_| {
+            panic!("opener must not run for an executable suffix");
+        })
+        .unwrap_err();
+        assert_eq!(err.code_str(), "VALIDATION");
     }
 
     // --- platform capability degradation (Req 23.4, 23.5) ---

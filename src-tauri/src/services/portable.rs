@@ -10,6 +10,7 @@ use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 use crate::error::AppError;
 use crate::models::{Folder, Prompt, PromptRevisionSource, PromptTypeDefinition, PromptVersion};
+use crate::state::RuntimePaths;
 use crate::storage::mapping::{folder_from_row, prompt_from_row, prompt_version_from_row};
 use crate::storage::time::{iso8601_to_millis, now_millis};
 
@@ -172,6 +173,24 @@ fn load_all(conn: &Connection) -> Result<BundleData, AppError> {
         folders,
         type_definitions,
     })
+}
+
+/// Resolves a bundle export destination. The default file is created under the
+/// backup root. A custom path must canonicalize into a RuntimePaths directory.
+pub fn resolve_bundle_destination(
+    destination: Option<&str>,
+    paths: &RuntimePaths,
+) -> Result<PathBuf, AppError> {
+    match destination.map(str::trim).filter(|value| !value.is_empty()) {
+        None => Ok(paths.backup.join(format!(
+            "prompts-{}.prompthub",
+            crate::storage::time::now_millis()
+        ))),
+        Some(raw) => crate::services::data_path::ensure_destination_under_runtime_paths(
+            Path::new(raw),
+            paths,
+        ),
+    }
 }
 
 pub fn export_bundle(
@@ -1875,5 +1894,29 @@ mod tests {
         assert_eq!(error.code_str(), "VALIDATION");
         assert!(!backups.exists());
         assert!(prompt::list(&target).unwrap().is_empty());
+    }
+
+    #[test]
+    fn default_bundle_destination_is_under_backup_root() {
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = crate::services::data_path::resolve_runtime_paths(tmp.path());
+        crate::services::data_path::ensure_directories(&paths).unwrap();
+        let destination = resolve_bundle_destination(None, &paths).unwrap();
+        assert!(destination.starts_with(&paths.backup));
+        assert!(destination
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.ends_with(".prompthub")));
+    }
+
+    #[test]
+    fn unauthorized_bundle_destination_is_validation() {
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = crate::services::data_path::resolve_runtime_paths(&tmp.path().join("app"));
+        crate::services::data_path::ensure_directories(&paths).unwrap();
+        let dest = tmp.path().join("outside.prompthub");
+        let error = resolve_bundle_destination(dest.to_str(), &paths).unwrap_err();
+        assert_eq!(error.code_str(), "VALIDATION");
+        assert!(!dest.exists());
     }
 }

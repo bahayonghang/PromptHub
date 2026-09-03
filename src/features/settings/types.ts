@@ -125,6 +125,8 @@ export interface PreviewResult {
   /** Recommended action: `migrate` (target empty) or `switch` (target has data). */
   recommendedAction: string;
   markers: DataMarker[];
+  /** One-time token required by the matching `data.applyChange`. */
+  confirmToken: string;
 }
 
 /** Result of `data.applyChange` / `data.recoveryApply` (Req 19.5, 19.8). */
@@ -145,6 +147,8 @@ export interface RecoveryPreview {
   exists: boolean;
   hasPromptHubData: boolean;
   markers: DataMarker[];
+  /** One-time token required by the matching `data.recoveryApply`. */
+  confirmToken: string;
 }
 
 // ===========================================================================
