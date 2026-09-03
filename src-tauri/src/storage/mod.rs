@@ -30,7 +30,10 @@ use rusqlite::Connection;
 
 use crate::error::AppError;
 
+mod snapshot;
+
 pub mod fts;
+pub use snapshot::snapshot_database;
 
 /// The connection pool type used throughout the Storage_Engine.
 ///

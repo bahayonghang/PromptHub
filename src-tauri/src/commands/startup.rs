@@ -199,6 +199,63 @@ mod tests {
             )
             .unwrap();
         assert_eq!(revision_title, "T");
+        let hits: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM prompts_fts WHERE prompts_fts MATCH 'T'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(hits, 1);
+    }
+
+    #[test]
+    fn initialize_storage_rebuilds_fts_for_existing_prompts() {
+        let tmp = TempDir::new().unwrap();
+        let paths = resolve_runtime_paths(tmp.path());
+        ensure_directories(&paths).unwrap();
+
+        {
+            let conn = rusqlite::Connection::open(database_path(&paths)).unwrap();
+            storage::init_schema(&conn).unwrap();
+            conn.execute(
+                "INSERT INTO prompts (id, title, user_prompt, created_at, updated_at, is_private) \
+                 VALUES ('p1', 'UniqueKeyword', 'body', 0, 0, 0)",
+                [],
+            )
+            .unwrap();
+            conn.execute(
+                "INSERT INTO prompts (id, title, user_prompt, created_at, updated_at, is_private) \
+                 VALUES ('priv', 'SecretTerm', 'private body', 0, 0, 1)",
+                [],
+            )
+            .unwrap();
+        }
+
+        let pool = initialize_storage(&paths).unwrap();
+        let conn = pool.get().unwrap();
+        let hits: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM prompts_fts WHERE prompts_fts MATCH 'UniqueKeyword'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(hits, 1);
+        let private_hits: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM prompts_fts WHERE prompts_fts MATCH 'SecretTerm'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(private_hits, 0);
+        let indexed: i64 = conn
+            .query_row("SELECT COUNT(*) FROM prompts_fts_docsize", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(indexed, 1);
     }
 
     #[test]

@@ -33,7 +33,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # Storage_Engine: rusqlite with the `bundled` feature compiles SQLite (incl. FTS5)
 # directly into the binary, and r2d2 provides the connection pool.
-rusqlite = { version = "0.37", features = ["bundled"] }
+rusqlite = { version = "0.37", features = ["backup", "bundled"] }
 r2d2 = "0.8"
 r2d2_sqlite = "0.31"
 # Timestamp utilities (Requirement 4.9): chrono converts between epoch

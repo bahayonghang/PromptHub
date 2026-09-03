@@ -119,6 +119,13 @@ impl AppState {
         *self.pool.lock().unwrap() = Some(pool);
     }
 
+    /// Removes the installed SQLite pool. Pooled connections close when the last
+    /// handle is dropped. Restore uses this so live database files are not held
+    /// open across a sidecar directory replace.
+    pub fn take_pool(&self) -> Option<DbPool> {
+        self.pool.lock().unwrap().take()
+    }
+
     /// Records a fatal initialization error and clears the `ready` flag so every
     /// command stays gated and the Frontend can surface the failure
     /// (Requirements 4.7, 23.3).

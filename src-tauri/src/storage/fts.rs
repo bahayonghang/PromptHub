@@ -39,11 +39,11 @@
 //!
 //! [`init_fts`] is the standalone entry point and must be called once, on the
 //! same connection, immediately after [`crate::storage::init_schema`] has created
-//! the base `prompts` table (see `FTS_EXTENSION_POINT`). All statements use
-//! `IF NOT EXISTS`, so calling it on an already-initialized database is a no-op.
-//! Because it runs against a freshly created (empty) `prompts` table, the index
-//! starts empty and the triggers keep it in sync from that point on; no rebuild
-//! step is required.
+//! the base `prompts` table (see `FTS_EXTENSION_POINT`). Table/trigger DDL uses
+//! `IF NOT EXISTS`, so repeating it is safe. After the virtual table exists, if
+//! `prompts` has rows and the FTS row count does not match the non-private
+//! prompt count, non-private rows are inserted into the index. Private prompts
+//! stay out of FTS. Triggers keep the index in sync for later writes.
 
 use rusqlite::Connection;
 
@@ -52,15 +52,59 @@ use crate::error::AppError;
 /// Creates the `prompts_fts` FTS5 virtual table and its sync triggers.
 ///
 /// Executes the DDL in a single transaction so the table and all three triggers
-/// are created atomically. Idempotent: every statement is `IF NOT EXISTS`, so an
-/// already-initialized database is left unchanged.
+/// are created atomically. Table/trigger statements are `IF NOT EXISTS`. When
+/// `prompts` already has rows (schema upgrade of a non-empty library), a count
+/// mismatch against the FTS index rebuilds from `is_private = 0` rows only.
 ///
 /// Must be called on the same connection as (and immediately after)
 /// [`crate::storage::init_schema`], so the `prompts` table the triggers reference
-/// already exists and is empty.
+/// already exists.
 pub fn init_fts(conn: &Connection) -> Result<(), AppError> {
     conn.execute_batch(FTS_SQL)
-        .map_err(|e| AppError::internal(format!("failed to initialize FTS index: {e}")))
+        .map_err(|e| AppError::internal(format!("failed to initialize FTS index: {e}")))?;
+    rebuild_fts_if_stale(conn)
+}
+
+/// Rebuilds `prompts_fts` from current non-private `prompts` when the index is
+/// empty or its row count does not match. Uses an explicit `INSERT ... SELECT`
+/// rather than FTS5 `rebuild`, which would index private bodies from the
+/// external content table.
+fn rebuild_fts_if_stale(conn: &Connection) -> Result<(), AppError> {
+    let public_prompts: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM prompts WHERE is_private = 0",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|e| AppError::internal(format!("failed to count prompts for FTS rebuild: {e}")))?;
+    // External-content FTS5: `COUNT(*) FROM prompts_fts` reads the content
+    // table, including private rows and rows that were never indexed. The
+    // docsize shadow table counts documents actually in the index.
+    let indexed: i64 = conn
+        .query_row("SELECT COUNT(*) FROM prompts_fts_docsize", [], |row| {
+            row.get(0)
+        })
+        .map_err(|e| AppError::internal(format!("failed to count FTS rows: {e}")))?;
+    if indexed == public_prompts {
+        return Ok(());
+    }
+
+    let tx = conn
+        .unchecked_transaction()
+        .map_err(|e| AppError::internal(format!("failed to start FTS rebuild: {e}")))?;
+    tx.execute_batch(
+        r#"
+INSERT INTO prompts_fts(prompts_fts) VALUES('delete-all');
+INSERT INTO prompts_fts(rowid, title, description, system_prompt, user_prompt, tags)
+SELECT rowid, title, description, system_prompt, user_prompt, tags
+FROM prompts
+WHERE is_private = 0;
+"#,
+    )
+    .map_err(|e| AppError::internal(format!("failed to rebuild FTS index: {e}")))?;
+    tx.commit()
+        .map_err(|e| AppError::internal(format!("failed to commit FTS rebuild: {e}")))?;
+    Ok(())
 }
 
 /// The FTS5 virtual table plus the insert/delete/update sync triggers.
@@ -172,7 +216,7 @@ mod tests {
     #[test]
     fn init_fts_is_idempotent() {
         let conn = setup();
-        // Running again must not error (every statement is IF NOT EXISTS).
+        // Running again must not error (table DDL is IF NOT EXISTS; triggers are replaced).
         init_fts(&conn).unwrap();
         init_fts(&conn).unwrap();
 
@@ -184,6 +228,73 @@ mod tests {
             )
             .unwrap();
         assert_eq!(table, 1);
+    }
+
+    /// Builds an in-memory database with the base schema but without FTS, so
+    /// rows can be inserted before [`init_fts`].
+    fn setup_schema_only() -> r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager> {
+        let pool = create_memory_pool().unwrap();
+        let conn = pool.get().unwrap();
+        init_schema(&conn).unwrap();
+        conn
+    }
+
+    #[test]
+    fn init_fts_indexes_existing_non_private_prompts() {
+        let conn = setup_schema_only();
+        for i in 0..3 {
+            conn.execute(
+                "INSERT INTO prompts (id, title, user_prompt, tags, created_at, updated_at, is_private) \
+                 VALUES (?1, ?2, 'body', '[]', 0, 0, 0)",
+                rusqlite::params![format!("p{i}"), format!("Keyword{i} UniqueTerm")],
+            )
+            .unwrap();
+        }
+        conn.execute(
+            "INSERT INTO prompts (id, title, user_prompt, tags, created_at, updated_at, is_private) \
+             VALUES ('priv', 'SecretTerm', 'private body', '[]', 0, 0, 1)",
+            [],
+        )
+        .unwrap();
+
+        init_fts(&conn).unwrap();
+
+        assert_eq!(match_count(&conn, "UniqueTerm"), 3);
+        assert_eq!(match_count(&conn, "Keyword0"), 1);
+        assert_eq!(match_count(&conn, "SecretTerm"), 0);
+        let total: i64 = conn
+            .query_row("SELECT COUNT(*) FROM prompts_fts_docsize", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(total, 3);
+    }
+
+    #[test]
+    fn init_fts_rebuild_is_idempotent_with_existing_rows() {
+        let conn = setup_schema_only();
+        insert_prompt(&conn, "p1", "AlphaTerm", "body", "[]");
+        init_fts(&conn).unwrap();
+        init_fts(&conn).unwrap();
+        assert_eq!(match_count(&conn, "AlphaTerm"), 1);
+        let total: i64 = conn
+            .query_row("SELECT COUNT(*) FROM prompts_fts_docsize", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(total, 1);
+    }
+
+    #[test]
+    fn private_prompt_inserted_after_init_is_not_indexed() {
+        let conn = setup();
+        conn.execute(
+            "INSERT INTO prompts (id, title, user_prompt, tags, created_at, updated_at, is_private) \
+             VALUES ('priv', 'SecretTerm', 'private body', '[]', 0, 0, 1)",
+            [],
+        )
+        .unwrap();
+        assert_eq!(match_count(&conn, "SecretTerm"), 0);
     }
 
     #[test]
