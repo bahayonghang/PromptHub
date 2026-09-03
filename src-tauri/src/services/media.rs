@@ -459,23 +459,28 @@ fn map_reqwest_err(context: &str, e: reqwest::Error) -> AppError {
     }
 }
 
-/// Picks an image extension from a response content-type header, defaulting to
-/// `png` for an image type that is not one of the recognized four.
-fn ext_from_content_type(content_type: &str) -> &'static str {
-    match content_type
+fn media_type(content_type: &str) -> String {
+    content_type
         .split(';')
         .next()
         .unwrap_or("")
         .trim()
         .to_ascii_lowercase()
-        .as_str()
-    {
-        "image/jpeg" => "jpg",
-        "image/png" => "png",
-        "image/gif" => "gif",
-        "image/webp" => "webp",
-        _ => "png",
+}
+
+fn reject_svg_content_type(content_type: &str) -> Result<(), AppError> {
+    let mime = media_type(content_type);
+    if mime == "image/svg+xml" || mime.starts_with("image/svg") {
+        return Err(AppError::validation("SVG images are not supported"));
     }
+    Ok(())
+}
+
+fn image_format_from_download(content_type: &str, bytes: &[u8]) -> Result<ImageFormat, AppError> {
+    reject_svg_content_type(content_type)?;
+    detect_image_format(bytes).ok_or_else(|| {
+        AppError::validation("remote resource is not a supported image (JPEG, PNG, GIF, or WebP)")
+    })
 }
 
 /// Downloads an image from an HTTP(S) URL and stores it, returning the generated
@@ -490,11 +495,23 @@ fn ext_from_content_type(content_type: &str) -> &'static str {
 /// non-success status, non-image type, exceeded limit, or transport failure it
 /// returns a structured error without storing partial content.
 pub async fn download_image(dir: &Path, url: &str) -> Result<String, AppError> {
+    download_image_with(dir, url, false).await
+}
+
+async fn download_image_with(
+    dir: &Path,
+    url: &str,
+    allow_private_network: bool,
+) -> Result<String, AppError> {
     let mut current = url.to_string();
 
     for _ in 0..=MAX_REDIRECTS {
-        let (parsed, client) =
-            crate::services::network_safety::prepare_public_url(&current, DOWNLOAD_TIMEOUT).await?;
+        let (parsed, client) = crate::services::network_safety::prepare_public_url(
+            &current,
+            DOWNLOAD_TIMEOUT,
+            allow_private_network,
+        )
+        .await?;
 
         let response = client
             .get(parsed.clone())
@@ -526,13 +543,13 @@ pub async fn download_image(dir: &Path, url: &str) -> Result<String, AppError> {
             )));
         }
 
-        // Content-type must be an image (Req 18.4).
         let content_type = response
             .headers()
             .get(reqwest::header::CONTENT_TYPE)
             .and_then(|v| v.to_str().ok())
             .unwrap_or("")
             .to_string();
+        reject_svg_content_type(&content_type)?;
         if !content_type
             .trim()
             .to_ascii_lowercase()
@@ -563,8 +580,8 @@ pub async fn download_image(dir: &Path, url: &str) -> Result<String, AppError> {
             bytes.extend_from_slice(&chunk);
         }
 
-        let ext = ext_from_content_type(&content_type);
-        return write_new_file(dir, ext, &bytes);
+        let format = image_format_from_download(&content_type, &bytes)?;
+        return write_new_file(dir, format.extension(), &bytes);
     }
 
     Err(AppError::network(
@@ -941,11 +958,41 @@ mod tests {
     }
 
     #[test]
-    fn ext_from_content_type_maps_known_and_defaults() {
-        assert_eq!(ext_from_content_type("image/jpeg"), "jpg");
-        assert_eq!(ext_from_content_type("image/png; charset=binary"), "png");
-        assert_eq!(ext_from_content_type("image/gif"), "gif");
-        assert_eq!(ext_from_content_type("image/webp"), "webp");
-        assert_eq!(ext_from_content_type("image/svg+xml"), "png");
+    fn download_rejects_svg_bytes_labeled_as_png() {
+        let svg = b"<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>";
+        let err = image_format_from_download("image/png", svg).unwrap_err();
+        assert_eq!(err.code, ErrorCode::Validation);
+    }
+
+    #[tokio::test]
+    async fn download_rejects_svg_payload_with_image_png_content_type() {
+        let svg = b"<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>";
+        let response = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: image/png\r\nContent-Length: {}\r\n\r\n",
+            svg.len()
+        );
+        let mut payload = response.into_bytes();
+        payload.extend_from_slice(svg);
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            if let Ok((mut socket, _)) = listener.accept().await {
+                let mut buf = vec![0u8; 4096];
+                let _ = tokio::io::AsyncReadExt::read(&mut socket, &mut buf).await;
+                let _ = tokio::io::AsyncWriteExt::write_all(&mut socket, &payload).await;
+            }
+        });
+
+        let base = TempDir::new().unwrap();
+        let err = download_image_with(
+            base.path(),
+            &format!("http://127.0.0.1:{}/x.png", addr.port()),
+            true,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(err.code, ErrorCode::Validation);
+        server.abort();
     }
 }

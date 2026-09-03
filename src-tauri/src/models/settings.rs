@@ -81,6 +81,10 @@ pub struct Settings {
     /// Whether the app minimizes on launch.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub minimize_on_launch: Option<bool>,
+    /// When true, AI and sync HTTP may target private, loopback, or
+    /// link-local addresses. Absent or false keeps the public-only pin.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub allow_private_network: Option<bool>,
     /// Optional GitHub personal access token.
     ///
     /// Persisted as `ENC::` when a master password exists. `settings.get`

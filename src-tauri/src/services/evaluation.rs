@@ -640,7 +640,7 @@ impl ProviderAdapter for DefaultProviderAdapter {
         Box::pin(async move {
             match request.provider.as_str() {
                 "mock" => execute_mock(request, cancel, run_id, sink).await,
-                "openai-compatible" => execute_openai(request, cancel, run_id, sink).await,
+                "openai-compatible" => execute_openai(request, cancel, run_id, sink, false).await,
                 _ => Err(AppError::validation("unsupported provider adapter")),
             }
         })
@@ -724,6 +724,7 @@ async fn execute_openai(
     cancel: &CancellationToken,
     run_id: &str,
     sink: &dyn EvaluationEventSink,
+    allow_private_network: bool,
 ) -> Result<ProviderOutput, AppError> {
     let mut body = request.parameters.as_object().cloned().unwrap_or_default();
     body.insert("model".into(), Value::String(request.model));
@@ -738,17 +739,24 @@ async fn execute_openai(
     let mut current = request
         .endpoint
         .ok_or_else(|| AppError::validation("provider endpoint is required"))?;
+    let mut forward_authorization = true;
 
     for _ in 0..=MAX_REDIRECTS {
-        let (url, client) =
-            crate::services::network_safety::prepare_public_url(&current, PROVIDER_TIMEOUT).await?;
+        let (url, client) = crate::services::network_safety::prepare_public_url(
+            &current,
+            PROVIDER_TIMEOUT,
+            allow_private_network,
+        )
+        .await?;
         let mut builder = client
             .post(url.clone())
             .header(reqwest::header::CONTENT_TYPE, "application/json")
             .header(reqwest::header::ACCEPT, "text/event-stream")
             .body(body.clone());
-        if let Some(credential) = request.credential.as_deref() {
-            builder = builder.bearer_auth(credential);
+        if forward_authorization {
+            if let Some(credential) = request.credential.as_deref() {
+                builder = builder.bearer_auth(credential);
+            }
         }
         let response = tokio::select! {
             _ = cancel.cancelled() => return Err(AppError::internal("request cancelled")),
@@ -766,10 +774,11 @@ async fn execute_openai(
                 .get(reqwest::header::LOCATION)
                 .and_then(|value| value.to_str().ok())
                 .ok_or_else(|| AppError::network("provider redirect omitted Location"))?;
-            current = url
-                .join(location)
-                .map_err(|error| AppError::network(format!("invalid provider redirect: {error}")))?
-                .to_string();
+            let next = url.join(location).map_err(|error| {
+                AppError::network(format!("invalid provider redirect: {error}"))
+            })?;
+            forward_authorization = crate::services::network_safety::same_http_origin(&url, &next);
+            current = next.to_string();
             continue;
         }
         if !response.status().is_success() {
@@ -995,7 +1004,8 @@ pub async fn execute_run(
     };
     if request.provider == "openai-compatible" {
         if let Some(endpoint) = request.endpoint.as_deref() {
-            crate::services::network_safety::prepare_public_url(endpoint, PROVIDER_TIMEOUT).await?;
+            crate::services::network_safety::prepare_public_url(endpoint, PROVIDER_TIMEOUT, false)
+                .await?;
         }
     }
     {
@@ -2777,6 +2787,96 @@ mod tests {
         }
     }
 
+    async fn serve_recorded_http(
+        response: Vec<u8>,
+    ) -> (
+        std::net::SocketAddr,
+        tokio::sync::oneshot::Receiver<Vec<u8>>,
+        tokio::task::JoinHandle<()>,
+    ) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        let handle = tokio::spawn(async move {
+            let Ok((mut socket, _)) = listener.accept().await else {
+                return;
+            };
+            let mut buf = Vec::new();
+            let mut tmp = [0u8; 1024];
+            loop {
+                match tokio::io::AsyncReadExt::read(&mut socket, &mut tmp).await {
+                    Ok(0) | Err(_) => break,
+                    Ok(n) => {
+                        buf.extend_from_slice(&tmp[..n]);
+                        if buf.windows(4).any(|window| window == b"\r\n\r\n") {
+                            break;
+                        }
+                    }
+                }
+            }
+            let _ = tokio::io::AsyncWriteExt::write_all(&mut socket, &response).await;
+            let _ = tx.send(buf);
+        });
+        (addr, rx, handle)
+    }
+
+    fn header_has_authorization(headers: &[u8]) -> bool {
+        let text = String::from_utf8_lossy(headers).to_ascii_lowercase();
+        text.contains("authorization:")
+    }
+
+    #[tokio::test]
+    async fn execute_openai_omits_authorization_on_cross_host_redirect() {
+        let sse = b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\n\r\ndata: {\"choices\":[{\"delta\":{\"content\":\"ok\"}}]}\n\ndata: [DONE]\n\n";
+        let (second_addr, second_rx, second_handle) = serve_recorded_http(sse.to_vec()).await;
+        let location = format!(
+            "http://localhost:{}/v1/chat/completions",
+            second_addr.port()
+        );
+        let redirect =
+            format!("HTTP/1.1 302 Found\r\nLocation: {location}\r\nContent-Length: 0\r\n\r\n");
+        let (first_addr, first_rx, first_handle) = serve_recorded_http(redirect.into_bytes()).await;
+
+        let output = execute_openai(
+            ProviderRequest {
+                provider: "openai-compatible".into(),
+                endpoint: Some(format!(
+                    "http://127.0.0.1:{}/v1/chat/completions",
+                    first_addr.port()
+                )),
+                model: "model".into(),
+                parameters: json!({}),
+                credential: Some("secret-token".into()),
+                messages: vec![PromptMessage {
+                    role: "user".into(),
+                    content: "Hi".into(),
+                }],
+            },
+            &CancellationToken::new(),
+            "redirect-auth",
+            &Sink,
+            true,
+        )
+        .await
+        .unwrap();
+        assert_eq!(output.content, "ok");
+
+        let first_headers = first_rx.await.unwrap();
+        let second_headers = second_rx.await.unwrap();
+        assert!(
+            header_has_authorization(&first_headers),
+            "first hop must send Authorization, got {}",
+            String::from_utf8_lossy(&first_headers)
+        );
+        assert!(
+            !header_has_authorization(&second_headers),
+            "cross-host hop must omit Authorization, got {}",
+            String::from_utf8_lossy(&second_headers)
+        );
+        first_handle.abort();
+        second_handle.abort();
+    }
+
     #[tokio::test]
     async fn evaluation_input_validation_writes_nothing() {
         let (pool, encryption, revision) = setup();
@@ -2981,6 +3081,7 @@ mod tests {
             &CancellationToken::new(),
             "live-smoke",
             &Sink,
+            false,
         )
         .await
         .unwrap();

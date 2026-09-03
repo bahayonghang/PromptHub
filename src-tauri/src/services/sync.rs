@@ -70,8 +70,6 @@ const TRANSFER_TIMEOUT: Duration = Duration::from_secs(300);
 /// Validity window of a presigned S3 URL. Independent of the request timeout; it
 /// only needs to outlast the time between signing and issuing the request.
 const PRESIGN_EXPIRY: Duration = Duration::from_secs(15 * 60);
-/// User-Agent sent with every outbound sync request.
-const USER_AGENT: &str = "PromptHub/1.0";
 
 // ===========================================================================
 // Shared result DTOs
@@ -159,16 +157,19 @@ pub fn validate_webdav_config(config: &WebDavConfig) -> Result<Url, AppError> {
 /// Builds a `reqwest_dav` client for `config` with the given request timeout.
 ///
 /// The configuration must already have been validated by
-/// [`validate_webdav_config`]; this only constructs the transport.
-fn build_dav_client(
+/// [`validate_webdav_config`]; this only constructs the transport after the
+/// shared SSRF pin.
+async fn build_dav_client(
     config: &WebDavConfig,
     timeout: Duration,
+    allow_private_network: bool,
 ) -> Result<reqwest_dav::Client, AppError> {
-    let agent = reqwest::Client::builder()
-        .timeout(timeout)
-        .user_agent(USER_AGENT)
-        .build()
-        .map_err(|e| AppError::network(format!("failed to build WebDAV client: {e}")))?;
+    let (_url, agent) = crate::services::network_safety::prepare_public_url(
+        config.url.trim(),
+        timeout,
+        allow_private_network,
+    )
+    .await?;
 
     let auth = if config.username.is_empty() && config.password.is_empty() {
         Auth::Anonymous
@@ -214,9 +215,12 @@ fn map_dav_err(context: &str, error: DavError) -> AppError {
 /// A malformed configuration is rejected with `VALIDATION` and issues no request
 /// (17.13). Network, auth, and server failures are reported as `success: false`
 /// rather than as an error, so the Frontend always receives a definite outcome.
-pub async fn webdav_test(config: &WebDavConfig) -> Result<ConnectionTestResult, AppError> {
+pub async fn webdav_test(
+    config: &WebDavConfig,
+    allow_private_network: bool,
+) -> Result<ConnectionTestResult, AppError> {
     validate_webdav_config(config)?;
-    let client = build_dav_client(config, TEST_TIMEOUT)?;
+    let client = build_dav_client(config, TEST_TIMEOUT, allow_private_network).await?;
 
     match client.list("", Depth::Number(0)).await {
         Ok(_) => Ok(ConnectionTestResult::ok()),
@@ -241,9 +245,10 @@ pub async fn webdav_upload(
     config: &WebDavConfig,
     remote_path: &str,
     data: Vec<u8>,
+    allow_private_network: bool,
 ) -> Result<(), AppError> {
     validate_webdav_config(config)?;
-    let client = build_dav_client(config, TRANSFER_TIMEOUT)?;
+    let client = build_dav_client(config, TRANSFER_TIMEOUT, allow_private_network).await?;
     client
         .put(remote_path, data)
         .await
@@ -257,9 +262,10 @@ pub async fn webdav_upload(
 pub async fn webdav_download(
     config: &WebDavConfig,
     remote_path: &str,
+    allow_private_network: bool,
 ) -> Result<Vec<u8>, AppError> {
     validate_webdav_config(config)?;
-    let client = build_dav_client(config, TRANSFER_TIMEOUT)?;
+    let client = build_dav_client(config, TRANSFER_TIMEOUT, allow_private_network).await?;
     let response = client
         .get(remote_path)
         .await
@@ -275,9 +281,13 @@ pub async fn webdav_download(
 ///
 /// Returns `{ exists: false }` when the object is absent, and rejects malformed
 /// config with `VALIDATION` before any request (17.13).
-pub async fn webdav_stat(config: &WebDavConfig, remote_path: &str) -> Result<StatResult, AppError> {
+pub async fn webdav_stat(
+    config: &WebDavConfig,
+    remote_path: &str,
+    allow_private_network: bool,
+) -> Result<StatResult, AppError> {
     validate_webdav_config(config)?;
-    let client = build_dav_client(config, TRANSFER_TIMEOUT)?;
+    let client = build_dav_client(config, TRANSFER_TIMEOUT, allow_private_network).await?;
     match client.list(remote_path, Depth::Number(0)).await {
         Ok(entities) => {
             let last_modified = entities.first().map(|entity| match entity {
@@ -307,9 +317,13 @@ pub async fn webdav_stat(config: &WebDavConfig, remote_path: &str) -> Result<Sta
 /// (17.2).
 ///
 /// Rejects malformed config with `VALIDATION` before any request (17.13).
-pub async fn webdav_ensure_dir(config: &WebDavConfig, remote_path: &str) -> Result<(), AppError> {
+pub async fn webdav_ensure_dir(
+    config: &WebDavConfig,
+    remote_path: &str,
+    allow_private_network: bool,
+) -> Result<(), AppError> {
     validate_webdav_config(config)?;
-    let client = build_dav_client(config, TRANSFER_TIMEOUT)?;
+    let client = build_dav_client(config, TRANSFER_TIMEOUT, allow_private_network).await?;
 
     match client.list(remote_path, Depth::Number(0)).await {
         Ok(_) => Ok(()), // Already exists.
@@ -395,13 +409,19 @@ fn s3_credentials(config: &S3Config) -> Credentials {
     )
 }
 
-/// Builds a `reqwest` client for S3 requests with the given timeout.
-fn build_s3_agent(timeout: Duration) -> Result<reqwest::Client, AppError> {
-    reqwest::Client::builder()
-        .timeout(timeout)
-        .user_agent(USER_AGENT)
-        .build()
-        .map_err(|e| AppError::network(format!("failed to build S3 client: {e}")))
+/// Builds a DNS-pinned `reqwest` client for S3 requests with the given timeout.
+async fn build_s3_agent(
+    endpoint: &str,
+    timeout: Duration,
+    allow_private_network: bool,
+) -> Result<reqwest::Client, AppError> {
+    let (_url, client) = crate::services::network_safety::prepare_public_url(
+        endpoint,
+        timeout,
+        allow_private_network,
+    )
+    .await?;
+    Ok(client)
 }
 
 /// Normalizes an object key by stripping leading slashes (mirrors the reference).
@@ -423,10 +443,13 @@ fn map_reqwest_err(context: &str, e: reqwest::Error) -> AppError {
 ///
 /// A malformed configuration is rejected with `VALIDATION` and issues no request
 /// (17.13). Transport/auth failures are reported as `success: false`.
-pub async fn s3_test(config: &S3Config) -> Result<ConnectionTestResult, AppError> {
+pub async fn s3_test(
+    config: &S3Config,
+    allow_private_network: bool,
+) -> Result<ConnectionTestResult, AppError> {
     let bucket = validate_s3_config(config)?;
     let credentials = s3_credentials(config);
-    let agent = build_s3_agent(TEST_TIMEOUT)?;
+    let agent = build_s3_agent(&config.endpoint, TEST_TIMEOUT, allow_private_network).await?;
 
     let signed = bucket.head_bucket(Some(&credentials)).sign(PRESIGN_EXPIRY);
 
@@ -456,10 +479,15 @@ pub async fn s3_test(config: &S3Config) -> Result<ConnectionTestResult, AppError
 /// Uploads `data` to the S3 object `key` (17.4).
 ///
 /// Rejects malformed config with `VALIDATION` before any request (17.13).
-pub async fn s3_upload(config: &S3Config, key: &str, data: Vec<u8>) -> Result<(), AppError> {
+pub async fn s3_upload(
+    config: &S3Config,
+    key: &str,
+    data: Vec<u8>,
+    allow_private_network: bool,
+) -> Result<(), AppError> {
     let bucket = validate_s3_config(config)?;
     let credentials = s3_credentials(config);
-    let agent = build_s3_agent(TRANSFER_TIMEOUT)?;
+    let agent = build_s3_agent(&config.endpoint, TRANSFER_TIMEOUT, allow_private_network).await?;
 
     let signed = bucket
         .put_object(Some(&credentials), normalize_key(key))
@@ -486,10 +514,14 @@ pub async fn s3_upload(config: &S3Config, key: &str, data: Vec<u8>) -> Result<()
 ///
 /// Returns `NOT_FOUND` when the object does not exist, and rejects malformed
 /// config with `VALIDATION` before any request (17.13).
-pub async fn s3_download(config: &S3Config, key: &str) -> Result<Vec<u8>, AppError> {
+pub async fn s3_download(
+    config: &S3Config,
+    key: &str,
+    allow_private_network: bool,
+) -> Result<Vec<u8>, AppError> {
     let bucket = validate_s3_config(config)?;
     let credentials = s3_credentials(config);
-    let agent = build_s3_agent(TRANSFER_TIMEOUT)?;
+    let agent = build_s3_agent(&config.endpoint, TRANSFER_TIMEOUT, allow_private_network).await?;
 
     let signed = bucket
         .get_object(Some(&credentials), normalize_key(key))
@@ -523,10 +555,14 @@ pub async fn s3_download(config: &S3Config, key: &str) -> Result<Vec<u8>, AppErr
 ///
 /// Returns `{ exists: false }` when the object is absent, and rejects malformed
 /// config with `VALIDATION` before any request (17.13).
-pub async fn s3_stat(config: &S3Config, key: &str) -> Result<StatResult, AppError> {
+pub async fn s3_stat(
+    config: &S3Config,
+    key: &str,
+    allow_private_network: bool,
+) -> Result<StatResult, AppError> {
     let bucket = validate_s3_config(config)?;
     let credentials = s3_credentials(config);
-    let agent = build_s3_agent(TRANSFER_TIMEOUT)?;
+    let agent = build_s3_agent(&config.endpoint, TRANSFER_TIMEOUT, allow_private_network).await?;
 
     let signed = bucket
         .head_object(Some(&credentials), normalize_key(key))
@@ -987,7 +1023,7 @@ mod tests {
             .build()
             .unwrap();
         let err = rt
-            .block_on(webdav_test(&WebDavConfig::default()))
+            .block_on(webdav_test(&WebDavConfig::default(), false))
             .unwrap_err();
         assert_eq!(err.code, ErrorCode::Validation);
     }
@@ -1041,8 +1077,45 @@ mod tests {
             .enable_all()
             .build()
             .unwrap();
-        let err = rt.block_on(s3_test(&S3Config::default())).unwrap_err();
+        let err = rt
+            .block_on(s3_test(&S3Config::default(), false))
+            .unwrap_err();
         assert_eq!(err.code, ErrorCode::Validation);
+    }
+
+    #[tokio::test]
+    async fn webdav_test_blocks_localhost_when_private_network_disallowed() {
+        let err = webdav_test(
+            &WebDavConfig {
+                url: "http://localhost/".into(),
+                ..Default::default()
+            },
+            false,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(err.code, ErrorCode::SsrfBlocked);
+    }
+
+    #[tokio::test]
+    async fn webdav_test_allows_localhost_attempt_when_private_network_enabled() {
+        let closed = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = closed.local_addr().unwrap().port();
+        drop(closed);
+
+        let result = webdav_test(
+            &WebDavConfig {
+                url: format!("http://localhost:{port}/"),
+                ..Default::default()
+            },
+            true,
+        )
+        .await
+        .unwrap();
+        assert!(
+            !result.success,
+            "private URL must be attempted after policy: {result:?}"
+        );
     }
 
     // --- Export scope mapping + archive (17.5, Property 36) ----------------

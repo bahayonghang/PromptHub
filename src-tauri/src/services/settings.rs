@@ -343,6 +343,18 @@ mod tests {
         assert_eq!(stored.has_github_token, Some(false));
         assert_eq!(stored.has_sync_password, Some(false));
         assert!(stored.github_token.is_none());
+        assert_eq!(stored.allow_private_network, None);
+    }
+
+    #[test]
+    fn update_persists_allow_private_network() {
+        let conn = conn();
+        assert_eq!(get(&conn).unwrap().allow_private_network, None);
+        let result = update(&conn, &enc(), &json!({ "allowPrivateNetwork": true })).unwrap();
+        assert_eq!(result.allow_private_network, Some(true));
+        assert_eq!(get(&conn).unwrap().allow_private_network, Some(true));
+        let cleared = update(&conn, &enc(), &json!({ "allowPrivateNetwork": false })).unwrap();
+        assert_eq!(cleared.allow_private_network, Some(false));
     }
 
     #[test]

@@ -78,6 +78,14 @@ pub(crate) fn ensure_app_ready<R: tauri::Runtime>(
     ensure_ready(&state)
 }
 
+pub(crate) fn allow_private_network(state: &AppState) -> bool {
+    conn(state)
+        .ok()
+        .and_then(|conn| crate::services::settings::get(&conn).ok())
+        .and_then(|settings| settings.allow_private_network)
+        .unwrap_or(false)
+}
+
 pub(crate) fn conn(
     state: &AppState,
 ) -> Result<PooledConnection<SqliteConnectionManager>, AppError> {

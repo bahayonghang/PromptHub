@@ -7,7 +7,9 @@ use crate::services::sync::{
 };
 use crate::state::AppState;
 
-use super::{ensure_app_ready, ensure_ready, into_command, CommandRuntimeState};
+use super::{
+    allow_private_network, ensure_app_ready, ensure_ready, into_command, CommandRuntimeState,
+};
 
 #[tauri::command(rename = "webdav.test")]
 pub async fn sync_webdav_test<R: tauri::Runtime>(
@@ -15,7 +17,14 @@ pub async fn sync_webdav_test<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
 ) -> CommandResult<ConnectionTestResult> {
     match ensure_app_ready(&app) {
-        Ok(()) => sync::webdav_test(&config).await.into(),
+        Ok(()) => {
+            let allow = {
+                use tauri::Manager as _;
+                let state = app.state::<AppState>();
+                allow_private_network(&state)
+            };
+            sync::webdav_test(&config, allow).await.into()
+        }
         Err(e) => CommandResult::Err(e),
     }
 }
@@ -26,7 +35,14 @@ pub async fn sync_s3_test<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
 ) -> CommandResult<ConnectionTestResult> {
     match ensure_app_ready(&app) {
-        Ok(()) => sync::s3_test(&config).await.into(),
+        Ok(()) => {
+            let allow = {
+                use tauri::Manager as _;
+                let state = app.state::<AppState>();
+                allow_private_network(&state)
+            };
+            sync::s3_test(&config, allow).await.into()
+        }
         Err(e) => CommandResult::Err(e),
     }
 }

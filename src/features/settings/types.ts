@@ -51,6 +51,11 @@ export interface Settings {
   updateChannel?: string | null;
   launchAtStartup?: boolean | null;
   minimizeOnLaunch?: boolean | null;
+  /**
+   * When true, AI and sync HTTP may target private, loopback, or link-local
+   * addresses. Absent or false keeps the public-only pin.
+   */
+  allowPrivateNetwork?: boolean | null;
   /** Accepted on `settings.update` patches; `settings.get` never returns it. */
   githubToken?: string | null;
   /** Whether a GitHub token is stored. `settings.get` reports this instead of the secret. */
