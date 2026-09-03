@@ -17,6 +17,7 @@ import type {
   PromptTypeDefinition,
   PromptVersion,
   PromptCopyResult,
+  PromptUsage,
   PortableExportResult,
   PortableImportResult,
   ReferenceList,
@@ -38,6 +39,7 @@ export interface PromptApi {
   batchTag(ids: string[], tags: string[]): Promise<void>;
   batchDelete(ids: string[]): Promise<void>;
   copyPrompt(id: string, values: Record<string, string>): Promise<PromptCopyResult>;
+  incrementUsage(id: string): Promise<PromptUsage>;
   listReferences(promptId: string): Promise<ReferenceList>;
 
   listPromptTypes(): Promise<PromptTypeDefinition[]>;
@@ -86,6 +88,8 @@ export function createPromptApi(bridge: RuntimeBridge = runtime): PromptApi {
     batchDelete: (ids) => bridge.invoke<void>("prompt.batchDelete", { ids }),
     copyPrompt: (id, values) =>
       bridge.invoke<PromptCopyResult>("prompt.copy", { id, values }),
+    incrementUsage: (id) =>
+      bridge.invoke<PromptUsage>("prompt.incrementUsage", { id }),
     listReferences: (promptId) =>
       bridge.invoke<ReferenceList>("reference.list", { promptId }),
 

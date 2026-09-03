@@ -68,6 +68,14 @@ export function PromptGrid({
                     className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-ring"
                   />
                 )}
+                <CopyPromptButton
+                  source={item.source}
+                  promptId={item.id}
+                  copyPrompt={copyPrompt}
+                  name={item.title}
+                  locked={item.isLocked}
+                  writeText={writeText}
+                />
                 <div
                   role="button"
                   tabIndex={0}
@@ -120,20 +128,9 @@ export function PromptGrid({
                   <TypeBadge kind={item.typeKind} />
                   {item.typeLabel}
                 </span>
-                <span>{item.usageCount}</span>
+                <span className="tabular-nums">{item.usageCount}</span>
                 <span>{item.updatedLabel}</span>
                 <span>{item.versionLabel}</span>
-                <span className="ml-auto">
-                  <CopyPromptButton
-                    source={item.source}
-                    promptId={item.id}
-                    copyPrompt={copyPrompt}
-                    name={item.title}
-                    locked={item.isLocked}
-                    compact
-                    writeText={writeText}
-                  />
-                </span>
               </div>
             </article>
           </li>

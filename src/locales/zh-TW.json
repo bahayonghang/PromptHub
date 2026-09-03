@@ -1553,6 +1553,7 @@
     "copyPrompt": "複製到剪貼簿",
     "copyPromptNamed": "複製「{{title}}」",
     "copyPromptCopied": "已複製",
+    "copyPromptCopiedNamed": "已複製「{{title}}」",
     "copyPromptFailed": "無法複製 Prompt",
     "copyPromptLocked": "請先解鎖 Prompt 庫後再複製私密內容",
     "deletePrompt": "刪除 Prompt",

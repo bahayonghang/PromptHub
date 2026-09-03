@@ -1554,6 +1554,7 @@
     "copyPrompt": "クリップボードにコピー",
     "copyPromptNamed": "「{{title}}」をコピー",
     "copyPromptCopied": "コピーしました",
+    "copyPromptCopiedNamed": "「{{title}}」をコピーしました",
     "copyPromptFailed": "Prompt をコピーできませんでした",
     "copyPromptLocked": "プライベート内容をコピーするにはライブラリのロックを解除してください",
     "deletePrompt": "Prompt を削除",

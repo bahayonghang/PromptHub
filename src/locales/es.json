@@ -1549,6 +1549,7 @@
     "copyPrompt": "Copiar prompt",
     "copyPromptNamed": "Copiar {{title}}",
     "copyPromptCopied": "Copiado",
+    "copyPromptCopiedNamed": "{{title}} copiado",
     "copyPromptFailed": "No se pudo copiar el prompt",
     "copyPromptLocked": "Desbloquee la biblioteca para copiar el contenido privado",
     "deletePrompt": "Eliminar prompt",

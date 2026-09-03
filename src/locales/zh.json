@@ -1587,6 +1587,7 @@
     "copyPrompt": "复制到剪贴板",
     "copyPromptNamed": "复制「{{title}}」",
     "copyPromptCopied": "已复制",
+    "copyPromptCopiedNamed": "已复制「{{title}}」",
     "copyPromptFailed": "无法复制 Prompt",
     "copyPromptLocked": "请先解锁 Prompt 库后再复制私密内容",
     "deletePrompt": "删除 Prompt",

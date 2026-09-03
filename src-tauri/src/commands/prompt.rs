@@ -101,6 +101,14 @@ pub fn prompt_copy(
     )
 }
 
+#[tauri::command(rename = "prompt.incrementUsage")]
+pub fn prompt_increment_usage(
+    id: String,
+    state: tauri::State<'_, AppState>,
+) -> CommandResult<prompt::PromptUsage> {
+    into_command(conn(&state).and_then(|conn| prompt::increment_usage(&conn, &id)))
+}
+
 #[tauri::command(rename = "reference.list")]
 pub fn reference_list(
     prompt_id: String,

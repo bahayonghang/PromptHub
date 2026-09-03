@@ -6,6 +6,7 @@ import type { Folder, Prompt, PromptTypeDefinition } from "../../types";
 import { PromptDetailModal, type PromptDetailModalProps } from "./PromptDetailModal";
 import { resetPreferredChatModeForTests } from "../../definitionMode";
 import { usePromptStore } from "../../promptStore";
+import { useToastStore } from "../../../notifications/toastStore";
 
 const initialStore = usePromptStore.getState();
 
@@ -51,6 +52,9 @@ beforeEach(async () => {
 afterEach(() => {
   cleanup();
   usePromptStore.setState(initialStore, true);
+  for (const toast of useToastStore.getState().toasts) {
+    useToastStore.getState().dismiss(toast.id);
+  }
 });
 
 describe("PromptDetailModal", () => {
@@ -264,6 +268,116 @@ describe("PromptDetailModal", () => {
     expect(screen.queryByRole("heading", { name: "Unsaved changes" })).toBeNull();
     expect(screen.getByRole("dialog")).toBeTruthy();
   });
+
+  it("places header and content copy controls before their titles", () => {
+    renderSavedModal();
+    const copies = screen.getAllByRole("button", { name: "Copy Saved title" });
+    expect(copies).toHaveLength(2);
+    expect(copies[0]?.nextElementSibling?.textContent).toContain("Saved title");
+    expect(copies[1]?.nextElementSibling?.textContent).toContain("Prompt content");
+    expect(
+      screen.getByRole("group", { name: "Prompt content" }).querySelector(
+        "button[aria-label='Copy Saved title']",
+      ),
+    ).toBeNull();
+  });
+
+  it("copyFilled increments usage after a successful persisted copy", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    stubClipboard(writeText);
+    const incrementUsage = vi.fn(async (id: string) => ({ id, usageCount: 1 }));
+    const copyPrompt = vi.fn(async () => ({
+      systemPrompt: null,
+      userPrompt: "Saved body",
+      messages: [],
+      unexpanded: [],
+    }));
+    usePromptStore.setState({
+      api: {
+        ...usePromptStore.getState().api,
+        copyPrompt,
+        incrementUsage,
+      },
+    });
+    renderSavedModal();
+    await waitFor(() => {
+      expect(usePromptStore.getState().detailActions).not.toBeNull();
+    });
+    await act(async () => {
+      await usePromptStore.getState().detailActions?.copy();
+    });
+    expect(writeText).toHaveBeenCalled();
+    expect(incrementUsage).toHaveBeenCalledWith("prompt-1");
+    expect(writeText.mock.invocationCallOrder[0]).toBeLessThan(
+      incrementUsage.mock.invocationCallOrder[0],
+    );
+    expect(useToastStore.getState().toasts[0]?.message).toBe("Copied Saved title");
+  });
+
+  it("copyFilled does not increment a create draft", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    stubClipboard(writeText);
+    const incrementUsage = vi.fn(async (id: string) => ({ id, usageCount: 1 }));
+    usePromptStore.setState({
+      api: { ...usePromptStore.getState().api, incrementUsage },
+    });
+    renderCreateModal();
+    fillCreateDraft();
+    await waitFor(() => {
+      expect(usePromptStore.getState().detailActions).not.toBeNull();
+    });
+    await act(async () => {
+      await usePromptStore.getState().detailActions?.copy();
+    });
+    expect(writeText).toHaveBeenCalled();
+    expect(incrementUsage).not.toHaveBeenCalled();
+  });
+
+  it("copyFilled does not increment after a clipboard failure", async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error("denied"));
+    stubClipboard(writeText);
+    const incrementUsage = vi.fn(async (id: string) => ({ id, usageCount: 1 }));
+    const copyPrompt = vi.fn(async () => ({
+      systemPrompt: null,
+      userPrompt: "Saved body",
+      messages: [],
+      unexpanded: [],
+    }));
+    usePromptStore.setState({
+      api: {
+        ...usePromptStore.getState().api,
+        copyPrompt,
+        incrementUsage,
+      },
+    });
+    renderSavedModal();
+    await waitFor(() => {
+      expect(usePromptStore.getState().detailActions).not.toBeNull();
+    });
+    await act(async () => {
+      await usePromptStore.getState().detailActions?.copy();
+    });
+    expect(incrementUsage).not.toHaveBeenCalled();
+    expect(useToastStore.getState().toasts[0]?.tone).toBe("danger");
+  });
+
+  it("copyFilled does not write or increment when locked", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    stubClipboard(writeText);
+    const incrementUsage = vi.fn(async (id: string) => ({ id, usageCount: 1 }));
+    usePromptStore.setState({
+      api: { ...usePromptStore.getState().api, incrementUsage },
+    });
+    renderSavedModal({ ...savedPrompt(), isLocked: true });
+    await waitFor(() => {
+      expect(usePromptStore.getState().detailActions).not.toBeNull();
+    });
+    await act(async () => {
+      await usePromptStore.getState().detailActions?.copy();
+    });
+    expect(writeText).not.toHaveBeenCalled();
+    expect(incrementUsage).not.toHaveBeenCalled();
+  });
 });
 
 function renderCreateModal(
@@ -304,5 +418,38 @@ function fillCreateDraft(title = "New title", body = "New body") {
   fireEvent.change(screen.getByLabelText("Title"), { target: { value: title } });
   fireEvent.change(screen.getByLabelText("Content for message 1"), {
     target: { value: body },
+  });
+}
+
+function renderSavedModal(prompt: Prompt = savedPrompt()) {
+  render(
+    <PromptDetailModal
+      open
+      creating={false}
+      prompt={prompt}
+      prompts={[prompt]}
+      versions={[]}
+      folders={[]}
+      promptTypeDefinitions={[]}
+      knownTags={[]}
+      onClose={vi.fn()}
+      onCreate={vi.fn()}
+      onSave={vi.fn(async () => prompt)}
+      onCreateFolder={vi.fn(async () => null)}
+      onCreatePromptType={vi.fn(async () => null)}
+      onToggleFavorite={vi.fn()}
+      onTogglePin={vi.fn()}
+      onDuplicate={vi.fn()}
+      onDelete={vi.fn()}
+      onCreateVersion={vi.fn()}
+      onRollback={vi.fn()}
+    />,
+  );
+}
+
+function stubClipboard(writeText: ReturnType<typeof vi.fn>) {
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { writeText },
   });
 }

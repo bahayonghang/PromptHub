@@ -218,6 +218,12 @@ export interface PromptCopyResult {
   unexpanded: UnexpandedReference[];
 }
 
+/** Result of `prompt.incrementUsage`. */
+export interface PromptUsage {
+  id: string;
+  usageCount: number;
+}
+
 export interface OutgoingReference {
   targetPromptId: string | null;
   targetTitle: string | null;

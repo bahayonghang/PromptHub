@@ -1551,6 +1551,7 @@
     "copyPrompt": "Copier le prompt",
     "copyPromptNamed": "Copier {{title}}",
     "copyPromptCopied": "Copie reussie",
+    "copyPromptCopiedNamed": "{{title}} copie",
     "copyPromptFailed": "Impossible de copier le prompt",
     "copyPromptLocked": "Deverrouillez la bibliotheque pour copier le contenu prive",
     "deletePrompt": "Supprimer le prompt",

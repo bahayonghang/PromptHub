@@ -33,6 +33,7 @@ describe("createPromptApi command contract (Req 3.1)", () => {
     await api.batchTag(["p1"], ["shared"]);
     await api.batchDelete(["p2"]);
     await api.copyPrompt("p1", { a: "b" });
+    await api.incrementUsage("p1");
     await api.listReferences("p1");
 
     expect(invoke).toHaveBeenCalledWith("prompt.list");
@@ -62,6 +63,7 @@ describe("createPromptApi command contract (Req 3.1)", () => {
       id: "p1",
       values: { a: "b" },
     });
+    expect(invoke).toHaveBeenCalledWith("prompt.incrementUsage", { id: "p1" });
     expect(invoke).toHaveBeenCalledWith("reference.list", { promptId: "p1" });
   });
 

@@ -6,11 +6,16 @@ export interface Toast {
   id: string;
   message: string;
   tone: ToastTone;
+  replaceGroup?: string;
 }
 
 interface ToastStore {
   toasts: Toast[];
-  push: (input: { message: string; tone?: ToastTone }) => string;
+  push: (input: {
+    message: string;
+    tone?: ToastTone;
+    replaceGroup?: string;
+  }) => string;
   dismiss: (id: string) => void;
 }
 
@@ -20,10 +25,18 @@ const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
 export const useToastStore = create<ToastStore>((set, get) => ({
   toasts: [],
-  push: ({ message, tone = "info" }) => {
+  push: ({ message, tone = "info", replaceGroup }) => {
+    if (replaceGroup) {
+      const stale = get().toasts.filter(
+        (toast) => toast.replaceGroup === replaceGroup,
+      );
+      for (const toast of stale) {
+        get().dismiss(toast.id);
+      }
+    }
     const id = `toast-${nextId}`;
     nextId += 1;
-    set({ toasts: [...get().toasts, { id, message, tone }] });
+    set({ toasts: [...get().toasts, { id, message, tone, replaceGroup }] });
     const timer = setTimeout(() => get().dismiss(id), DEFAULT_MS);
     timers.set(id, timer);
     return id;

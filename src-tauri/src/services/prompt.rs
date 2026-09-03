@@ -1065,6 +1065,19 @@ pub fn search(conn: &Connection, query: SearchQuery) -> Result<PromptPage, AppEr
 
 // --- copy + tag operations (task 4.2; Req 6.8–6.11) ------------------------
 
+/// Usage count after [`increment_usage`].
+///
+/// `updated_at` is intentionally omitted: a copy must not reshuffle
+/// "recently updated" order.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PromptUsage {
+    /// Prompt id whose usage was incremented.
+    pub id: String,
+    /// Stored `usage_count` after the increment.
+    pub usage_count: i64,
+}
+
 /// Substituted prompt text returned by [`copy`] (Req 6.11).
 ///
 /// Mirrors the Reference_App's resolved-content shape: the system prompt is
@@ -1182,6 +1195,26 @@ pub fn copy_secure(
             })
             .collect(),
         unexpanded,
+    })
+}
+
+/// Increments `usage_count` by one for `id` without touching `updated_at`.
+///
+/// Missing rows return `NOT_FOUND`. This is separate from [`copy`]: clipboard
+/// writes happen in the frontend, and a failed write must not count as a use.
+pub fn increment_usage(conn: &Connection, id: &str) -> Result<PromptUsage, AppError> {
+    let usage_count: i64 = conn
+        .query_row(
+            "UPDATE prompts SET usage_count = usage_count + 1 WHERE id = ?1 RETURNING usage_count",
+            [id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|e| db_err("failed to increment prompt usage", e))?
+        .ok_or_else(|| AppError::not_found(format!("prompt `{id}` not found")))?;
+    Ok(PromptUsage {
+        id: id.to_string(),
+        usage_count,
     })
 }
 
@@ -1890,6 +1923,67 @@ mod tests {
         let conn = pool.get().unwrap();
         let err = copy(&conn, "missing", &HashMap::new()).unwrap_err();
         assert_eq!(err.code, ErrorCode::NotFound);
+    }
+
+    #[test]
+    fn increment_usage_counts_and_leaves_updated_at_unchanged() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let created = create(
+            &conn,
+            PromptCreate {
+                title: "T".into(),
+                user_prompt: "body".into(),
+                usage_count: Some(0),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(created.usage_count, 0);
+        let before = get(&conn, &created.id).unwrap();
+
+        let first = increment_usage(&conn, &created.id).unwrap();
+        assert_eq!(first.id, created.id);
+        assert_eq!(first.usage_count, 1);
+        let after_first = get(&conn, &created.id).unwrap();
+        assert_eq!(after_first.usage_count, 1);
+        assert_eq!(after_first.updated_at, before.updated_at);
+
+        let second = increment_usage(&conn, &created.id).unwrap();
+        assert_eq!(second.usage_count, 2);
+        let after_second = get(&conn, &created.id).unwrap();
+        assert_eq!(after_second.usage_count, 2);
+        assert_eq!(after_second.updated_at, before.updated_at);
+    }
+
+    #[test]
+    fn increment_usage_missing_id_returns_not_found() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let err = increment_usage(&conn, "missing").unwrap_err();
+        assert_eq!(err.code, ErrorCode::NotFound);
+        assert!(list(&conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn copy_does_not_increment_usage() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let created = create(
+            &conn,
+            PromptCreate {
+                title: "T".into(),
+                user_prompt: "Hello {{name}}".into(),
+                usage_count: Some(3),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let before = get(&conn, &created.id).unwrap();
+        let _ = copy(&conn, &created.id, &HashMap::new()).unwrap();
+        let after = get(&conn, &created.id).unwrap();
+        assert_eq!(after.usage_count, 3);
+        assert_eq!(after.updated_at, before.updated_at);
     }
 
     #[test]

@@ -118,6 +118,7 @@ pub fn run() {
             commands::prompt::prompt_batch_tag,
             commands::prompt::prompt_batch_delete,
             commands::prompt::prompt_copy,
+            commands::prompt::prompt_increment_usage,
             commands::prompt::reference_list,
             commands::prompt::prompt_tag_list,
             commands::prompt::prompt_tag_rename,

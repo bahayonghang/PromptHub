@@ -47,6 +47,7 @@ Runtime Bridge through which all backend access flows.
 - `features/notifications/` — toast store and host.
 - `features/prompts/promptText.ts` — clipboard formatting for `prompt.copy`;
   `@@Title` expansion lives in the backend (`reference.list` / `prompt.copy`).
+  A successful clipboard write then calls `prompt.incrementUsage`.
 - `features/prompts/versionDiff.ts` — structured immutable-revision diffing.
 - `features/evaluation/` — typed bridge API, Zustand orchestration, and the
   playground/matrix/history workbench.

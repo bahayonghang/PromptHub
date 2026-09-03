@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { XIcon } from "lucide-react";
+import { AlertCircleIcon, CheckIcon, XIcon } from "lucide-react";
 import { useToastStore } from "./toastStore";
 
 export function ToastHost() {
@@ -18,9 +18,18 @@ export function ToastHost() {
         <div
           key={toast.id}
           className={`toast-item pointer-events-auto flex items-start gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm text-card-foreground shadow-md ${
-            toast.tone === "danger" ? "border-destructive/40" : ""
+            toast.tone === "success"
+              ? "border-success/40"
+              : toast.tone === "danger"
+                ? "border-destructive/40"
+                : ""
           }`}
         >
+          {toast.tone === "success" ? (
+            <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+          ) : toast.tone === "danger" ? (
+            <AlertCircleIcon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          ) : null}
           <p className="min-w-0 flex-1">{toast.message}</p>
           <button
             type="button"

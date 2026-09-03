@@ -1347,6 +1347,7 @@
     "copyPrompt": "Copy prompt",
     "copyPromptNamed": "Copy {{title}}",
     "copyPromptCopied": "Copied",
+    "copyPromptCopiedNamed": "Copied {{title}}",
     "copyPromptFailed": "Could not copy prompt",
     "copyPromptLocked": "Unlock the prompt library to copy private content",
     "deletePrompt": "Delete prompt",

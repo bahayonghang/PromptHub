@@ -68,13 +68,7 @@ export function DefinitionSection({
       className="border-t border-border pt-5"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3
-          id="prompt-editor-definition"
-          className="text-sm font-semibold text-foreground"
-        >
-          {t("promptsView.editor.sections.definition")}
-        </h3>
-        <div className="flex items-center gap-1">
+        <div className="flex min-w-0 items-center gap-2">
           <CopyPromptButton
             source={{
               systemPrompt: draft.systemPrompt,
@@ -83,14 +77,22 @@ export function DefinitionSection({
               variables: draft.variables,
             }}
             promptId={prompt?.id}
+            name={draft.title || prompt?.title}
             locked={readOnly && prompt?.isLocked}
             writeText={writeText}
           />
-          <div
-            role="group"
-            aria-label={t("evaluation.definitionMode")}
-            className="flex rounded-md border border-input p-0.5"
+          <h3
+            id="prompt-editor-definition"
+            className="text-sm font-semibold text-foreground"
           >
+            {t("promptsView.editor.sections.definition")}
+          </h3>
+        </div>
+        <div
+          role="group"
+          aria-label={t("evaluation.definitionMode")}
+          className="flex rounded-md border border-input p-0.5"
+        >
             <button
               type="button"
               aria-pressed={!chatMode}
@@ -119,7 +121,6 @@ export function DefinitionSection({
               <MessageSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
               {t("evaluation.chatMode")}
             </button>
-          </div>
         </div>
       </div>
 

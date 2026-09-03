@@ -228,6 +228,11 @@ interface PromptStoreState {
     id: string,
     patch: Parameters<PromptApi["updatePrompt"]>[1],
   ) => Promise<Prompt | null>;
+  /**
+   * Increments usage after a successful clipboard write. Patches the list and
+   * selected prompt in place; does not reload search or set a view-level error.
+   */
+  incrementUsage: (id: string) => Promise<number | null>;
   /** Deletes a prompt and clears the selection if it was selected (Req 6.5). */
   deletePrompt: (id: string) => Promise<void>;
   duplicatePrompt: (id: string) => Promise<Prompt | null>;
@@ -554,6 +559,26 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
       return prompt;
     } catch (err) {
       set({ error: errorMessage(err) });
+      return null;
+    }
+  },
+
+  incrementUsage: async (id) => {
+    const { api } = get();
+    try {
+      const usage = await api.incrementUsage(id);
+      const { prompts, selectedPrompt } = get();
+      set({
+        prompts: prompts.map((prompt) =>
+          prompt.id === id ? { ...prompt, usageCount: usage.usageCount } : prompt,
+        ),
+        selectedPrompt:
+          selectedPrompt?.id === id
+            ? { ...selectedPrompt, usageCount: usage.usageCount }
+            : selectedPrompt,
+      });
+      return usage.usageCount;
+    } catch {
       return null;
     }
   },

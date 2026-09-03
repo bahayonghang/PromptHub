@@ -113,6 +113,7 @@ function makeApi(overrides: Partial<PromptApi> = {}): PromptApi {
       messages: [],
       unexpanded: [],
     })),
+    incrementUsage: vi.fn(async (id) => ({ id, usageCount: 1 })),
     listReferences: vi.fn(async () => ({ outgoing: [], incoming: [] })),
     listPromptTypes: vi.fn(async () => []),
     createPromptType: vi.fn(async (input) => ({
@@ -702,6 +703,49 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
 
     expect(reorder).toHaveBeenCalledWith(["b", "a"]);
     expect(listFolders).toHaveBeenCalled();
+  });
+
+  it("incrementUsage() patches list and selected usage without searching", async () => {
+    const incrementUsage = vi.fn(async () => ({ id: "p1", usageCount: 2 }));
+    const searchPrompts = vi.fn(async () => makePage([]));
+    resetStore(makeApi({ incrementUsage, searchPrompts }));
+    const p1 = makePrompt({ id: "p1", usageCount: 1 });
+    const p2 = makePrompt({ id: "p2", usageCount: 5 });
+    usePromptStore.setState({
+      prompts: [p1, p2],
+      selectedPromptId: "p1",
+      selectedPrompt: p1,
+    });
+
+    const count = await usePromptStore.getState().incrementUsage("p1");
+
+    expect(count).toBe(2);
+    expect(incrementUsage).toHaveBeenCalledWith("p1");
+    expect(searchPrompts).not.toHaveBeenCalled();
+    expect(usePromptStore.getState().prompts[0]?.usageCount).toBe(2);
+    expect(usePromptStore.getState().prompts[1]?.usageCount).toBe(5);
+    expect(usePromptStore.getState().selectedPrompt?.usageCount).toBe(2);
+    expect(usePromptStore.getState().error).toBeNull();
+  });
+
+  it("incrementUsage() returns null on failure without a view error", async () => {
+    const incrementUsage = vi.fn(async () => {
+      throw new BridgeError("NOT_FOUND", "prompt `p1` not found");
+    });
+    resetStore(makeApi({ incrementUsage }));
+    const p1 = makePrompt({ id: "p1", usageCount: 1 });
+    usePromptStore.setState({
+      prompts: [p1],
+      selectedPromptId: "p1",
+      selectedPrompt: p1,
+    });
+
+    const count = await usePromptStore.getState().incrementUsage("p1");
+
+    expect(count).toBeNull();
+    expect(usePromptStore.getState().error).toBeNull();
+    expect(usePromptStore.getState().prompts[0]?.usageCount).toBe(1);
+    expect(usePromptStore.getState().selectedPrompt?.usageCount).toBe(1);
   });
 
   it("rollbackVersion() reloads prompts and history (Req 7.3)", async () => {

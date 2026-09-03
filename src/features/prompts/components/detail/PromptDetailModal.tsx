@@ -33,8 +33,11 @@ import {
   formatCopiedPrompt,
   syncVariables,
 } from "../../promptText";
-import { promptApi } from "../../api";
-import { CopyPromptButton } from "../CopyPromptButton";
+import {
+  CopyPromptButton,
+  pushPromptCopyToast,
+  recordCopiedPromptUsage,
+} from "../CopyPromptButton";
 import {
   canSubmitDraft,
   draftSnapshot,
@@ -261,23 +264,33 @@ export function PromptDetailModal({
   }, [creating, draft, onCreate, onSave, prompt, t]);
 
   const copyFilled = useCallback(async () => {
+    if (locked) return;
     const values = {
       ...defaultVariableValues(draft.variables),
       ...previewValues,
     };
-    if (prompt && !locked) {
-      const copied = await promptApi.copyPrompt(prompt.id, values);
-      await navigator.clipboard.writeText(formatCopiedPrompt(copied));
-      return;
+    try {
+      if (prompt) {
+        const copied = await usePromptStore
+          .getState()
+          .api.copyPrompt(prompt.id, values);
+        await navigator.clipboard.writeText(formatCopiedPrompt(copied));
+        pushPromptCopyToast(t, "success", prompt.title);
+        await recordCopiedPromptUsage(creating ? undefined : prompt.id);
+        return;
+      }
+      await navigator.clipboard.writeText(
+        formatCopiedPrompt({
+          systemPrompt: draft.systemPrompt,
+          userPrompt: draft.userPrompt,
+          messages: draft.messages,
+        }),
+      );
+      pushPromptCopyToast(t, "success", draft.title || undefined);
+    } catch {
+      pushPromptCopyToast(t, "failure");
     }
-    await navigator.clipboard.writeText(
-      formatCopiedPrompt({
-        systemPrompt: draft.systemPrompt,
-        userPrompt: draft.userPrompt,
-        messages: draft.messages,
-      }),
-    );
-  }, [draft, locked, previewValues, prompt]);
+  }, [creating, draft, locked, previewValues, prompt, t]);
 
   const resolvePending = (value: "proceed" | "cancel") => {
     pendingNav.current?.(value);
@@ -369,19 +382,6 @@ export function PromptDetailModal({
       <Modal open={open} title={title} onClose={requestClose}>
         <div className="flex h-[min(90vh,56rem)] flex-col">
           <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-4 py-2">
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold text-foreground">
-                {title}
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                {!creating && prompt && (
-                  <span>{t("promptsView.detail.versionChip", { version: prompt.currentVersion })}</span>
-                )}
-                {prompt?.description && (
-                  <span className="truncate">{prompt.description}</span>
-                )}
-              </div>
-            </div>
             {!creating && prompt && (
               <CopyPromptButton
                 source={{
@@ -395,6 +395,19 @@ export function PromptDetailModal({
                 name={prompt.title}
               />
             )}
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold text-foreground">
+                {title}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                {!creating && prompt && (
+                  <span>{t("promptsView.detail.versionChip", { version: prompt.currentVersion })}</span>
+                )}
+                {prompt?.description && (
+                  <span className="truncate">{prompt.description}</span>
+                )}
+              </div>
+            </div>
             <button
               type="button"
               title={readOnly ? t("promptsView.detail.edit") : t("promptsView.detail.readOnly")}
