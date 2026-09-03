@@ -417,3 +417,26 @@ Added deterministic paging, immutable revisions, portable bundles, private promp
 ### Status
 
 [OK] **Completed**
+
+
+## Session 14: 补充核心业务测试覆盖
+
+**Date**: 2026-09-03
+**Task**: 补充核心业务测试覆盖
+**Branch**: `dev`
+
+### Summary
+
+按业务风险补齐 security、evaluation、prompt、portable 与前端 store 的权限/校验/取消/失败路径测试；加上 setMasterPassword 闸门与 SSRF 预检；just ci 通过。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `50806df` | (see git log) |
+| `95e1757` | (see git log) |
+| `af0bc9e` | (see git log) |
+
+### Status
+
+[OK] **Completed**
