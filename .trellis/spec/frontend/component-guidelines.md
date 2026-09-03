@@ -146,6 +146,20 @@ const selectClass =
 Icons come from `lucide-react`. Decorative icons use `aria-hidden="true"`;
 action icons need an accessible label on the button or icon.
 
+### Prompt copy control
+
+Library list, library grid, the detail overlay header, and the Prompt content
+heading share `CopyPromptButton`. The control sits immediately before the title
+(or the Prompt content heading), as a sibling of the title activator, never
+nested inside it. Hit target is `h-9 w-9`; the `ClipboardCopy` / `Check` icon
+is `h-5 w-5`.
+
+Success is the in-control `Check` for about 1.5 s plus a `ToastHost` success
+toast with `replaceGroup: "prompt-copy"`. Failure stays on the control and may
+push a danger toast in the same group. Persist usage only after `writeText`
+succeeds; see `.trellis/spec/cross-layer/prompt-library-foundations.md`
+(Recording a clipboard copy as usage).
+
 ### Responsive Container Layouts
 
 Feature-internal panes and forms should respond to their content region rather
