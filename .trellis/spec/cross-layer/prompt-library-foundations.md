@@ -97,6 +97,8 @@ references, and definition snapshots on revisions.
 | Private field is plaintext in a private bundle | `VALIDATION`; write nothing |
 | Private bundle is locked or uses another key | `UNAUTHORIZED`; no backup or writes |
 | Private prompt is read while locked | Return metadata with `isLocked=true` and redacted content |
+| `security.setMasterPassword` when a verifier already exists | `CONFLICT`; verifier and `ENC::` rows unchanged. Re-key only through `security.changeMasterPassword`. The service primitive still overwrites; the Command_Layer owns the gate. |
+| Create or update private content while locked | `UNAUTHORIZED`; no Prompt write |
 
 ### 5. Good / Base / Bad Cases
 
@@ -127,7 +129,9 @@ references, and definition snapshots on revisions.
   traversal rejection, media collision cleanup, and wrong-key private import
   before writes.
 - Privacy: ciphertext-at-rest scans, locked redaction, FTS exclusion, unlock,
-  and atomic password re-key for prompts plus revisions.
+  atomic password re-key for prompts plus revisions, second
+  `setMasterPassword` leaving the verifier unchanged, and locked
+  create/update writing nothing.
 - Bridge: command names, camelCase argument names, DTO nullability, Rust command
   registration, and frontend API/store tests.
 - Finish with `just ci` and an isolated native Tauri export/preview/import smoke.
