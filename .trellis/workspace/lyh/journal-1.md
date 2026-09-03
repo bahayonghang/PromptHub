@@ -440,3 +440,40 @@ Added deterministic paging, immutable revisions, portable bundles, private promp
 ### Status
 
 [OK] **Completed**
+
+
+## Session 15: 前置复制按钮并累计使用次数
+
+**Date**: 2026-09-03
+**Task**: 前置复制按钮并累计使用次数
+**Branch**: `dev`
+
+### Summary
+
+列表、卡片、详情把复制按钮放到标题前并放大；成功 toast 用 replaceGroup 替换；prompt.incrementUsage 在剪贴板写入成功后 +1，不改 updated_at。just ci 通过。
+
+### Main Changes
+
+- 复制控件移到列表/卡片/详情标题前，热区 36px
+- 成功 toast 与按钮内对勾；失败不计使用次数
+- 新增 prompt.incrementUsage，剪贴板成功后累计 usageCount
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `055a6de` | (see git log) |
+| `84c9637` | (see git log) |
+| `8234a59` | (see git log) |
+
+### Testing
+
+- [OK] just ci
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 未在打包 Tauri 窗口做真实点击验收
