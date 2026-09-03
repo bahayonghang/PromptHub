@@ -1,5 +1,5 @@
 import type { PromptCopySource } from "./promptText";
-import type { Prompt, PromptType, PromptTypeDefinition } from "./types";
+import type { PromptListItem, PromptType, PromptTypeDefinition } from "./types";
 
 export const LIBRARY_TAG_LIMIT = 3;
 
@@ -24,7 +24,7 @@ export interface LibraryItem {
 export type LibraryTranslator = (key: string, options?: Record<string, unknown>) => string;
 
 function typeLabel(
-  prompt: Prompt,
+  prompt: PromptListItem,
   definitions: readonly PromptTypeDefinition[],
   t: LibraryTranslator,
 ): string {
@@ -42,9 +42,15 @@ function updatedLabel(value: string): string {
   return date.length === 10 ? date : value;
 }
 
+const EMPTY_COPY_SOURCE: PromptCopySource = {
+  userPrompt: "",
+  messages: [],
+  variables: [],
+};
+
 /** Maps a stored prompt onto the fields both library renderers consume. */
 export function toLibraryItem(
-  prompt: Prompt,
+  prompt: PromptListItem,
   definitions: readonly PromptTypeDefinition[],
   t: LibraryTranslator,
 ): LibraryItem {
@@ -68,11 +74,6 @@ export function toLibraryItem(
     isPinned: prompt.isPinned,
     isPrivate: prompt.isPrivate,
     isLocked: prompt.isLocked,
-    source: {
-      systemPrompt: prompt.systemPrompt,
-      userPrompt: prompt.userPrompt,
-      messages: prompt.messages,
-      variables: prompt.variables,
-    },
+    source: EMPTY_COPY_SOURCE,
   };
 }

@@ -273,6 +273,19 @@ pub fn export_bundle(
     })
 }
 
+/// Reads at most `limit` bytes. Header `size()` is not trusted.
+fn read_capped(reader: &mut impl Read, limit: u64, too_large: &str) -> Result<Vec<u8>, AppError> {
+    let mut limited = reader.take(limit.saturating_add(1));
+    let mut bytes = Vec::new();
+    limited
+        .read_to_end(&mut bytes)
+        .map_err(|error| AppError::io(format!("failed to read bundle entry: {error}")))?;
+    if u64::try_from(bytes.len()).unwrap_or(u64::MAX) > limit {
+        return Err(AppError::validation(too_large));
+    }
+    Ok(bytes)
+}
+
 fn load_bundle(path: &Path) -> Result<LoadedBundle, AppError> {
     let file = fs::File::open(path)
         .map_err(|error| AppError::io(format!("failed to open prompt bundle: {error}")))?;
@@ -293,15 +306,16 @@ fn load_bundle(path: &Path) -> Result<LoadedBundle, AppError> {
             .trim_start_matches('/')
             .to_string();
         if normalized == MANIFEST_NAME {
-            if entry.size() > MAX_MANIFEST_BYTES || manifest.is_some() {
+            if manifest.is_some() {
                 return Err(AppError::validation(
                     "bundle manifest is missing or too large",
                 ));
             }
-            let mut bytes = Vec::new();
-            entry
-                .read_to_end(&mut bytes)
-                .map_err(|error| AppError::io(format!("failed to read manifest: {error}")))?;
+            let bytes = read_capped(
+                &mut entry,
+                MAX_MANIFEST_BYTES,
+                "bundle manifest is missing or too large",
+            )?;
             manifest =
                 Some(serde_json::from_slice(&bytes).map_err(|error| {
                     AppError::parse(format!("invalid bundle manifest: {error}"))
@@ -311,14 +325,12 @@ fn load_bundle(path: &Path) -> Result<LoadedBundle, AppError> {
                 continue;
             }
             let relative = safe_relative_path(&relative.to_string_lossy())?;
-            media_total = media_total.saturating_add(entry.size());
+            let remaining = MAX_MEDIA_BYTES.saturating_sub(media_total);
+            let bytes = read_capped(&mut entry, remaining, "bundle media exceeds 100 MB")?;
+            media_total = media_total.saturating_add(bytes.len() as u64);
             if media_total > MAX_MEDIA_BYTES {
                 return Err(AppError::validation("bundle media exceeds 100 MB"));
             }
-            let mut bytes = Vec::new();
-            entry
-                .read_to_end(&mut bytes)
-                .map_err(|error| AppError::io(format!("failed to read bundle media: {error}")))?;
             media.push((relative, bytes));
         } else {
             return Err(AppError::validation(format!(
@@ -897,10 +909,9 @@ pub fn import_bundle(
             "bundle contains a prompt type name with a different base format",
         ));
     }
+    validate_existing_media(media_root, &loaded.media)?;
     let backup = crate::services::sync::backup_create(data_root, backup_root)?;
 
-    let import_id = uuid::Uuid::new_v4().to_string();
-    let staging = media_root.join(format!(".prompthub-import-{import_id}"));
     let folder_map: HashMap<String, String> = loaded
         .manifest
         .folders
@@ -943,16 +954,6 @@ pub fn import_bundle(
 
     let mut created_media = Vec::new();
     let result = (|| -> Result<PortableImportResult, AppError> {
-        for (relative, bytes) in &loaded.media {
-            let destination = staging.join(relative);
-            if let Some(parent) = destination.parent() {
-                fs::create_dir_all(parent)
-                    .map_err(|error| AppError::io(format!("failed to stage media: {error}")))?;
-            }
-            fs::write(&destination, bytes)
-                .map_err(|error| AppError::io(format!("failed to stage media: {error}")))?;
-        }
-
         let tx = conn
             .unchecked_transaction()
             .map_err(|error| db_err("failed to start bundle import", error))?;
@@ -1033,32 +1034,6 @@ pub fn import_bundle(
             )?;
         }
 
-        for (relative, bytes) in &loaded.media {
-            let staged = staging.join(relative);
-            let destination = media_root.join(relative);
-            if destination.exists() {
-                let existing = fs::read(&destination).map_err(|error| {
-                    AppError::io(format!("failed to inspect existing media: {error}"))
-                })?;
-                if existing != *bytes {
-                    return Err(AppError::validation(format!(
-                        "bundle media `{}` conflicts with an existing file",
-                        relative.display()
-                    )));
-                }
-                continue;
-            }
-            if let Some(parent) = destination.parent() {
-                fs::create_dir_all(parent).map_err(|error| {
-                    AppError::io(format!("failed to create media directory: {error}"))
-                })?;
-            }
-            fs::rename(&staged, &destination).map_err(|error| {
-                AppError::io(format!("failed to install bundle media: {error}"))
-            })?;
-            created_media.push(destination);
-        }
-
         import_references(
             &tx,
             &loaded.manifest.references,
@@ -1070,6 +1045,8 @@ pub fn import_bundle(
         tx.commit()
             .map_err(|error| db_err("failed to commit bundle import", error))?;
 
+        install_bundle_media(media_root, &loaded.media, &mut created_media)?;
+
         Ok(PortableImportResult {
             added,
             skipped,
@@ -1079,14 +1056,55 @@ pub fn import_bundle(
     })();
 
     if result.is_err() {
-        cleanup_import_files(&staging, &created_media);
-    } else {
-        let _ = fs::remove_dir_all(&staging);
+        cleanup_import_files(&created_media);
     }
     result
 }
 
-fn cleanup_import_files(staging: &Path, created: &[PathBuf]) {
+fn validate_existing_media(
+    media_root: &Path,
+    media: &[(PathBuf, Vec<u8>)],
+) -> Result<(), AppError> {
+    for (relative, bytes) in media {
+        let destination = media_root.join(relative);
+        if !destination.exists() {
+            continue;
+        }
+        let existing = fs::read(&destination)
+            .map_err(|error| AppError::io(format!("failed to inspect existing media: {error}")))?;
+        if existing != *bytes {
+            return Err(AppError::validation(format!(
+                "bundle media `{}` conflicts with an existing file",
+                relative.display()
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn install_bundle_media(
+    media_root: &Path,
+    media: &[(PathBuf, Vec<u8>)],
+    created: &mut Vec<PathBuf>,
+) -> Result<(), AppError> {
+    for (relative, bytes) in media {
+        let destination = media_root.join(relative);
+        if destination.exists() {
+            continue;
+        }
+        if let Some(parent) = destination.parent() {
+            fs::create_dir_all(parent).map_err(|error| {
+                AppError::io(format!("failed to create media directory: {error}"))
+            })?;
+        }
+        fs::write(&destination, bytes)
+            .map_err(|error| AppError::io(format!("failed to install bundle media: {error}")))?;
+        created.push(destination);
+    }
+    Ok(())
+}
+
+fn cleanup_import_files(created: &[PathBuf]) {
     for path in created {
         if path.exists() && fs::remove_file(path).is_err() {
             crate::logging::event(
@@ -1095,13 +1113,6 @@ fn cleanup_import_files(staging: &Path, created: &[PathBuf]) {
                 format!("import rollback leftover `{}`", path.display()),
             );
         }
-    }
-    if staging.exists() && fs::remove_dir_all(staging).is_err() {
-        crate::logging::event(
-            crate::logging::Level::Warn,
-            "portable",
-            format!("import rollback leftover `{}`", staging.display()),
-        );
     }
 }
 
@@ -1353,6 +1364,67 @@ mod tests {
             .file_name()
             .to_string_lossy()
             .starts_with(".prompthub-import-")));
+    }
+
+    fn patch_zip_uncompressed_sizes(path: &Path, uncompressed: u32) {
+        let mut data = fs::read(path).unwrap();
+        let size = uncompressed.to_le_bytes();
+        let mut offset = 0;
+        while offset + 30 <= data.len() {
+            if data[offset..offset + 4] == [0x50, 0x4b, 0x03, 0x04] {
+                data[offset + 22..offset + 26].copy_from_slice(&size);
+                offset += 30;
+                continue;
+            }
+            if offset + 46 <= data.len() && data[offset..offset + 4] == [0x50, 0x4b, 0x01, 0x02] {
+                data[offset + 24..offset + 28].copy_from_slice(&size);
+                offset += 46;
+                continue;
+            }
+            offset += 1;
+        }
+        fs::write(path, data).unwrap();
+    }
+
+    #[test]
+    fn load_bundle_rejects_header_size_one_with_huge_manifest_payload() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("huge-manifest.prompthub");
+        let file = fs::File::create(&path).unwrap();
+        let mut zip = ZipWriter::new(file);
+        zip.start_file(
+            MANIFEST_NAME,
+            SimpleFileOptions::default().compression_method(CompressionMethod::Stored),
+        )
+        .unwrap();
+        zip.write_all(&vec![b'x'; (MAX_MANIFEST_BYTES as usize) + 1])
+            .unwrap();
+        zip.finish().unwrap();
+        patch_zip_uncompressed_sizes(&path, 1);
+
+        let error = load_bundle(&path).unwrap_err();
+        assert_eq!(error.code_str(), "VALIDATION");
+        assert!(error.message.contains("too large"));
+
+        let pool = create_memory_pool().unwrap();
+        let conn = pool.get().unwrap();
+        init_schema(&conn).unwrap();
+        let data = root.path().join("data");
+        fs::create_dir_all(&data).unwrap();
+        let media = root.path().join("media");
+        let error = import_bundle(
+            &conn,
+            &path,
+            ImportConflictPolicy::Skip,
+            &data,
+            &root.path().join("backups"),
+            &media,
+            None,
+        )
+        .unwrap_err();
+        assert_eq!(error.code_str(), "VALIDATION");
+        assert!(prompt::list(&conn).unwrap().is_empty());
+        assert!(!media.exists() || fs::read_dir(&media).unwrap().next().is_none());
     }
 
     #[test]

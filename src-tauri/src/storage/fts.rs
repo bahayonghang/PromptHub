@@ -140,8 +140,16 @@ CREATE TRIGGER prompts_ad AFTER DELETE ON prompts BEGIN
   WHERE OLD.is_private = 0;
 END;
 
--- AFTER UPDATE: remove the old indexed values, then index the new ones.
-CREATE TRIGGER prompts_au AFTER UPDATE ON prompts BEGIN
+-- AFTER UPDATE: reindex only when indexed columns change. usage_count-only
+-- updates (copy tracking) skip the FTS rewrite.
+CREATE TRIGGER prompts_au AFTER UPDATE ON prompts
+WHEN NEW.title IS NOT OLD.title
+  OR NEW.description IS NOT OLD.description
+  OR NEW.system_prompt IS NOT OLD.system_prompt
+  OR NEW.user_prompt IS NOT OLD.user_prompt
+  OR NEW.tags IS NOT OLD.tags
+  OR NEW.is_private IS NOT OLD.is_private
+BEGIN
   INSERT INTO prompts_fts(prompts_fts, rowid, title, description, system_prompt, user_prompt, tags)
   SELECT 'delete', OLD.rowid, OLD.title, OLD.description, OLD.system_prompt, OLD.user_prompt, OLD.tags
   WHERE OLD.is_private = 0;
@@ -374,6 +382,30 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM prompts_fts", [], |row| row.get(0))
             .unwrap();
         assert_eq!(total, 0, "index should be empty after delete");
+    }
+
+    #[test]
+    fn usage_count_only_update_does_not_reindex() {
+        let conn = setup();
+        insert_prompt(&conn, "p1", "Dragon Slayer", "A heroic quest", "[]");
+        assert_eq!(match_count(&conn, "Dragon"), 1);
+        let sql: String = conn
+            .query_row(
+                "SELECT sql FROM sqlite_master WHERE type='trigger' AND name='prompts_au'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(sql.contains("WHEN"));
+        assert!(!sql.contains("usage_count"));
+
+        conn.execute(
+            "UPDATE prompts SET usage_count = usage_count + 1 WHERE id = 'p1'",
+            [],
+        )
+        .unwrap();
+        assert_eq!(match_count(&conn, "Dragon"), 1);
+        assert_eq!(match_count(&conn, "heroic"), 1);
     }
 
     #[test]

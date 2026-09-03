@@ -33,6 +33,7 @@
 //! through [`crate::storage::mapping::prompt_from_row`] (Requirement 4.9).
 #![allow(dead_code)]
 
+use std::collections::BTreeMap;
 use std::sync::Mutex;
 
 use rusqlite::{params, Connection, OptionalExtension};
@@ -40,11 +41,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
 use crate::models::{
-    Prompt, PromptMessage, PromptPage, PromptRevisionSource, PromptType, PromptVersion, Variable,
+    Prompt, PromptCounts, PromptListItem, PromptMessage, PromptPage, PromptRevisionSource,
+    PromptType, PromptVersion, Variable,
 };
 use crate::models::{SearchQuery, SortField, SortOrder};
 use crate::state::EncryptionState;
-use crate::storage::mapping::prompt_from_row;
+use crate::storage::mapping::{prompt_from_row, prompt_list_item_from_row};
 use crate::storage::time::now_millis;
 
 /// Arguments for creating a prompt (Req 6.1, 6.6, 6.7).
@@ -545,6 +547,23 @@ pub(crate) fn present_prompt(mut prompt: Prompt, key: Option<&[u8]>) -> Result<P
     Ok(prompt)
 }
 
+fn present_list_item(
+    mut item: PromptListItem,
+    key: Option<&[u8]>,
+) -> Result<PromptListItem, AppError> {
+    if !item.is_private {
+        return Ok(item);
+    }
+    let Some(key) = key else {
+        item.description = None;
+        item.is_locked = true;
+        return Ok(item);
+    };
+    item.description = decrypt_optional(item.description, key)?;
+    item.is_locked = false;
+    Ok(item)
+}
+
 pub(crate) fn present_version(
     mut version: PromptVersion,
     key: Option<&[u8]>,
@@ -713,9 +732,74 @@ pub fn search_secure(
     page.items = page
         .items
         .into_iter()
-        .map(|prompt| present_prompt(prompt, key.as_deref()))
+        .map(|item| present_list_item(item, key.as_deref()))
         .collect::<Result<Vec<_>, _>>()?;
     Ok(page)
+}
+
+/// Folder, tag, and library totals for the sidebar. One round trip.
+pub fn counts(conn: &Connection) -> Result<PromptCounts, AppError> {
+    let total: i64 = conn
+        .query_row("SELECT COUNT(*) FROM prompts", [], |row| row.get(0))
+        .map_err(|e| db_err("failed to count prompts", e))?;
+    let favorites: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM prompts WHERE is_favorite = 1",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|e| db_err("failed to count favorite prompts", e))?;
+
+    let mut folders = BTreeMap::new();
+    {
+        let mut stmt = conn
+            .prepare(
+                "SELECT folders.id, COUNT(prompts.id)
+                 FROM folders
+                 LEFT JOIN prompts ON prompts.folder_id = folders.id
+                 GROUP BY folders.id",
+            )
+            .map_err(|e| db_err("failed to prepare folder counts", e))?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })
+            .map_err(|e| db_err("failed to query folder counts", e))?;
+        for row in rows {
+            let (id, n) = row.map_err(|e| db_err("failed to read folder count", e))?;
+            folders.insert(
+                id,
+                u64::try_from(n).map_err(|_| AppError::internal("folder count was negative"))?,
+            );
+        }
+    }
+
+    let mut tags = BTreeMap::new();
+    {
+        let mut stmt = conn
+            .prepare("SELECT value, COUNT(*) FROM prompts, json_each(prompts.tags) GROUP BY value")
+            .map_err(|e| db_err("failed to prepare tag counts", e))?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })
+            .map_err(|e| db_err("failed to query tag counts", e))?;
+        for row in rows {
+            let (name, n) = row.map_err(|e| db_err("failed to read tag count", e))?;
+            tags.insert(
+                name,
+                u64::try_from(n).map_err(|_| AppError::internal("tag count was negative"))?,
+            );
+        }
+    }
+
+    Ok(PromptCounts {
+        folders,
+        tags,
+        total: u64::try_from(total).map_err(|_| AppError::internal("prompt count was negative"))?,
+        favorites: u64::try_from(favorites)
+            .map_err(|_| AppError::internal("favorite count was negative"))?,
+    })
 }
 
 /// Deletes a prompt by identifier (Req 6.5).
@@ -1015,7 +1099,12 @@ pub fn search(conn: &Connection, query: SearchQuery) -> Result<PromptPage, AppEr
 
     let field = query.sort_by.unwrap_or_default();
     let order = query.sort_order.unwrap_or_default();
-    let mut sql = format!("SELECT prompts.*{from_sql}");
+    let mut sql = format!(
+        "SELECT prompts.id, prompts.title, prompts.description, prompts.prompt_type, \
+         prompts.type_definition_id, prompts.tags, prompts.folder_id, prompts.is_favorite, \
+         prompts.is_pinned, prompts.is_private, prompts.current_version, prompts.usage_count, \
+         prompts.created_at, prompts.updated_at{from_sql}"
+    );
     // `prompts.id` is a stable secondary key so equal sort values order
     // deterministically.
     sql.push_str(&format!(
@@ -1039,9 +1128,10 @@ pub fn search(conn: &Connection, query: SearchQuery) -> Result<PromptPage, AppEr
         // keyword surfaces here as a step error — classified as a structured parse
         // error rather than allowed to panic (Req 5.7).
         match rows.next() {
-            Ok(Some(row)) => {
-                out.push(prompt_from_row(row).map_err(|e| db_err("failed to map prompt row", e))?)
-            }
+            Ok(Some(row)) => out.push(
+                prompt_list_item_from_row(row)
+                    .map_err(|e| db_err("failed to map prompt list row", e))?,
+            ),
             Ok(None) => break,
             Err(e) if has_keyword => {
                 return Err(AppError::parse(format!(
@@ -2189,8 +2279,8 @@ mod tests {
         .unwrap();
     }
 
-    fn titles(prompts: &[Prompt]) -> Vec<String> {
-        prompts.iter().map(|p| p.title.clone()).collect()
+    fn titles(page: &PromptPage) -> Vec<String> {
+        page.items.iter().map(|p| p.title.clone()).collect()
     }
 
     #[test]
@@ -2485,6 +2575,41 @@ mod tests {
             }
         }
         assert_eq!(ids.len(), 250);
+    }
+
+    #[test]
+    fn search_list_items_omit_prompt_bodies() {
+        let pool = search_pool();
+        let conn = pool.get().unwrap();
+        create_full(&conn, "Body Prompt", &["tag"], None, false, 0);
+        let page = search(&conn, SearchQuery::default()).unwrap();
+        assert_eq!(page.items.len(), 1);
+        let value = serde_json::to_value(&page.items[0]).unwrap();
+        assert!(value.get("userPrompt").is_none());
+        assert!(value.get("systemPrompt").is_none());
+        assert!(value.get("messages").is_none());
+        assert_eq!(value["title"], "Body Prompt");
+    }
+
+    #[test]
+    fn counts_returns_folder_tag_total_and_favorites() {
+        let pool = search_pool();
+        let conn = pool.get().unwrap();
+        conn.execute(
+            "INSERT INTO folders (id, name, created_at) VALUES ('f1','F1',0),('f2','Empty',0)",
+            [],
+        )
+        .unwrap();
+        create_full(&conn, "A", &["red", "blue"], Some("f1"), true, 0);
+        create_full(&conn, "B", &["red"], Some("f1"), false, 0);
+        create_full(&conn, "C", &[], None, true, 0);
+        let counts = counts(&conn).unwrap();
+        assert_eq!(counts.total, 3);
+        assert_eq!(counts.favorites, 2);
+        assert_eq!(counts.folders.get("f1"), Some(&2));
+        assert_eq!(counts.folders.get("f2"), Some(&0));
+        assert_eq!(counts.tags.get("red"), Some(&2));
+        assert_eq!(counts.tags.get("blue"), Some(&1));
     }
 
     #[test]

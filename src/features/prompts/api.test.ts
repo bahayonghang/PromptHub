@@ -25,6 +25,7 @@ describe("createPromptApi command contract (Req 3.1)", () => {
     await api.listPrompts();
     await api.getPrompt("p1");
     await api.searchPrompts({ keyword: "hi" });
+    await api.countPrompts();
     await api.createPrompt({ title: "T", userPrompt: "U" });
     await api.updatePrompt("p1", { title: "T2" });
     await api.deletePrompt("p1");
@@ -41,6 +42,7 @@ describe("createPromptApi command contract (Req 3.1)", () => {
     expect(invoke).toHaveBeenCalledWith("prompt.search", {
       query: { keyword: "hi" },
     });
+    expect(invoke).toHaveBeenCalledWith("prompt.counts");
     expect(invoke).toHaveBeenCalledWith("prompt.create", {
       input: { title: "T", userPrompt: "U" },
     });

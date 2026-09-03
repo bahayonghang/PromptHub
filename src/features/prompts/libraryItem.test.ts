@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { toLibraryItem } from "./libraryItem";
-import type { Prompt, PromptTypeDefinition } from "./types";
+import type {
+  AssertPromptListItemHasNoBodies,
+  PromptListItem,
+  PromptTypeDefinition,
+} from "./types";
+
+const _listItemHasNoBodies: AssertPromptListItemHasNoBodies = true;
+void _listItemHasNoBodies;
 
 function t(key: string): string {
   const labels: Record<string, string> = {
@@ -14,18 +21,13 @@ function t(key: string): string {
   return labels[key] ?? key;
 }
 
-function makePrompt(partial: Partial<Prompt> = {}): Prompt {
+function makeListItem(partial: Partial<PromptListItem> = {}): PromptListItem {
   return {
     id: "p1",
     title: "Steelman",
     description: "A short card summary",
     promptType: "text",
-    userPrompt: "SECRET BODY",
-    messages: [],
-    variables: [],
     tags: ["a", "b", "c", "d"],
-    images: [],
-    videos: [],
     isFavorite: false,
     isPinned: false,
     isPrivate: false,
@@ -47,14 +49,14 @@ const storyboard: PromptTypeDefinition = {
 
 describe("toLibraryItem", () => {
   it("clamps tags to three and reports overflow", () => {
-    const item = toLibraryItem(makePrompt(), [], t);
+    const item = toLibraryItem(makeListItem(), [], t);
     expect(item.tags).toEqual(["a", "b", "c"]);
     expect(item.overflowTagCount).toBe(1);
   });
 
   it("redacts the description of a locked prompt and keeps metadata", () => {
     const item = toLibraryItem(
-      makePrompt({ isLocked: true, isPrivate: true, title: "Hidden" }),
+      makeListItem({ isLocked: true, isPrivate: true, title: "Hidden" }),
       [],
       t,
     );
@@ -62,12 +64,23 @@ describe("toLibraryItem", () => {
     expect(item.description).not.toContain("SECRET");
     expect(item.title).toBe("Hidden");
     expect(item.tags).toHaveLength(3);
-    expect(item.source.userPrompt).toBe("SECRET BODY");
+    expect(item.source.userPrompt).toBe("");
+  });
+
+  it("does not depend on userPrompt in the list payload", () => {
+    const prompt = makeListItem();
+    expect("userPrompt" in prompt).toBe(false);
+    expect("systemPrompt" in prompt).toBe(false);
+    expect("messages" in prompt).toBe(false);
+    const item = toLibraryItem(prompt, [], t);
+    expect(item.source.userPrompt).toBe("");
+    expect(item.source.messages).toEqual([]);
+    expect(JSON.stringify(item)).not.toContain("SECRET");
   });
 
   it("resolves a custom type name", () => {
     const item = toLibraryItem(
-      makePrompt({ typeDefinitionId: "type-1", promptType: "image" }),
+      makeListItem({ typeDefinitionId: "type-1", promptType: "image" }),
       [storyboard],
       t,
     );
@@ -76,7 +89,7 @@ describe("toLibraryItem", () => {
   });
 
   it("uses the empty-description notice when description is missing", () => {
-    const item = toLibraryItem(makePrompt({ description: "  " }), [], t);
+    const item = toLibraryItem(makeListItem({ description: "  " }), [], t);
     expect(item.description).toBe("No description");
     expect(item.versionLabel).toBe("v2");
     expect(item.updatedLabel).toBe("2026-08-24");

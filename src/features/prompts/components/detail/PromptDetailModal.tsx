@@ -23,6 +23,7 @@ import type {
   CreatePromptTypeInput,
   Folder,
   Prompt,
+  PromptListItem,
   PromptMessage,
   PromptTypeDefinition,
   PromptVersion,
@@ -71,7 +72,7 @@ export interface PromptDetailModalProps {
   open: boolean;
   creating: boolean;
   prompt: Prompt | null;
-  prompts: Prompt[];
+  prompts: PromptListItem[];
   versions: PromptVersion[];
   folders: Folder[];
   promptTypeDefinitions: PromptTypeDefinition[];

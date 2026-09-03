@@ -58,6 +58,33 @@ export interface PromptMessage {
   content: string;
 }
 
+/** Library-card projection returned by `prompt.search`. No system/user/messages bodies. */
+export interface PromptListItem {
+  id: string;
+  title: string;
+  description?: string | null;
+  promptType: PromptType;
+  typeDefinitionId?: string | null;
+  tags: string[];
+  folderId?: string | null;
+  isFavorite: boolean;
+  isPinned: boolean;
+  isPrivate: boolean;
+  isLocked: boolean;
+  currentVersion: number;
+  usageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Compile-time lock: list cards must not depend on prompt bodies. */
+export type PromptListItemBodyKeys = Extract<
+  keyof PromptListItem,
+  "userPrompt" | "systemPrompt" | "messages"
+>;
+export type AssertPromptListItemHasNoBodies =
+  PromptListItemBodyKeys extends never ? true : never;
+
 /** A stored prompt as returned by `prompt.get` / `prompt.list` (Req 6.2, 6.7). */
 export interface Prompt {
   id: string;
@@ -199,11 +226,19 @@ export interface SearchQuery {
 
 /** Counted deterministic page returned by `prompt.search`. */
 export interface PromptPage {
-  items: Prompt[];
+  items: PromptListItem[];
   total: number;
   limit: number;
   offset: number;
   hasMore: boolean;
+}
+
+/** Folder/tag/library totals returned by `prompt.counts`. */
+export interface PromptCounts {
+  folders: Record<string, number>;
+  tags: Record<string, number>;
+  total: number;
+  favorites: number;
 }
 
 export interface UnexpandedReference {

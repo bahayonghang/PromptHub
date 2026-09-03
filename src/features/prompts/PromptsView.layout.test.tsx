@@ -64,14 +64,13 @@ beforeEach(async () => {
     error: null,
     load: async () => {},
     selectPrompt: async (id) => {
-      const found =
-        id == null
-          ? null
-          : (usePromptStore.getState().prompts.find((item) => item.id === id) ??
-            null);
+      const item = usePromptStore
+        .getState()
+        .prompts.find((row) => row.id === id);
       usePromptStore.setState({
         selectedPromptId: id,
-        selectedPrompt: found,
+        selectedPrompt:
+          id == null ? null : { ...prompt, ...item, id },
         versions: [],
       });
     },

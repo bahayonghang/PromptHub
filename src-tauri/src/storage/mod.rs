@@ -48,7 +48,7 @@ pub type DbPool = Pool<SqliteConnectionManager>;
 const BUSY_TIMEOUT_MS: u64 = 5_000;
 
 /// Latest ordered schema migration understood by this binary.
-pub const CURRENT_SCHEMA_VERSION: u32 = 6;
+pub const CURRENT_SCHEMA_VERSION: u32 = 7;
 
 struct Migration {
     version: u32,
@@ -254,6 +254,156 @@ CREATE TABLE IF NOT EXISTS prompt_references (
 );
 CREATE INDEX IF NOT EXISTS idx_prompt_refs_source ON prompt_references(source_prompt_id);
 CREATE INDEX IF NOT EXISTS idx_prompt_refs_target ON prompt_references(target_prompt_id);
+"#,
+    },
+    Migration {
+        version: 7,
+        sql: r#"
+CREATE TABLE IF NOT EXISTS test_sets (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS prompt_runs (
+  id TEXT PRIMARY KEY,
+  prompt_revision_id TEXT NOT NULL,
+  profile_revision_id TEXT NOT NULL,
+  test_case_id TEXT,
+  inputs TEXT NOT NULL DEFAULT '{}',
+  rendered_messages TEXT NOT NULL DEFAULT '[]',
+  output TEXT,
+  status TEXT NOT NULL CHECK(status IN ('running','success','error','cancelled')),
+  error TEXT,
+  started_at INTEGER NOT NULL,
+  completed_at INTEGER,
+  duration_ms INTEGER,
+  usage TEXT,
+  cache_key TEXT
+);
+
+CREATE TABLE IF NOT EXISTS evaluation_runs (
+  id TEXT PRIMARY KEY,
+  test_set_id TEXT NOT NULL,
+  prompt_revision_ids TEXT NOT NULL,
+  profile_revision_ids TEXT NOT NULL,
+  evaluator_ids TEXT NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('running','success','error','cancelled')),
+  total_cells INTEGER NOT NULL,
+  completed_cells INTEGER NOT NULL DEFAULT 0,
+  failed_cells INTEGER NOT NULL DEFAULT 0,
+  started_at INTEGER NOT NULL,
+  completed_at INTEGER,
+  runtime_version TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS evaluation_cells (
+  id TEXT PRIMARY KEY,
+  evaluation_run_id TEXT NOT NULL REFERENCES evaluation_runs(id) ON DELETE CASCADE,
+  prompt_revision_id TEXT NOT NULL,
+  profile_revision_id TEXT NOT NULL,
+  test_case_id TEXT NOT NULL,
+  prompt_run_id TEXT,
+  status TEXT NOT NULL CHECK(status IN ('pending','running','success','error','cancelled','skipped')),
+  cache_hit INTEGER NOT NULL DEFAULT 0,
+  results TEXT NOT NULL DEFAULT '[]',
+  error TEXT,
+  cache_key TEXT NOT NULL,
+  sort_order INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS prompt_labels (
+  prompt_id TEXT NOT NULL,
+  label TEXT NOT NULL,
+  prompt_revision_id TEXT NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY(prompt_id, label)
+);
+
+DELETE FROM prompt_labels
+ WHERE prompt_id NOT IN (SELECT id FROM prompts)
+    OR prompt_revision_id NOT IN (SELECT id FROM prompt_versions);
+DELETE FROM prompt_runs
+ WHERE prompt_revision_id NOT IN (SELECT id FROM prompt_versions);
+DELETE FROM evaluation_cells
+ WHERE evaluation_run_id IN (
+   SELECT id FROM evaluation_runs WHERE test_set_id NOT IN (SELECT id FROM test_sets)
+ )
+    OR evaluation_run_id NOT IN (SELECT id FROM evaluation_runs);
+DELETE FROM evaluation_runs
+ WHERE test_set_id NOT IN (SELECT id FROM test_sets);
+
+CREATE TABLE prompt_labels_v7 (
+  prompt_id TEXT NOT NULL REFERENCES prompts(id) ON DELETE CASCADE,
+  label TEXT NOT NULL,
+  prompt_revision_id TEXT NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY(prompt_id, label)
+);
+INSERT INTO prompt_labels_v7 SELECT * FROM prompt_labels;
+DROP TABLE prompt_labels;
+ALTER TABLE prompt_labels_v7 RENAME TO prompt_labels;
+
+CREATE TABLE prompt_runs_v7 (
+  id TEXT PRIMARY KEY,
+  prompt_revision_id TEXT NOT NULL REFERENCES prompt_versions(id) ON DELETE CASCADE,
+  profile_revision_id TEXT NOT NULL,
+  test_case_id TEXT,
+  inputs TEXT NOT NULL DEFAULT '{}',
+  rendered_messages TEXT NOT NULL DEFAULT '[]',
+  output TEXT,
+  status TEXT NOT NULL CHECK(status IN ('running','success','error','cancelled')),
+  error TEXT,
+  started_at INTEGER NOT NULL,
+  completed_at INTEGER,
+  duration_ms INTEGER,
+  usage TEXT,
+  cache_key TEXT
+);
+INSERT INTO prompt_runs_v7 SELECT * FROM prompt_runs;
+DROP TABLE prompt_runs;
+ALTER TABLE prompt_runs_v7 RENAME TO prompt_runs;
+CREATE INDEX IF NOT EXISTS idx_prompt_runs_started ON prompt_runs(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_prompt_runs_revision ON prompt_runs(prompt_revision_id, profile_revision_id);
+
+CREATE TABLE evaluation_runs_v7 (
+  id TEXT PRIMARY KEY,
+  test_set_id TEXT NOT NULL REFERENCES test_sets(id) ON DELETE CASCADE,
+  prompt_revision_ids TEXT NOT NULL,
+  profile_revision_ids TEXT NOT NULL,
+  evaluator_ids TEXT NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('running','success','error','cancelled')),
+  total_cells INTEGER NOT NULL,
+  completed_cells INTEGER NOT NULL DEFAULT 0,
+  failed_cells INTEGER NOT NULL DEFAULT 0,
+  started_at INTEGER NOT NULL,
+  completed_at INTEGER,
+  runtime_version TEXT NOT NULL
+);
+INSERT INTO evaluation_runs_v7 SELECT * FROM evaluation_runs;
+CREATE TABLE evaluation_cells_v7 (
+  id TEXT PRIMARY KEY,
+  evaluation_run_id TEXT NOT NULL REFERENCES evaluation_runs_v7(id) ON DELETE CASCADE,
+  prompt_revision_id TEXT NOT NULL,
+  profile_revision_id TEXT NOT NULL,
+  test_case_id TEXT NOT NULL,
+  prompt_run_id TEXT,
+  status TEXT NOT NULL CHECK(status IN ('pending','running','success','error','cancelled','skipped')),
+  cache_hit INTEGER NOT NULL DEFAULT 0,
+  results TEXT NOT NULL DEFAULT '[]',
+  error TEXT,
+  cache_key TEXT NOT NULL,
+  sort_order INTEGER NOT NULL
+);
+INSERT INTO evaluation_cells_v7 SELECT * FROM evaluation_cells;
+DROP TABLE evaluation_cells;
+DROP TABLE evaluation_runs;
+ALTER TABLE evaluation_runs_v7 RENAME TO evaluation_runs;
+ALTER TABLE evaluation_cells_v7 RENAME TO evaluation_cells;
+CREATE INDEX IF NOT EXISTS idx_evaluation_runs_started ON evaluation_runs(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_evaluation_cells_run ON evaluation_cells(evaluation_run_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_evaluation_cells_cache ON evaluation_cells(cache_key, status);
 "#,
     },
 ];
@@ -582,7 +732,7 @@ CREATE TABLE IF NOT EXISTS execution_profile_revisions (
 
 CREATE TABLE IF NOT EXISTS prompt_runs (
   id TEXT PRIMARY KEY,
-  prompt_revision_id TEXT NOT NULL,
+  prompt_revision_id TEXT NOT NULL REFERENCES prompt_versions(id) ON DELETE CASCADE,
   profile_revision_id TEXT NOT NULL,
   test_case_id TEXT,
   inputs TEXT NOT NULL DEFAULT '{}',
@@ -624,7 +774,7 @@ CREATE TABLE IF NOT EXISTS evaluator_configs (
 
 CREATE TABLE IF NOT EXISTS evaluation_runs (
   id TEXT PRIMARY KEY,
-  test_set_id TEXT NOT NULL,
+  test_set_id TEXT NOT NULL REFERENCES test_sets(id) ON DELETE CASCADE,
   prompt_revision_ids TEXT NOT NULL,
   profile_revision_ids TEXT NOT NULL,
   evaluator_ids TEXT NOT NULL,
@@ -653,7 +803,7 @@ CREATE TABLE IF NOT EXISTS evaluation_cells (
 );
 
 CREATE TABLE IF NOT EXISTS prompt_labels (
-  prompt_id TEXT NOT NULL,
+  prompt_id TEXT NOT NULL REFERENCES prompts(id) ON DELETE CASCADE,
   label TEXT NOT NULL,
   prompt_revision_id TEXT NOT NULL,
   updated_at INTEGER NOT NULL,
@@ -751,6 +901,28 @@ mod tests {
         "idx_prompt_refs_source",
         "idx_prompt_refs_target",
     ];
+
+    fn fk_on_delete(conn: &Connection, table: &str, from: &str) -> String {
+        let mut stmt = conn
+            .prepare(&format!("PRAGMA foreign_key_list({table})"))
+            .unwrap();
+        let mapped = stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(3)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(6)?,
+                ))
+            })
+            .unwrap();
+        for row in mapped {
+            let (column, parent, on_delete) = row.unwrap();
+            if column == from {
+                return format!("{parent}:{on_delete}");
+            }
+        }
+        String::new()
+    }
 
     /// Collects names from `sqlite_master` for the given object type.
     fn names_of_type(conn: &Connection, object_type: &str) -> Vec<String> {
@@ -1086,5 +1258,271 @@ mod tests {
         assert!(names_of_type(&conn, "table")
             .iter()
             .any(|name| name == "prompt_type_definitions"));
+    }
+
+    #[test]
+    fn schema_v7_upgrade_cleans_orphans_and_adds_foreign_keys() {
+        let pool = create_memory_pool().unwrap();
+        let conn = pool.get().unwrap();
+        conn.execute_batch(
+            r#"
+            CREATE TABLE prompts (
+              id TEXT PRIMARY KEY,
+              title TEXT NOT NULL,
+              user_prompt TEXT NOT NULL,
+              created_at INTEGER NOT NULL,
+              updated_at INTEGER NOT NULL
+            );
+            CREATE TABLE prompt_versions (
+              id TEXT PRIMARY KEY,
+              prompt_id TEXT NOT NULL,
+              version INTEGER NOT NULL,
+              user_prompt TEXT NOT NULL,
+              created_at INTEGER NOT NULL
+            );
+            CREATE TABLE test_sets (
+              id TEXT PRIMARY KEY,
+              name TEXT NOT NULL,
+              created_at INTEGER NOT NULL,
+              updated_at INTEGER NOT NULL
+            );
+            CREATE TABLE prompt_runs (
+              id TEXT PRIMARY KEY,
+              prompt_revision_id TEXT NOT NULL,
+              profile_revision_id TEXT NOT NULL,
+              test_case_id TEXT,
+              inputs TEXT NOT NULL DEFAULT '{}',
+              rendered_messages TEXT NOT NULL DEFAULT '[]',
+              output TEXT,
+              status TEXT NOT NULL CHECK(status IN ('running','success','error','cancelled')),
+              error TEXT,
+              started_at INTEGER NOT NULL,
+              completed_at INTEGER,
+              duration_ms INTEGER,
+              usage TEXT,
+              cache_key TEXT
+            );
+            CREATE TABLE evaluation_runs (
+              id TEXT PRIMARY KEY,
+              test_set_id TEXT NOT NULL,
+              prompt_revision_ids TEXT NOT NULL,
+              profile_revision_ids TEXT NOT NULL,
+              evaluator_ids TEXT NOT NULL,
+              status TEXT NOT NULL CHECK(status IN ('running','success','error','cancelled')),
+              total_cells INTEGER NOT NULL,
+              completed_cells INTEGER NOT NULL DEFAULT 0,
+              failed_cells INTEGER NOT NULL DEFAULT 0,
+              started_at INTEGER NOT NULL,
+              completed_at INTEGER,
+              runtime_version TEXT NOT NULL
+            );
+            CREATE TABLE evaluation_cells (
+              id TEXT PRIMARY KEY,
+              evaluation_run_id TEXT NOT NULL,
+              prompt_revision_id TEXT NOT NULL,
+              profile_revision_id TEXT NOT NULL,
+              test_case_id TEXT NOT NULL,
+              prompt_run_id TEXT,
+              status TEXT NOT NULL CHECK(status IN ('pending','running','success','error','cancelled','skipped')),
+              cache_hit INTEGER NOT NULL DEFAULT 0,
+              results TEXT NOT NULL DEFAULT '[]',
+              error TEXT,
+              cache_key TEXT NOT NULL,
+              sort_order INTEGER NOT NULL
+            );
+            CREATE TABLE prompt_labels (
+              prompt_id TEXT NOT NULL,
+              label TEXT NOT NULL,
+              prompt_revision_id TEXT NOT NULL,
+              updated_at INTEGER NOT NULL,
+              PRIMARY KEY(prompt_id, label)
+            );
+            INSERT INTO prompts VALUES ('p1','Kept','body',1,2);
+            INSERT INTO prompt_versions VALUES ('v1','p1',1,'body',1);
+            INSERT INTO test_sets VALUES ('ts1','Set',1,1);
+            INSERT INTO prompt_labels VALUES ('p1','candidate','v1',1);
+            INSERT INTO prompt_labels VALUES ('missing-prompt','candidate','v1',1);
+            INSERT INTO prompt_runs VALUES ('run-ok','v1','profile',NULL,'{}','[]',NULL,'success',NULL,1,NULL,NULL,NULL,NULL);
+            INSERT INTO prompt_runs VALUES ('run-orphan','missing-rev','profile',NULL,'{}','[]',NULL,'success',NULL,1,NULL,NULL,NULL,NULL);
+            INSERT INTO evaluation_runs VALUES ('er-ok','ts1','[]','[]','[]','success',0,0,0,1,NULL,'evaluation-v1');
+            INSERT INTO evaluation_runs VALUES ('er-orphan','missing-set','[]','[]','[]','success',0,0,0,1,NULL,'evaluation-v1');
+            INSERT INTO evaluation_cells VALUES ('cell-ok','er-ok','v1','profile','case',NULL,'success',0,'[]',NULL,'k',0);
+            INSERT INTO evaluation_cells VALUES ('cell-orphan','er-orphan','v1','profile','case',NULL,'success',0,'[]',NULL,'k',0);
+            INSERT INTO evaluation_cells VALUES ('cell-missing-run','missing-run','v1','profile','case',NULL,'success',0,'[]',NULL,'k',0);
+            PRAGMA user_version = 6;
+            "#,
+        )
+        .unwrap();
+
+        run_migrations(&conn, MIGRATIONS).unwrap();
+        run_migrations(&conn, MIGRATIONS).unwrap();
+
+        assert_eq!(schema_version(&conn).unwrap(), CURRENT_SCHEMA_VERSION);
+        let labels: i64 = conn
+            .query_row("SELECT COUNT(*) FROM prompt_labels", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(labels, 1);
+        let runs: i64 = conn
+            .query_row("SELECT COUNT(*) FROM prompt_runs", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(runs, 1);
+        let eval_runs: i64 = conn
+            .query_row("SELECT COUNT(*) FROM evaluation_runs", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(eval_runs, 1);
+        let cells: i64 = conn
+            .query_row("SELECT COUNT(*) FROM evaluation_cells", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(cells, 1);
+        assert_eq!(
+            fk_on_delete(&conn, "prompt_labels", "prompt_id"),
+            "prompts:CASCADE"
+        );
+        assert_eq!(
+            fk_on_delete(&conn, "prompt_runs", "prompt_revision_id"),
+            "prompt_versions:CASCADE"
+        );
+        assert_eq!(
+            fk_on_delete(&conn, "evaluation_runs", "test_set_id"),
+            "test_sets:CASCADE"
+        );
+        assert_eq!(
+            fk_on_delete(&conn, "evaluation_cells", "evaluation_run_id"),
+            "evaluation_runs:CASCADE"
+        );
+
+        conn.execute("DELETE FROM prompts WHERE id = 'p1'", [])
+            .unwrap();
+        let labels_after: i64 = conn
+            .query_row("SELECT COUNT(*) FROM prompt_labels", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(labels_after, 0);
+        conn.execute("DELETE FROM prompt_versions WHERE id = 'v1'", [])
+            .unwrap();
+        let runs_after: i64 = conn
+            .query_row("SELECT COUNT(*) FROM prompt_runs", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(runs_after, 0);
+        conn.execute("DELETE FROM test_sets WHERE id = 'ts1'", [])
+            .unwrap();
+        let eval_after: i64 = conn
+            .query_row("SELECT COUNT(*) FROM evaluation_runs", [], |row| row.get(0))
+            .unwrap();
+        let cells_after: i64 = conn
+            .query_row("SELECT COUNT(*) FROM evaluation_cells", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(eval_after, 0);
+        assert_eq!(cells_after, 0);
+    }
+
+    #[test]
+    fn delete_prompt_cascades_prompt_labels() {
+        let pool = create_memory_pool().unwrap();
+        let conn = pool.get().unwrap();
+        init_schema(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO prompts (id, title, user_prompt, created_at, updated_at) \
+             VALUES ('p1', 'T', 'U', 0, 0)",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO prompt_versions (id, prompt_id, version, user_prompt, created_at) \
+             VALUES ('v1', 'p1', 1, 'U', 0)",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO prompt_labels (prompt_id, label, prompt_revision_id, updated_at) \
+             VALUES ('p1', 'candidate', 'v1', 0)",
+            [],
+        )
+        .unwrap();
+
+        conn.execute("DELETE FROM prompts WHERE id = 'p1'", [])
+            .unwrap();
+        let remaining: i64 = conn
+            .query_row("SELECT COUNT(*) FROM prompt_labels", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(remaining, 0);
+    }
+
+    #[test]
+    fn delete_test_set_cascades_evaluation_runs() {
+        // Policy: evaluation_runs.test_set_id ON DELETE CASCADE. Deleting a test
+        // set removes its evaluation_runs; evaluation_cells follow via the
+        // existing evaluation_run_id CASCADE.
+        let pool = create_memory_pool().unwrap();
+        let conn = pool.get().unwrap();
+        init_schema(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO test_sets (id, name, created_at, updated_at) VALUES ('ts1', 'Set', 0, 0)",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO evaluation_runs (id, test_set_id, prompt_revision_ids, profile_revision_ids, evaluator_ids, status, total_cells, started_at, runtime_version) \
+             VALUES ('er1', 'ts1', '[]', '[]', '[]', 'success', 0, 0, 'evaluation-v1')",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO evaluation_cells (id, evaluation_run_id, prompt_revision_id, profile_revision_id, test_case_id, status, cache_key, sort_order) \
+             VALUES ('c1', 'er1', 'rev', 'profile', 'case', 'success', 'k', 0)",
+            [],
+        )
+        .unwrap();
+
+        conn.execute("DELETE FROM test_sets WHERE id = 'ts1'", [])
+            .unwrap();
+        let runs: i64 = conn
+            .query_row("SELECT COUNT(*) FROM evaluation_runs", [], |row| row.get(0))
+            .unwrap();
+        let cells: i64 = conn
+            .query_row("SELECT COUNT(*) FROM evaluation_cells", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(runs, 0);
+        assert_eq!(cells, 0);
+    }
+
+    #[test]
+    fn delete_prompt_cascades_prompt_runs_through_versions() {
+        // Policy: prompt_runs.prompt_revision_id ON DELETE CASCADE. Deleting a
+        // prompt removes prompt_versions (existing prompt_id CASCADE), which
+        // then removes prompt_runs.
+        let pool = create_memory_pool().unwrap();
+        let conn = pool.get().unwrap();
+        init_schema(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO prompts (id, title, user_prompt, created_at, updated_at) \
+             VALUES ('p1', 'T', 'U', 0, 0)",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO prompt_versions (id, prompt_id, version, user_prompt, created_at) \
+             VALUES ('v1', 'p1', 1, 'U', 0)",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO prompt_runs (id, prompt_revision_id, profile_revision_id, status, started_at) \
+             VALUES ('r1', 'v1', 'profile', 'success', 0)",
+            [],
+        )
+        .unwrap();
+
+        conn.execute("DELETE FROM prompts WHERE id = 'p1'", [])
+            .unwrap();
+        let remaining: i64 = conn
+            .query_row("SELECT COUNT(*) FROM prompt_runs", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(remaining, 0);
     }
 }

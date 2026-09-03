@@ -78,6 +78,7 @@ pub fn initialize_storage(paths: &crate::state::RuntimePaths) -> Result<DbPool, 
             .map_err(|e| AppError::io(format!("failed to acquire database connection: {e}")))?;
         storage::init_schema(&conn)?;
         storage::fts::init_fts(&conn)?;
+        crate::services::evaluation::finalize_interrupted_runs(&conn)?;
     }
     Ok(pool)
 }
@@ -262,6 +263,72 @@ mod tests {
             })
             .unwrap();
         assert_eq!(indexed, 1);
+    }
+
+    #[test]
+    fn initialize_storage_finalizes_leftover_running_rows() {
+        let tmp = TempDir::new().unwrap();
+        let paths = resolve_runtime_paths(tmp.path());
+        ensure_directories(&paths).unwrap();
+
+        {
+            let conn = rusqlite::Connection::open(database_path(&paths)).unwrap();
+            storage::init_schema(&conn).unwrap();
+            conn.execute(
+                "INSERT INTO prompts (id, title, user_prompt, created_at, updated_at)
+                 VALUES ('p1', 'T', 'U', 0, 0)",
+                [],
+            )
+            .unwrap();
+            conn.execute(
+                "INSERT INTO prompt_versions (id, prompt_id, version, user_prompt, created_at)
+                 VALUES ('v1', 'p1', 1, 'U', 0)",
+                [],
+            )
+            .unwrap();
+            conn.execute(
+                "INSERT INTO prompt_runs (id, prompt_revision_id, profile_revision_id, status, started_at)
+                 VALUES ('r1', 'v1', 'profile', 'running', 0)",
+                [],
+            )
+            .unwrap();
+            conn.execute(
+                "INSERT INTO test_sets (id, name, created_at, updated_at) VALUES ('ts1', 'S', 0, 0)",
+                [],
+            )
+            .unwrap();
+            conn.execute(
+                "INSERT INTO evaluation_runs (id, test_set_id, prompt_revision_ids, profile_revision_ids, evaluator_ids, status, total_cells, started_at, runtime_version)
+                 VALUES ('er1', 'ts1', '[]', '[]', '[]', 'running', 1, 0, 'evaluation-v1')",
+                [],
+            )
+            .unwrap();
+            conn.execute(
+                "INSERT INTO evaluation_cells (id, evaluation_run_id, prompt_revision_id, profile_revision_id, test_case_id, status, cache_key, sort_order)
+                 VALUES ('c1', 'er1', 'v1', 'profile', 'case', 'running', 'k', 0)",
+                [],
+            )
+            .unwrap();
+        }
+
+        let pool = initialize_storage(&paths).unwrap();
+        let conn = pool.get().unwrap();
+        let run_status: String = conn
+            .query_row(
+                "SELECT status FROM prompt_runs WHERE id = 'r1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let cell_status: String = conn
+            .query_row(
+                "SELECT status FROM evaluation_cells WHERE id = 'c1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_ne!(run_status, "running");
+        assert_ne!(cell_status, "running");
     }
 
     #[test]

@@ -112,6 +112,7 @@ pub fn run() {
             commands::prompt::prompt_list,
             commands::prompt::prompt_get,
             commands::prompt::prompt_search,
+            commands::prompt::prompt_counts,
             commands::prompt::prompt_create,
             commands::prompt::prompt_update,
             commands::prompt::prompt_delete,

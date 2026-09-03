@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::error::CommandResult;
-use crate::models::{Prompt, PromptPage, SearchQuery};
+use crate::models::{Prompt, PromptCounts, PromptPage, SearchQuery};
 use crate::services::prompt::{self, PromptCopy, PromptCreate, PromptUpdate};
 use crate::state::AppState;
 
@@ -25,6 +25,11 @@ pub fn prompt_search(
     into_command(
         conn(&state).and_then(|conn| prompt::search_secure(&conn, &state.encryption, query)),
     )
+}
+
+#[tauri::command(rename = "prompt.counts")]
+pub fn prompt_counts(state: tauri::State<'_, AppState>) -> CommandResult<PromptCounts> {
+    into_command(conn(&state).and_then(|conn| prompt::counts(&conn)))
 }
 
 #[tauri::command(rename = "prompt.create")]

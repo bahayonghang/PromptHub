@@ -13,6 +13,7 @@ import type {
   BundlePreview,
   ImportConflictPolicy,
   Prompt,
+  PromptCounts,
   PromptPage,
   PromptTypeDefinition,
   PromptVersion,
@@ -31,6 +32,7 @@ export interface PromptApi {
   listPrompts(): Promise<Prompt[]>;
   getPrompt(id: string): Promise<Prompt>;
   searchPrompts(query: SearchQuery): Promise<PromptPage>;
+  countPrompts(): Promise<PromptCounts>;
   createPrompt(input: CreatePromptInput): Promise<Prompt>;
   updatePrompt(id: string, patch: UpdatePromptInput): Promise<Prompt>;
   deletePrompt(id: string): Promise<void>;
@@ -76,6 +78,7 @@ export function createPromptApi(bridge: RuntimeBridge = runtime): PromptApi {
     listPrompts: () => bridge.invoke<Prompt[]>("prompt.list"),
     getPrompt: (id) => bridge.invoke<Prompt>("prompt.get", { id }),
     searchPrompts: (query) => bridge.invoke<PromptPage>("prompt.search", { query }),
+    countPrompts: () => bridge.invoke<PromptCounts>("prompt.counts"),
     createPrompt: (input) => bridge.invoke<Prompt>("prompt.create", { input }),
     updatePrompt: (id, patch) =>
       bridge.invoke<Prompt>("prompt.update", { id, patch }),

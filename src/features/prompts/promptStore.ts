@@ -14,6 +14,7 @@ import type {
   PortableExportResult,
   PortableImportResult,
   Prompt,
+  PromptListItem,
   PromptTypeDefinition,
   PromptVersion,
   SearchQuery,
@@ -70,8 +71,6 @@ export const DEFAULT_LIBRARY_COUNTS: LibraryCounts = {
   tags: {},
 };
 
-export const COUNT_QUERY_CONCURRENCY = 8;
-
 export const PROMPT_PAGE_SIZE = 50;
 
 export type SaveResult = { ok: true } | { ok: false; errors: Record<string, unknown> };
@@ -99,26 +98,6 @@ export function resolveLibraryScope(state: {
     return { kind: "tag", tag: state.filters.tags[0] };
   }
   return { kind: "all" };
-}
-
-async function runPool<T>(
-  items: readonly T[],
-  limit: number,
-  worker: (item: T) => Promise<void>,
-): Promise<void> {
-  if (items.length === 0) return;
-  let index = 0;
-  const runners = Array.from(
-    { length: Math.min(limit, items.length) },
-    async () => {
-      while (index < items.length) {
-        const current = items[index];
-        index += 1;
-        await worker(current);
-      }
-    },
-  );
-  await Promise.all(runners);
 }
 
 let countsGeneration = 0;
@@ -159,7 +138,7 @@ interface PromptStoreState {
   api: PromptApi;
 
   folders: Folder[];
-  prompts: Prompt[];
+  prompts: PromptListItem[];
   total: number;
   offset: number;
   tags: string[];
@@ -323,19 +302,35 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
     const { api, filters, offset } = get();
     const loadSeq = ++loadGeneration;
     const searchSeq = ++searchGeneration;
+    const countSeq = ++countsGeneration;
     set({ loading: true, error: null });
     try {
-      const [folders, tags, promptTypeDefinitions, page] = await Promise.all([
-        api.listFolders(),
-        api.listTags(),
-        api.listPromptTypes(),
-        api.searchPrompts({
-          ...buildSearchQuery(filters),
-          limit: PROMPT_PAGE_SIZE,
-          offset,
-        }),
-      ]);
+      const [folders, tags, promptTypeDefinitions, page, countsOutcome] =
+        await Promise.all([
+          api.listFolders(),
+          api.listTags(),
+          api.listPromptTypes(),
+          api.searchPrompts({
+            ...buildSearchQuery(filters),
+            limit: PROMPT_PAGE_SIZE,
+            offset,
+          }),
+          api
+            .countPrompts()
+            .then((counts) => ({ ok: true as const, counts }))
+            .catch(() => ({ ok: false as const })),
+        ]);
       if (loadSeq !== loadGeneration) return;
+      const libraryCounts = countsOutcome.ok
+        ? {
+            views: {
+              all: countsOutcome.counts.total,
+              favorites: countsOutcome.counts.favorites,
+            },
+            folders: countsOutcome.counts.folders,
+            tags: countsOutcome.counts.tags,
+          }
+        : get().libraryCounts;
       if (searchSeq === searchGeneration) {
         set({
           folders,
@@ -344,13 +339,21 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
           prompts: page.items,
           total: page.total,
           offset: page.offset,
+          libraryCounts: countSeq === countsGeneration ? libraryCounts : get().libraryCounts,
+          countsLoading: false,
           loading: false,
           error: null,
         });
       } else {
-        set({ folders, tags, promptTypeDefinitions, loading: false });
+        set({
+          folders,
+          tags,
+          promptTypeDefinitions,
+          libraryCounts: countSeq === countsGeneration ? libraryCounts : get().libraryCounts,
+          countsLoading: false,
+          loading: false,
+        });
       }
-      await get().refreshCounts();
     } catch (err) {
       if (loadSeq !== loadGeneration) return;
       if (searchSeq !== searchGeneration) {
@@ -471,43 +474,23 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
 
   refreshCounts: async () => {
     const generation = ++countsGeneration;
-    const { api, folders, tags, libraryCounts } = get();
+    const { api, libraryCounts } = get();
     set({ countsLoading: true });
-    const next: LibraryCounts = {
-      views: { ...libraryCounts.views },
-      folders: { ...libraryCounts.folders },
-      tags: { ...libraryCounts.tags },
-    };
-    type Bucket =
-      | { kind: "view"; view: Exclude<SavedView, "recent">; query: SearchQuery }
-      | { kind: "folder"; id: string; query: SearchQuery }
-      | { kind: "tag"; tag: string; query: SearchQuery };
-    const buckets: Bucket[] = [
-      { kind: "view", view: "all", query: {} },
-      { kind: "view", view: "favorites", query: { isFavorite: true } },
-      ...folders.map((folder) => ({
-        kind: "folder" as const,
-        id: folder.id,
-        query: { folderId: folder.id },
-      })),
-      ...tags.map((tag) => ({
-        kind: "tag" as const,
-        tag,
-        query: { tags: [tag] },
-      })),
-    ];
-    await runPool(buckets, COUNT_QUERY_CONCURRENCY, async (bucket) => {
-      try {
-        const page = await api.searchPrompts({ ...bucket.query, limit: 1 });
-        if (bucket.kind === "view") next.views[bucket.view] = page.total;
-        else if (bucket.kind === "folder") next.folders[bucket.id] = page.total;
-        else next.tags[bucket.tag] = page.total;
-      } catch {
-        // Keep the previous count for this bucket.
-      }
-    });
-    if (generation !== countsGeneration) return;
-    set({ libraryCounts: next, countsLoading: false });
+    try {
+      const counts = await api.countPrompts();
+      if (generation !== countsGeneration) return;
+      set({
+        libraryCounts: {
+          views: { all: counts.total, favorites: counts.favorites },
+          folders: counts.folders,
+          tags: counts.tags,
+        },
+        countsLoading: false,
+      });
+    } catch {
+      if (generation !== countsGeneration) return;
+      set({ libraryCounts, countsLoading: false });
+    }
   },
 
   loadPreviousPage: async () => {

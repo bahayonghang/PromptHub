@@ -21,8 +21,8 @@ pub use enums::{PromptRevisionSource, PromptType, SortField, SortOrder, SyncStat
 pub use evaluation::*;
 pub use folder::Folder;
 pub use prompt::{
-    Prompt, PromptMessage, PromptPage, PromptTypeDefinition, PromptTypeSnapshot, PromptVersion,
-    SearchQuery, Variable,
+    Prompt, PromptCounts, PromptListItem, PromptMessage, PromptPage, PromptTypeDefinition,
+    PromptTypeSnapshot, PromptVersion, SearchQuery, Variable,
 };
 pub use rules::{RuleFileContent, RuleVersionSnapshot};
 pub use security::{StoredMasterPassword, StoredMasterPasswordV2, StoredVerifier};
@@ -159,6 +159,33 @@ mod tests {
         // Round-trips back to an equal struct.
         let back: Prompt = serde_json::from_value(value).unwrap();
         assert_eq!(back, prompt);
+    }
+
+    #[test]
+    fn prompt_list_item_omits_bodies_on_the_wire() {
+        let item = PromptListItem {
+            id: "p1".into(),
+            title: "Title".into(),
+            description: Some("card".into()),
+            prompt_type: PromptType::Text,
+            type_definition_id: None,
+            tags: vec!["a".into()],
+            folder_id: None,
+            is_favorite: false,
+            is_pinned: false,
+            is_private: false,
+            is_locked: false,
+            current_version: 1,
+            usage_count: 0,
+            created_at: "2024-01-01T00:00:00.000Z".into(),
+            updated_at: "2024-01-01T00:00:00.000Z".into(),
+        };
+        let value = serde_json::to_value(&item).unwrap();
+        assert!(value.get("userPrompt").is_none());
+        assert!(value.get("systemPrompt").is_none());
+        assert!(value.get("messages").is_none());
+        assert!(value.get("title").is_some());
+        assert!(value.get("description").is_some());
     }
 
     #[test]

@@ -1078,6 +1078,44 @@ fn evaluator_by_id(conn: &Connection, id: &str) -> Result<EvaluatorConfig, AppEr
     .ok_or_else(|| AppError::not_found(format!("evaluator `{id}` not found")))
 }
 
+/// Marks leftover `running` prompt runs, evaluation cells, and evaluation runs
+/// as `error` after an unexpected process exit.
+pub fn finalize_interrupted_runs(conn: &Connection) -> Result<(), AppError> {
+    let now = now_millis();
+    let tx = conn
+        .unchecked_transaction()
+        .map_err(|error| db_err("failed to start interrupted-run finalization", error))?;
+    tx.execute(
+        "UPDATE prompt_runs
+         SET status = 'error',
+             error = 'interrupted by application restart',
+             completed_at = ?1,
+             duration_ms = COALESCE(duration_ms, ?1 - started_at)
+         WHERE status = 'running'",
+        [now],
+    )
+    .map_err(|error| db_err("failed to finalize interrupted prompt runs", error))?;
+    tx.execute(
+        "UPDATE evaluation_cells
+         SET status = 'error',
+             error = 'interrupted by application restart'
+         WHERE status = 'running'",
+        [],
+    )
+    .map_err(|error| db_err("failed to finalize interrupted evaluation cells", error))?;
+    tx.execute(
+        "UPDATE evaluation_runs
+         SET status = 'error',
+             completed_at = COALESCE(completed_at, ?1)
+         WHERE status = 'running'",
+        [now],
+    )
+    .map_err(|error| db_err("failed to finalize interrupted evaluation runs", error))?;
+    tx.commit()
+        .map_err(|error| db_err("failed to commit interrupted-run finalization", error))?;
+    Ok(())
+}
+
 fn cache_key(
     revision_id: &str,
     profile_id: &str,
@@ -1784,6 +1822,61 @@ mod tests {
             },
         )
         .unwrap()
+    }
+
+    #[test]
+    fn finalize_interrupted_runs_clears_leftover_running_rows() {
+        let (pool, _encryption, revision) = setup();
+        let conn = pool.get().unwrap();
+        let test_set = named_case_set(&conn, "Stuck", 1);
+        conn.execute(
+            "INSERT INTO prompt_runs (id, prompt_revision_id, profile_revision_id, status, started_at)
+             VALUES ('run-stuck', ?1, 'profile', 'running', 0)",
+            [&revision.id],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO evaluation_runs (id, test_set_id, prompt_revision_ids, profile_revision_ids, evaluator_ids, status, total_cells, started_at, runtime_version)
+             VALUES ('er-stuck', ?1, '[]', '[]', '[]', 'running', 1, 0, 'evaluation-v1')",
+            [&test_set.id],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO evaluation_cells (id, evaluation_run_id, prompt_revision_id, profile_revision_id, test_case_id, status, cache_key, sort_order)
+             VALUES ('cell-stuck', 'er-stuck', ?1, 'profile', 'case', 'running', 'k', 0)",
+            [&revision.id],
+        )
+        .unwrap();
+
+        finalize_interrupted_runs(&conn).unwrap();
+
+        let run_status: String = conn
+            .query_row(
+                "SELECT status FROM prompt_runs WHERE id = 'run-stuck'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let cell_status: String = conn
+            .query_row(
+                "SELECT status FROM evaluation_cells WHERE id = 'cell-stuck'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let eval_status: String = conn
+            .query_row(
+                "SELECT status FROM evaluation_runs WHERE id = 'er-stuck'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_ne!(run_status, "running");
+        assert_ne!(cell_status, "running");
+        assert_ne!(eval_status, "running");
+        assert_eq!(run_status, "error");
+        assert_eq!(cell_status, "error");
+        assert_eq!(eval_status, "error");
     }
 
     #[test]
