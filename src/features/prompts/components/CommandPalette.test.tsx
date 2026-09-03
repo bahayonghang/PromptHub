@@ -100,6 +100,33 @@ describe("CommandPalette", () => {
     ).toBe("");
   });
 
+  it("catches a search failure without rejecting", async () => {
+    const rejections: unknown[] = [];
+    const onUnhandled = (reason: unknown) => {
+      rejections.push(reason);
+    };
+    const nodeProcess = (
+      globalThis as {
+        process?: {
+          on(event: "unhandledRejection", listener: (reason: unknown) => void): void;
+          off(event: "unhandledRejection", listener: (reason: unknown) => void): void;
+        };
+      }
+    ).process;
+    nodeProcess?.on("unhandledRejection", onUnhandled);
+    vi.mocked(promptApi.searchPrompts).mockRejectedValueOnce(new Error("search failed"));
+    try {
+      render(<CommandPalette />);
+      await waitFor(() => expect(promptApi.searchPrompts).toHaveBeenCalled());
+      await waitFor(() => expect(screen.getByText("Switch list and grid")).toBeTruthy());
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(rejections).toEqual([]);
+    } finally {
+      nodeProcess?.off("unhandledRejection", onUnhandled);
+    }
+  });
+
   it("toggles view mode through the store action", async () => {
     const setViewMode = vi.fn();
     usePromptStore.setState({ viewMode: "list", setViewMode });

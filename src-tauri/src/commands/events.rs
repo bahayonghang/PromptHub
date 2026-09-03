@@ -19,6 +19,9 @@
 //! | [`EVENT_AI_STREAM_CHUNK`] | `ai:stream-chunk` | `{ requestId, chunk }` |
 //! | [`EVENT_AI_STREAM_ERROR`] | `ai:stream-error` | `{ requestId, error }` |
 //! | [`EVENT_AI_STREAM_COMPLETE`] | `ai:stream-complete` | `{ requestId, content }` |
+//! | [`EVENT_EVALUATION_RUN_CHUNK`] | `evaluation:run-chunk` | `{ requestId, runId, chunk }` |
+//! | [`EVENT_EVALUATION_RUN_TERMINAL`] | `evaluation:run-terminal` | `{ requestId, runId, status }` |
+//! | [`EVENT_EVALUATION_MATRIX_PROGRESS`] | `evaluation:matrix-progress` | `{ requestId, evaluationRunId, completed, total, cellId }` |
 //!
 //! The window/shortcut channel names are re-exported from
 //! [`crate::services::window`] (the single source of truth for those payload
@@ -137,23 +140,30 @@ impl<R: Runtime> EventSink for TauriEventSink<R> {
     }
 }
 
+/// Payload for [`EVENT_EVALUATION_RUN_CHUNK`]: `{ requestId, runId, chunk }`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct EvaluationRunChunk<'a> {
+    request_id: &'a str,
     run_id: &'a str,
     chunk: &'a str,
 }
 
+/// Payload for [`EVENT_EVALUATION_RUN_TERMINAL`]: `{ requestId, runId, status }`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct EvaluationRunTerminal<'a> {
+    request_id: &'a str,
     run_id: &'a str,
     status: &'a str,
 }
 
+/// Payload for [`EVENT_EVALUATION_MATRIX_PROGRESS`]:
+/// `{ requestId, evaluationRunId, completed, total, cellId }`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct EvaluationMatrixProgress<'a> {
+    request_id: &'a str,
     evaluation_run_id: &'a str,
     completed: i64,
     total: i64,
@@ -162,11 +172,15 @@ struct EvaluationMatrixProgress<'a> {
 
 pub struct TauriEvaluationEventSink<R: Runtime> {
     app: AppHandle<R>,
+    request_id: String,
 }
 
 impl<R: Runtime> TauriEvaluationEventSink<R> {
-    pub fn new(app: AppHandle<R>) -> Self {
-        Self { app }
+    pub fn new(app: AppHandle<R>, request_id: impl Into<String>) -> Self {
+        Self {
+            app,
+            request_id: request_id.into(),
+        }
     }
 }
 
@@ -174,14 +188,22 @@ impl<R: Runtime> EvaluationEventSink for TauriEvaluationEventSink<R> {
     fn emit_run_chunk(&self, run_id: &str, chunk: &str) {
         let _ = self.app.emit(
             EVENT_EVALUATION_RUN_CHUNK,
-            EvaluationRunChunk { run_id, chunk },
+            EvaluationRunChunk {
+                request_id: &self.request_id,
+                run_id,
+                chunk,
+            },
         );
     }
 
     fn emit_run_terminal(&self, run_id: &str, status: &str) {
         let _ = self.app.emit(
             EVENT_EVALUATION_RUN_TERMINAL,
-            EvaluationRunTerminal { run_id, status },
+            EvaluationRunTerminal {
+                request_id: &self.request_id,
+                run_id,
+                status,
+            },
         );
     }
 
@@ -195,6 +217,7 @@ impl<R: Runtime> EvaluationEventSink for TauriEvaluationEventSink<R> {
         let _ = self.app.emit(
             EVENT_EVALUATION_MATRIX_PROGRESS,
             EvaluationMatrixProgress {
+                request_id: &self.request_id,
                 evaluation_run_id,
                 completed,
                 total,
@@ -292,6 +315,45 @@ mod tests {
         assert_eq!(EVENT_WINDOW_CLOSE_REQUESTED, "window:close-requested");
         assert_eq!(EVENT_WINDOW_FULLSCREEN_CHANGED, "window:fullscreen-changed");
         assert_eq!(EVENT_WINDOW_VISIBILITY_CHANGED, "window:visibility-changed");
+    }
+
+    #[test]
+    fn evaluation_event_payloads_include_request_id() {
+        assert_eq!(
+            serde_json::to_value(EvaluationRunChunk {
+                request_id: "req-1",
+                run_id: "run-1",
+                chunk: "hello"
+            })
+            .unwrap(),
+            json!({ "requestId": "req-1", "runId": "run-1", "chunk": "hello" })
+        );
+        assert_eq!(
+            serde_json::to_value(EvaluationRunTerminal {
+                request_id: "req-1",
+                run_id: "run-1",
+                status: "success"
+            })
+            .unwrap(),
+            json!({ "requestId": "req-1", "runId": "run-1", "status": "success" })
+        );
+        assert_eq!(
+            serde_json::to_value(EvaluationMatrixProgress {
+                request_id: "req-1",
+                evaluation_run_id: "eval-1",
+                completed: 2,
+                total: 4,
+                cell_id: "cell-1"
+            })
+            .unwrap(),
+            json!({
+                "requestId": "req-1",
+                "evaluationRunId": "eval-1",
+                "completed": 2,
+                "total": 4,
+                "cellId": "cell-1"
+            })
+        );
     }
 
     #[test]

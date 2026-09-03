@@ -39,6 +39,9 @@ export function CommandPalette() {
         .searchPrompts({ keyword: query.trim() || undefined, limit: RESULT_LIMIT })
         .then((page) => {
           if (current === sequence.current) setPrompts(page.items);
+        })
+        .catch(() => {
+          if (current !== sequence.current) return;
         });
     }, SEARCH_DEBOUNCE_MS);
     return () => window.clearTimeout(handle);

@@ -288,7 +288,7 @@ export const useSettingsStore = create<SettingsStoreState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const [settings, securityStatus, dataStatus] = await Promise.all([
-        get().settings == null ? api.getSettings() : Promise.resolve(get().settings as Settings),
+        api.getSettings(),
         api.securityStatus(),
         api.getDataStatus(),
       ]);

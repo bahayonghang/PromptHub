@@ -122,6 +122,7 @@ async function runPool<T>(
 }
 
 let countsGeneration = 0;
+let loadGeneration = 0;
 let searchGeneration = 0;
 let keywordTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -320,7 +321,8 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
 
   load: async () => {
     const { api, filters, offset } = get();
-    const sequence = ++searchGeneration;
+    const loadSeq = ++loadGeneration;
+    const searchSeq = ++searchGeneration;
     set({ loading: true, error: null });
     try {
       const [folders, tags, promptTypeDefinitions, page] = await Promise.all([
@@ -333,7 +335,8 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
           offset,
         }),
       ]);
-      if (sequence === searchGeneration) {
+      if (loadSeq !== loadGeneration) return;
+      if (searchSeq === searchGeneration) {
         set({
           folders,
           tags,
@@ -342,12 +345,18 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
           total: page.total,
           offset: page.offset,
           loading: false,
+          error: null,
         });
       } else {
         set({ folders, tags, promptTypeDefinitions, loading: false });
       }
       await get().refreshCounts();
     } catch (err) {
+      if (loadSeq !== loadGeneration) return;
+      if (searchSeq !== searchGeneration) {
+        set({ loading: false });
+        return;
+      }
       set({ error: errorMessage(err), loading: false });
     }
   },
@@ -372,7 +381,12 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
         });
       }
       if (sequence !== searchGeneration) return;
-      set({ prompts: page.items, total: page.total, offset: page.offset });
+      set({
+        prompts: page.items,
+        total: page.total,
+        offset: page.offset,
+        error: null,
+      });
     } catch (err) {
       if (sequence !== searchGeneration) return;
       set({ error: errorMessage(err) });

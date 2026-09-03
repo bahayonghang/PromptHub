@@ -125,6 +125,20 @@ afterEach(() => vi.restoreAllMocks());
 describe("settings store (Req 3.1, 15, 17, 19)", () => {
   beforeEach(() => resetStore(makeApi()));
 
+  it("load() refetches settings after hydrateSettings", async () => {
+    const api = makeApi({
+      getSettings: vi.fn(async () => makeSettings({ theme: "light" })),
+    });
+    resetStore(api);
+    useSettingsStore.getState().hydrateSettings(makeSettings({ theme: "dark" }));
+    expect(useSettingsStore.getState().settings?.theme).toBe("dark");
+
+    await useSettingsStore.getState().load();
+
+    expect(api.getSettings).toHaveBeenCalledOnce();
+    expect(useSettingsStore.getState().settings?.theme).toBe("light");
+  });
+
   it("load() fetches settings, security status, data status, and backups", async () => {
     const api = makeApi({
       getSettings: vi.fn(async () => makeSettings({ theme: "light" })),

@@ -163,11 +163,19 @@ export interface PromptLabelHistory {
 }
 
 export interface RunChunkEvent {
+  requestId: string;
   runId: string;
   chunk: string;
 }
 
+export interface RunTerminalEvent {
+  requestId: string;
+  runId: string;
+  status: string;
+}
+
 export interface MatrixProgressEvent {
+  requestId: string;
   evaluationRunId: string;
   completed: number;
   total: number;

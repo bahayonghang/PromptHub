@@ -57,7 +57,7 @@ pub async fn run<R: tauri::Runtime>(
         Err(_) => return CommandResult::Err(AppError::internal("database pool lock is poisoned")),
     };
     let token = state.register_request(&request_id);
-    let sink = TauriEvaluationEventSink::new(app.clone());
+    let sink = TauriEvaluationEventSink::new(app.clone(), request_id.clone());
     let result = evaluation::execute_run(
         &pool,
         &state.encryption,
@@ -154,7 +154,7 @@ pub async fn matrix_run<R: tauri::Runtime>(
         return CommandResult::Err(AppError::validation("requestId is required"));
     }
     let token = state.register_request(&request_id);
-    let sink = TauriEvaluationEventSink::new(app.clone());
+    let sink = TauriEvaluationEventSink::new(app.clone(), request_id.clone());
     let result = evaluation::run_matrix(
         &pool,
         &state.encryption,
@@ -179,8 +179,11 @@ pub async fn matrix_retry<R: tauri::Runtime>(
         Ok(pool) => pool,
         Err(error) => return CommandResult::Err(error),
     };
+    if request_id.trim().is_empty() {
+        return CommandResult::Err(AppError::validation("requestId is required"));
+    }
     let token = state.register_request(&request_id);
-    let sink = TauriEvaluationEventSink::new(app.clone());
+    let sink = TauriEvaluationEventSink::new(app.clone(), request_id.clone());
     let result = evaluation::retry_evaluation_run(
         &pool,
         &state.encryption,

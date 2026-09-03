@@ -170,4 +170,48 @@ describe("event subscription (Req 3.4, 3.6)", () => {
     resolveListen!(detach); // listener resolves afterwards
     await vi.waitFor(() => expect(detach).toHaveBeenCalledOnce());
   });
+
+  it("does not produce an unhandled rejection when listen fails", async () => {
+    const rejections: unknown[] = [];
+    const onUnhandled = (reason: unknown) => {
+      rejections.push(reason);
+    };
+    const nodeProcess = (
+      globalThis as {
+        process?: {
+          on(event: "unhandledRejection", listener: (reason: unknown) => void): void;
+          off(event: "unhandledRejection", listener: (reason: unknown) => void): void;
+        };
+      }
+    ).process;
+    nodeProcess?.on("unhandledRejection", onUnhandled);
+    try {
+      const listen = vi.fn(() => Promise.reject(new Error("listen failed")));
+      const { bridge } = makeBridge({ listen: listen as RuntimeBridgeDeps["listen"] });
+      const off = bridge.on("updater:status", vi.fn());
+      await vi.waitFor(() => expect(listen).toHaveBeenCalled());
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(rejections).toEqual([]);
+      off();
+    } finally {
+      nodeProcess?.off("unhandledRejection", onUnhandled);
+    }
+  });
+
+  it("swallows handler throws so they are not unhandled", async () => {
+    let emit: ((payload: unknown) => void) | undefined;
+    const listen = vi.fn(
+      async (_event: string, cb: (e: { payload: unknown }) => void) => {
+        emit = (payload) => cb({ payload });
+        return () => {};
+      },
+    );
+    const { bridge } = makeBridge({ listen: listen as RuntimeBridgeDeps["listen"] });
+    bridge.on("updater:status", () => {
+      throw new Error("handler boom");
+    });
+    await vi.waitFor(() => expect(emit).toBeDefined());
+    expect(() => emit!({ phase: "downloading" })).not.toThrow();
+  });
 });

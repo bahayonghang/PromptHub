@@ -30,10 +30,13 @@ evaluation.labelList/Move/Rollback/History(...) -> label DTOs
 Events:
 
 ```text
-evaluation:run-chunk       { runId, chunk }
-evaluation:run-terminal    { runId, status }
-evaluation:matrix-progress { evaluationRunId, completed, total, cellId }
+evaluation:run-chunk       { requestId, runId, chunk }
+evaluation:run-terminal    { requestId, runId, status }
+evaluation:matrix-progress { requestId, evaluationRunId, completed, total, cellId }
 ```
+
+`requestId` is the same value the frontend passed to `evaluation.run` /
+`evaluation.matrixRun` / `evaluation.matrixRetry`. Channel names stay pinned.
 
 Schema version 4 adds `prompts.messages`, `prompt_versions.messages`, and the
 evaluation tables `execution_profile_revisions`, `prompt_runs`, `test_sets`,

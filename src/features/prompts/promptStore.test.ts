@@ -62,6 +62,16 @@ function makePromptType(id = "type-1"): PromptTypeDefinition {
   };
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
+  return { promise, resolve, reject };
+}
+
 function makePage(items: Prompt[], total = items.length, offset = 0): PromptPage {
   return {
     items,
@@ -404,6 +414,71 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
 
     expect(usePromptStore.getState().libraryCounts.views.favorites).toBe(9);
     expect(usePromptStore.getState().libraryCounts.views.all).toBe(5);
+  });
+
+  it("does not let a slower load overwrite newer folders, tags, and prompts", async () => {
+    const page1 = deferred<PromptPage>();
+    const page2 = deferred<PromptPage>();
+    let searches = 0;
+    const searchPrompts = vi.fn(() => {
+      searches += 1;
+      if (searches === 1) return page1.promise;
+      if (searches === 2) return page2.promise;
+      return Promise.resolve(makePage([]));
+    });
+    let folderCalls = 0;
+    const listFolders = vi.fn(async () => {
+      folderCalls += 1;
+      return folderCalls === 1 ? [makeFolder("old")] : [makeFolder("new")];
+    });
+    let tagCalls = 0;
+    const listTags = vi.fn(async () => {
+      tagCalls += 1;
+      return tagCalls === 1 ? ["old"] : ["new"];
+    });
+    resetStore(makeApi({ searchPrompts, listFolders, listTags }));
+
+    const first = usePromptStore.getState().load();
+    const second = usePromptStore.getState().load();
+    page2.resolve(makePage([makePrompt({ id: "new" })]));
+    await second;
+    page1.resolve(makePage([makePrompt({ id: "old" })]));
+    await first;
+
+    const state = usePromptStore.getState();
+    expect(state.folders.map((folder) => folder.id)).toEqual(["new"]);
+    expect(state.tags).toEqual(["new"]);
+    expect(state.prompts.map((item) => item.id)).toEqual(["new"]);
+  });
+
+  it("does not apply a slower load failure after a newer load succeeds", async () => {
+    const page1 = deferred<PromptPage>();
+    const page2 = deferred<PromptPage>();
+    let searches = 0;
+    const searchPrompts = vi.fn(() => {
+      searches += 1;
+      if (searches === 1) return page1.promise;
+      if (searches === 2) return page2.promise;
+      return Promise.resolve(makePage([]));
+    });
+    resetStore(makeApi({ searchPrompts }));
+
+    const first = usePromptStore.getState().load();
+    const second = usePromptStore.getState().load();
+    page2.resolve(makePage([makePrompt({ id: "new" })]));
+    await second;
+    page1.reject(new Error("stale load"));
+    await first;
+
+    expect(usePromptStore.getState().prompts.map((item) => item.id)).toEqual(["new"]);
+    expect(usePromptStore.getState().error).toBeNull();
+  });
+
+  it("clears error when refreshPrompts succeeds", async () => {
+    resetStore(makeApi());
+    usePromptStore.setState({ error: "stale search failed" });
+    await usePromptStore.getState().refreshPrompts();
+    expect(usePromptStore.getState().error).toBeNull();
   });
 
   it("discards an older refreshPrompts result that arrives last", async () => {
