@@ -7,6 +7,7 @@
 )]
 
 pub mod error;
+pub mod logging;
 pub mod state;
 
 pub mod commands;
@@ -89,6 +90,7 @@ pub fn run() {
             // event is emitted so the Frontend can show a fatal error surface
             // (Requirements 4.6, 4.7, 23.1, 23.3).
             let state = build_app_state(app.handle());
+            crate::logging::init(&state.paths.log);
             app.manage(state);
             app.manage(commands::CommandRuntimeState::default());
 

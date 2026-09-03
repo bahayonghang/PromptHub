@@ -125,6 +125,15 @@ pub(crate) fn is_blocked_hostname(host: &str) -> bool {
         || normalized.ends_with(".localdomain")
 }
 
+fn ssrf_blocked_host(host: &str, message: String) -> AppError {
+    crate::logging::event(
+        crate::logging::Level::Warn,
+        "ssrf",
+        format!("blocked host `{host}`"),
+    );
+    AppError::ssrf_blocked(message)
+}
+
 /// Validates and DNS-pins one outbound HTTP(S) hop before it is contacted.
 /// Callers that follow redirects must call this again for every target.
 ///
@@ -141,6 +150,11 @@ pub async fn prepare_public_url(
     let url = reqwest::Url::parse(raw)
         .map_err(|e| AppError::validation(format!("invalid URL `{raw}`: {e}")))?;
     if !matches!(url.scheme(), "http" | "https") {
+        crate::logging::event(
+            crate::logging::Level::Warn,
+            "ssrf",
+            format!("blocked scheme `{}`", url.scheme()),
+        );
         return Err(AppError::ssrf_blocked(
             "only HTTP and HTTPS outbound URLs are allowed",
         ));
@@ -152,18 +166,20 @@ pub async fn prepare_public_url(
         .trim_end_matches(']')
         .to_string();
     if !allow_private_network && is_blocked_hostname(&host) {
-        return Err(AppError::ssrf_blocked(format!(
-            "host `{host}` names the local machine"
-        )));
+        return Err(ssrf_blocked_host(
+            &host,
+            format!("host `{host}` names the local machine"),
+        ));
     }
     let port = url
         .port_or_known_default()
         .unwrap_or(if url.scheme() == "https" { 443 } else { 80 });
     let ips = if let Ok(ip) = host.parse::<IpAddr>() {
         if !address_permitted(ip, allow_private_network) {
-            return Err(AppError::ssrf_blocked(format!(
-                "host `{host}` resolves to a non-public address"
-            )));
+            return Err(ssrf_blocked_host(
+                &host,
+                format!("host `{host}` resolves to a non-public address"),
+            ));
         }
         vec![ip]
     } else {
@@ -173,9 +189,10 @@ pub async fn prepare_public_url(
         let mut ips = Vec::new();
         for address in resolved {
             if !address_permitted(address.ip(), allow_private_network) {
-                return Err(AppError::ssrf_blocked(format!(
-                    "host `{host}` resolves to a non-public address"
-                )));
+                return Err(ssrf_blocked_host(
+                    &host,
+                    format!("host `{host}` resolves to a non-public address"),
+                ));
             }
             if !ips.contains(&address.ip()) {
                 ips.push(address.ip());

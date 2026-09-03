@@ -800,9 +800,7 @@ fn cache_key(encryption: &Mutex<EncryptionState>, key: Vec<u8>) -> Result<(), Ap
 fn lock_state(
     encryption: &Mutex<EncryptionState>,
 ) -> Result<std::sync::MutexGuard<'_, EncryptionState>, AppError> {
-    encryption
-        .lock()
-        .map_err(|_| AppError::internal("encryption state lock poisoned"))
+    crate::logging::lock_mutex(encryption, "encryption state")
 }
 
 /// Constant-time byte-slice equality (no early return on first mismatch).

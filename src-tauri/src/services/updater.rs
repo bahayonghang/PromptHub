@@ -331,6 +331,7 @@ impl UpdaterErrorKind {
 
 mod runtime {
     use super::*;
+    use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Mutex;
 
     use tauri::AppHandle;
@@ -342,7 +343,11 @@ mod runtime {
     /// decoding) classify as [`UpdaterErrorKind::Signature`] (24.5). The plugin's
     /// `Error` is `#[non_exhaustive]`, so a wildcard arm covers future variants
     /// and the Windows-only `Extract` variant.
-    fn classify(error: &PluginError) -> UpdaterErrorKind {
+    ///
+    /// `ReleaseNotFound` maps to [`UpdaterErrorKind::Network`] and
+    /// `AuthenticationFailed` maps to [`UpdaterErrorKind::Io`]. Those mappings
+    /// are locked by tests; changing them is a contract change.
+    pub(super) fn classify(error: &PluginError) -> UpdaterErrorKind {
         match error {
             PluginError::Minisign(_) | PluginError::Base64(_) | PluginError::SignatureUtf8(_) => {
                 UpdaterErrorKind::Signature
@@ -386,6 +391,7 @@ mod runtime {
     pub async fn check<R: tauri::Runtime>(
         app: &AppHandle<R>,
     ) -> Result<(UpdateCheckResult, Option<Update>), AppError> {
+        crate::logging::event(crate::logging::Level::Info, "updater", "check");
         let current_version = app.package_info().version.to_string();
 
         let updater = app
@@ -420,30 +426,75 @@ mod runtime {
         update: &Update,
         sink: &dyn UpdaterEventSink,
     ) -> Result<Vec<u8>, AppError> {
+        crate::logging::event(crate::logging::Level::Info, "updater", "download");
         let tracker = Mutex::new(ProgressTracker::new());
+        let poisoned = AtomicBool::new(false);
 
-        update
+        let bytes = update
             .download(
-                |chunk_len, content_length| {
-                    let status = tracker.lock().unwrap().record(chunk_len, content_length);
-                    sink.emit_status(&status);
+                |chunk_len, content_length| match crate::logging::lock_mutex(
+                    &tracker,
+                    "updater progress",
+                ) {
+                    Ok(mut tracker) => {
+                        sink.emit_status(&tracker.record(chunk_len, content_length));
+                    }
+                    Err(_) => poisoned.store(true, Ordering::Release),
                 },
-                || {
-                    let status = tracker.lock().unwrap().finish();
-                    sink.emit_status(&status);
+                || match crate::logging::lock_mutex(&tracker, "updater progress") {
+                    Ok(tracker) => sink.emit_status(&tracker.finish()),
+                    Err(_) => poisoned.store(true, Ordering::Release),
                 },
             )
             .await
-            .map_err(|e| map_updater_err("update download failed", &e))
+            .map_err(|e| map_updater_err("update download failed", &e))?;
+        if poisoned.load(Ordering::Acquire) {
+            return Err(AppError::internal("updater progress lock is poisoned"));
+        }
+        Ok(bytes)
     }
 
     /// Installs the verified package; the plugin applies it on the next restart
     /// (24.4). A failure maps to a structured [`AppError`] and leaves the
     /// installed version unchanged (24.5, 24.7).
     pub fn install(update: &Update, bytes: &[u8]) -> Result<(), AppError> {
+        crate::logging::event(crate::logging::Level::Info, "updater", "install");
         update
             .install(bytes)
             .map_err(|e| map_updater_err("update install failed", &e))
+    }
+
+    #[cfg(test)]
+    mod classify_tests {
+        use super::*;
+
+        #[test]
+        fn classify_release_not_found_as_network() {
+            assert_eq!(
+                classify(&PluginError::ReleaseNotFound),
+                UpdaterErrorKind::Network
+            );
+            assert_eq!(
+                classify(&PluginError::ReleaseNotFound)
+                    .to_app_error("missing release")
+                    .code_str(),
+                "NETWORK"
+            );
+        }
+
+        #[test]
+        fn classify_authentication_failed_as_io() {
+            assert_eq!(
+                classify(&PluginError::AuthenticationFailed),
+                UpdaterErrorKind::Io
+            );
+            assert_eq!(
+                classify(&PluginError::AuthenticationFailed)
+                    .to_app_error("auth failed")
+                    .code_str(),
+                "IO"
+            );
+        }
     }
 }
 
@@ -741,5 +792,16 @@ mod tests {
     fn failure_mapping_preserves_the_message() {
         let err = UpdaterErrorKind::Network.to_app_error("update check failed: boom");
         assert_eq!(err.message, "update check failed: boom");
+    }
+
+    #[test]
+    fn progress_tracker_poison_returns_internal() {
+        let tracker = Mutex::new(ProgressTracker::new());
+        let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _guard = tracker.lock().unwrap();
+            panic!("test poison");
+        }));
+        let err = crate::logging::lock_mutex(&tracker, "updater progress").unwrap_err();
+        assert_eq!(err.code_str(), "INTERNAL");
     }
 }

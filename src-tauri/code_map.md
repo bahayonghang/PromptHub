@@ -25,6 +25,7 @@ everything the original Electron main process did.
   authoritative `invoke_handler![...]` command registry.
 - `src/main.rs` — binary entry; calls `prompthub_lib::run()`.
 - `src/error.rs` — `AppError`, `ErrorCode`, and the `CommandResult<T>` envelope.
+- `src/logging.rs` — append-only `prompthub.log` under `RuntimePaths.log`.
 - `src/state.rs` — `AppState` (pool, runtime paths, encryption, request registry,
   readiness gate) and `RuntimePaths`.
 - `src/commands/mod.rs` — shared command helpers: `conn`, `ensure_ready`,

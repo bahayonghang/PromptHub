@@ -1088,9 +1088,21 @@ pub fn import_bundle(
 
 fn cleanup_import_files(staging: &Path, created: &[PathBuf]) {
     for path in created {
-        let _ = fs::remove_file(path);
+        if path.exists() && fs::remove_file(path).is_err() {
+            crate::logging::event(
+                crate::logging::Level::Warn,
+                "portable",
+                format!("import rollback leftover `{}`", path.display()),
+            );
+        }
     }
-    let _ = fs::remove_dir_all(staging);
+    if staging.exists() && fs::remove_dir_all(staging).is_err() {
+        crate::logging::event(
+            crate::logging::Level::Warn,
+            "portable",
+            format!("import rollback leftover `{}`", staging.display()),
+        );
+    }
 }
 
 #[cfg(test)]

@@ -102,13 +102,14 @@ pub fn sync_backup_restore(
 fn restore_backup(state: &AppState, id: &str) -> Result<RestoreResult, AppError> {
     ensure_ready(state)?;
     state.set_ready(false);
-    drop(state.take_pool());
+    drop(state.take_pool()?);
     match sync::backup_restore(&state.paths.data, &state.paths.backup, id) {
         Ok(result) => Ok(result),
         Err(error) => {
             if let Ok(pool) = storage::create_pool(data_path::database_path(&state.paths)) {
-                state.set_pool(pool);
-                state.set_ready(true);
+                if state.set_pool(pool).is_ok() {
+                    state.set_ready(true);
+                }
             }
             Err(error)
         }

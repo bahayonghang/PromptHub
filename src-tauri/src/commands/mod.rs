@@ -61,11 +61,9 @@ pub(crate) fn ensure_ready(state: &AppState) -> Result<(), AppError> {
     if state.is_ready() {
         Ok(())
     } else {
-        Err(AppError::internal(
-            state
-                .init_error()
-                .unwrap_or_else(|| "backend is not ready".to_string()),
-        ))
+        Err(state
+            .init_failure()
+            .unwrap_or_else(|| AppError::internal("backend is not ready")))
     }
 }
 
@@ -90,10 +88,7 @@ pub(crate) fn conn(
     state: &AppState,
 ) -> Result<PooledConnection<SqliteConnectionManager>, AppError> {
     ensure_ready(state)?;
-    let pool = state
-        .pool
-        .lock()
-        .map_err(|_| AppError::internal("database pool lock is poisoned"))?
+    let pool = crate::logging::lock_mutex(&state.pool, "database pool")?
         .clone()
         .ok_or_else(|| AppError::internal("database pool is not initialized"))?;
     pool.get()
@@ -114,4 +109,60 @@ pub fn app_status(state: tauri::State<'_, AppState>) -> CommandResult<AppStatus>
         ready: state.is_ready(),
         init_error: state.init_error(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::commands::startup::{
+        database_path, ensure_directories, resolve_runtime_paths, run_startup,
+    };
+    use crate::error::ErrorCode;
+    use tempfile::TempDir;
+
+    #[test]
+    fn ensure_ready_without_init_error_is_internal() {
+        let state = AppState::default();
+        let err = ensure_ready(&state).unwrap_err();
+        assert_eq!(err.code, ErrorCode::Internal);
+        assert_eq!(err.message, "backend is not ready");
+    }
+
+    #[test]
+    fn ensure_ready_preserves_startup_io_code() {
+        let tmp = TempDir::new().unwrap();
+        let file = tmp.path().join("not-a-dir");
+        std::fs::write(&file, b"x").unwrap();
+        let paths = resolve_runtime_paths(&file);
+        let state = AppState::new(paths);
+        let err = run_startup(&state).unwrap_err();
+        assert_eq!(err.code, ErrorCode::Io);
+        let ready_err = ensure_ready(&state).unwrap_err();
+        assert_eq!(ready_err.code, ErrorCode::Io);
+        assert_eq!(ready_err.code_str(), "IO");
+        assert_eq!(ready_err.message, err.message);
+    }
+
+    #[test]
+    fn startup_failure_writes_log_without_secrets() {
+        let tmp = TempDir::new().unwrap();
+        let paths = resolve_runtime_paths(tmp.path());
+        ensure_directories(&paths).unwrap();
+        std::fs::create_dir_all(database_path(&paths)).unwrap();
+        let state = AppState::new(paths.clone());
+        let err = run_startup(&state).unwrap_err();
+        assert_eq!(err.code, ErrorCode::Io);
+        let body = std::fs::read_to_string(paths.log.join(crate::logging::LOG_FILE_NAME)).unwrap();
+        assert!(body.contains("ERROR startup"));
+        assert!(body.contains("startup failed"));
+        assert!(body.contains("[IO]"));
+        assert!(body.contains(&err.message));
+        assert!(!body.contains("password="));
+        assert!(!body.contains("Authorization:"));
+        assert!(!body.contains("DEK:"));
+        assert!(!body.contains("token="));
+        let ready_err = ensure_ready(&state).unwrap_err();
+        assert_eq!(ready_err.code, ErrorCode::Io);
+        assert_eq!(ready_err.message, err.message);
+    }
 }

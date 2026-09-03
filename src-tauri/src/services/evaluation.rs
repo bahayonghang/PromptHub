@@ -647,6 +647,16 @@ impl ProviderAdapter for DefaultProviderAdapter {
     }
 }
 
+/// Cancellation is signaled by the token. Adapters return an empty output
+/// instead of `AppError::internal("request cancelled")`; [`execute_run`] maps
+/// the token to persisted `cancelled` status.
+fn cancelled_provider_output() -> ProviderOutput {
+    ProviderOutput {
+        content: String::new(),
+        usage: None,
+    }
+}
+
 async fn execute_mock(
     request: ProviderRequest,
     cancel: &CancellationToken,
@@ -654,7 +664,7 @@ async fn execute_mock(
     sink: &dyn EvaluationEventSink,
 ) -> Result<ProviderOutput, AppError> {
     if cancel.is_cancelled() {
-        return Err(AppError::internal("request cancelled"));
+        return Ok(cancelled_provider_output());
     }
     let content = request
         .parameters
@@ -678,7 +688,7 @@ async fn execute_mock(
         .unwrap_or(content.len());
     for chunk in [&content[..midpoint], &content[midpoint..]] {
         if cancel.is_cancelled() {
-            return Err(AppError::internal("request cancelled"));
+            return Ok(cancelled_provider_output());
         }
         if !chunk.is_empty() {
             sink.emit_run_chunk(run_id, chunk);
@@ -759,7 +769,7 @@ async fn execute_openai(
             }
         }
         let response = tokio::select! {
-            _ = cancel.cancelled() => return Err(AppError::internal("request cancelled")),
+            _ = cancel.cancelled() => return Ok(cancelled_provider_output()),
             result = builder.send() => result.map_err(|error| {
                 if error.is_timeout() {
                     AppError::timeout("provider request timed out")
@@ -794,7 +804,7 @@ async fn execute_openai(
         let mut usage = None;
         let mut stream = response.bytes_stream();
         while let Some(chunk) = tokio::select! {
-            _ = cancel.cancelled() => return Err(AppError::internal("request cancelled")),
+            _ = cancel.cancelled() => return Ok(cancelled_provider_output()),
             chunk = stream.next() => chunk,
         } {
             let chunk = chunk.map_err(|error| {
@@ -2605,12 +2615,12 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(run.status, "cancelled");
+        assert!(run.error.is_none());
         {
             let conn = pool.get().unwrap();
-            assert_eq!(
-                get_run(&conn, &encryption, &run.id).unwrap().status,
-                "cancelled"
-            );
+            let stored = get_run(&conn, &encryption, &run.id).unwrap();
+            assert_eq!(stored.status, "cancelled");
+            assert!(stored.error.is_none());
         }
 
         let token = CancellationToken::new();

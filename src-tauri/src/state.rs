@@ -19,6 +19,8 @@ use std::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
+use crate::error::AppError;
+use crate::logging;
 use crate::storage::DbPool;
 
 /// Handle for an in-flight cancellable request (AI/sync).
@@ -82,10 +84,12 @@ pub struct AppState {
     pub requests: Mutex<HashMap<String, RequestHandle>>,
     /// Gates command execution; `false` until startup initialization succeeds.
     ready: AtomicBool,
-    /// Human-readable fatal initialization error, set when the startup sequence
-    /// fails so the Frontend can surface it (Requirements 4.7, 23.3). `None` while
-    /// startup is in progress or has succeeded.
-    init_error: Mutex<Option<String>>,
+    /// Fatal initialization error, set when the startup sequence fails so the
+    /// Frontend can surface it (Requirements 4.7, 23.3). `None` while startup is
+    /// in progress or has succeeded. Stores the original [`AppError`] so
+    /// `ensure_ready` can return the original [`ErrorCode`] instead of wrapping
+    /// the message as `INTERNAL`.
+    init_error: Mutex<Option<crate::error::AppError>>,
 }
 
 impl AppState {
@@ -115,62 +119,90 @@ impl AppState {
 
     /// Installs the SQLite connection pool produced by the Storage_Engine during
     /// startup. Replaces any previously installed pool.
-    pub fn set_pool(&self, pool: DbPool) {
-        *self.pool.lock().unwrap() = Some(pool);
+    pub fn set_pool(&self, pool: DbPool) -> Result<(), AppError> {
+        *logging::lock_mutex(&self.pool, "database pool")? = Some(pool);
+        Ok(())
     }
 
     /// Removes the installed SQLite pool. Pooled connections close when the last
     /// handle is dropped. Restore uses this so live database files are not held
     /// open across a sidecar directory replace.
-    pub fn take_pool(&self) -> Option<DbPool> {
-        self.pool.lock().unwrap().take()
+    pub fn take_pool(&self) -> Result<Option<DbPool>, AppError> {
+        Ok(logging::lock_mutex(&self.pool, "database pool")?.take())
     }
 
     /// Records a fatal initialization error and clears the `ready` flag so every
     /// command stays gated and the Frontend can surface the failure
-    /// (Requirements 4.7, 23.3).
-    pub fn set_init_error(&self, message: impl Into<String>) {
-        *self.init_error.lock().unwrap() = Some(message.into());
+    /// (Requirements 4.7, 23.3). Recovers a poisoned mutex so the original code
+    /// is still available to `ensure_ready`.
+    pub fn set_init_error(&self, error: AppError) {
         self.set_ready(false);
+        match self.init_error.lock() {
+            Ok(mut slot) => *slot = Some(error),
+            Err(poisoned) => {
+                logging::event(
+                    logging::Level::Error,
+                    "mutex",
+                    "init error lock is poisoned",
+                );
+                *poisoned.into_inner() = Some(error);
+            }
+        }
     }
 
-    /// Returns the fatal initialization error recorded during startup, if any.
+    /// Returns the original fatal [`AppError`] recorded during startup, if any.
+    pub fn init_failure(&self) -> Option<AppError> {
+        match self.init_error.lock() {
+            Ok(slot) => slot.clone(),
+            Err(poisoned) => {
+                logging::event(
+                    logging::Level::Error,
+                    "mutex",
+                    "init error lock is poisoned",
+                );
+                poisoned.into_inner().clone()
+            }
+        }
+    }
+
+    /// Returns the fatal initialization error as a display string, if any.
     pub fn init_error(&self) -> Option<String> {
-        self.init_error.lock().unwrap().clone()
+        self.init_failure().map(|error| error.to_string())
     }
 
     /// Registers a fresh [`CancellationToken`] for an in-flight request and
     /// returns it. Any token previously registered under `request_id` is
     /// cancelled and replaced so a reused id can never leave a stale request
     /// running (Requirement 16.7).
-    pub fn register_request(&self, request_id: &str) -> RequestHandle {
+    pub fn register_request(&self, request_id: &str) -> Result<RequestHandle, AppError> {
         let token = CancellationToken::new();
-        let mut requests = self.requests.lock().unwrap();
+        let mut requests = logging::lock_mutex(&self.requests, "request registry")?;
         if let Some(previous) = requests.insert(request_id.to_string(), token.clone()) {
             previous.cancel();
         }
-        token
+        Ok(token)
     }
 
     /// Cancels the in-flight request registered under `request_id`, if any, and
     /// removes it from the registry. Returns `true` when a request was found and
     /// cancelled (Requirement 16.7).
-    pub fn cancel_request(&self, request_id: &str) -> bool {
-        let token = self.requests.lock().unwrap().remove(request_id);
-        match token {
+    pub fn cancel_request(&self, request_id: &str) -> Result<bool, AppError> {
+        let token = logging::lock_mutex(&self.requests, "request registry")?.remove(request_id);
+        Ok(match token {
             Some(token) => {
                 token.cancel();
                 true
             }
             None => false,
-        }
+        })
     }
 
     /// Removes a request from the registry without cancelling it. Called when a
     /// request finishes normally so completed ids do not accumulate. A no-op when
     /// the id is absent (already cancelled/removed).
-    pub fn finish_request(&self, request_id: &str) {
-        self.requests.lock().unwrap().remove(request_id);
+    pub fn finish_request(&self, request_id: &str) -> Result<(), AppError> {
+        logging::lock_mutex(&self.requests, "request registry")?.remove(request_id);
+        Ok(())
     }
 }
 
@@ -215,10 +247,14 @@ mod tests {
     fn set_init_error_records_message_and_clears_ready() {
         let state = AppState::default();
         state.set_ready(true);
-        state.set_init_error("data directory not writable");
+        state.set_init_error(AppError::io("data directory not writable"));
+        assert_eq!(
+            state.init_failure().map(|error| error.code_str()),
+            Some("IO")
+        );
         assert_eq!(
             state.init_error().as_deref(),
-            Some("data directory not writable")
+            Some("[IO] data directory not writable")
         );
         assert!(!state.is_ready());
     }
@@ -240,7 +276,7 @@ mod tests {
     #[test]
     fn register_request_inserts_a_live_token() {
         let state = AppState::default();
-        let token = state.register_request("req-1");
+        let token = state.register_request("req-1").unwrap();
         assert!(!token.is_cancelled());
         assert!(state.requests.lock().unwrap().contains_key("req-1"));
     }
@@ -248,8 +284,8 @@ mod tests {
     #[test]
     fn cancel_request_cancels_and_removes_the_token() {
         let state = AppState::default();
-        let token = state.register_request("req-1");
-        assert!(state.cancel_request("req-1"));
+        let token = state.register_request("req-1").unwrap();
+        assert!(state.cancel_request("req-1").unwrap());
         assert!(token.is_cancelled());
         assert!(!state.requests.lock().unwrap().contains_key("req-1"));
     }
@@ -257,14 +293,14 @@ mod tests {
     #[test]
     fn cancel_request_returns_false_for_unknown_id() {
         let state = AppState::default();
-        assert!(!state.cancel_request("missing"));
+        assert!(!state.cancel_request("missing").unwrap());
     }
 
     #[test]
     fn registering_a_reused_id_cancels_the_previous_token() {
         let state = AppState::default();
-        let first = state.register_request("req-1");
-        let second = state.register_request("req-1");
+        let first = state.register_request("req-1").unwrap();
+        let second = state.register_request("req-1").unwrap();
         assert!(first.is_cancelled());
         assert!(!second.is_cancelled());
     }
@@ -272,10 +308,26 @@ mod tests {
     #[test]
     fn finish_request_removes_without_cancelling() {
         let state = AppState::default();
-        let token = state.register_request("req-1");
-        state.finish_request("req-1");
+        let token = state.register_request("req-1").unwrap();
+        state.finish_request("req-1").unwrap();
         assert!(!token.is_cancelled());
         assert!(!state.requests.lock().unwrap().contains_key("req-1"));
+    }
+
+    #[test]
+    fn poisoned_requests_mutex_returns_internal_without_abort() {
+        let state = AppState::default();
+        let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _guard = state.requests.lock().unwrap();
+            panic!("test poison");
+        }));
+        assert!(state.requests.lock().is_err());
+        let err = state.register_request("req-1").unwrap_err();
+        assert_eq!(err.code_str(), "INTERNAL");
+        let err = state.cancel_request("req-1").unwrap_err();
+        assert_eq!(err.code_str(), "INTERNAL");
+        let err = state.finish_request("req-1").unwrap_err();
+        assert_eq!(err.code_str(), "INTERNAL");
     }
 
     #[test]

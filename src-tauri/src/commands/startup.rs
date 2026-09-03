@@ -92,7 +92,13 @@ pub fn initialize_storage(paths: &crate::state::RuntimePaths) -> Result<DbPool, 
 /// same error is returned to the caller for logging.
 pub fn run_startup(state: &AppState) -> Result<(), AppError> {
     if let Err(error) = initialize(state) {
-        state.set_init_error(error.to_string());
+        crate::logging::event_to(
+            &state.paths.log,
+            crate::logging::Level::Error,
+            "startup",
+            format!("startup failed: {error}"),
+        );
+        state.set_init_error(error.clone());
         return Err(error);
     }
     state.set_ready(true);
@@ -105,7 +111,7 @@ pub fn run_startup(state: &AppState) -> Result<(), AppError> {
 fn initialize(state: &AppState) -> Result<(), AppError> {
     data_path::ensure_directories(&state.paths)?;
     let pool = initialize_storage(&state.paths)?;
-    state.set_pool(pool);
+    state.set_pool(pool)?;
     Ok(())
 }
 
@@ -285,6 +291,10 @@ mod tests {
         assert_eq!(err.code_str(), "IO");
         assert!(!state.is_ready());
         assert!(state.init_error().is_some());
+        assert_eq!(
+            state.init_failure().map(|error| error.code),
+            Some(crate::error::ErrorCode::Io)
+        );
         assert!(state.pool.lock().unwrap().is_none());
     }
 }
