@@ -25,7 +25,7 @@ pub use prompt::{
     SearchQuery, Variable,
 };
 pub use rules::{RuleFileContent, RuleVersionSnapshot};
-pub use security::StoredMasterPassword;
+pub use security::{StoredMasterPassword, StoredMasterPasswordV2, StoredVerifier};
 pub use settings::{SecuritySettings, Settings, SyncSettings};
 
 #[cfg(test)]

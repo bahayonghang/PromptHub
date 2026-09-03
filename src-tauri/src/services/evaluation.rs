@@ -824,51 +824,144 @@ async fn execute_openai(
     Err(AppError::network("too many provider redirects"))
 }
 
-fn run_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<PromptRun> {
-    let inputs: String = row.get("inputs")?;
-    let rendered: String = row.get("rendered_messages")?;
-    let usage: Option<String> = row.get("usage")?;
-    Ok(PromptRun {
+struct RawPromptRun {
+    id: String,
+    prompt_revision_id: String,
+    profile_revision_id: String,
+    test_case_id: Option<String>,
+    inputs: String,
+    rendered_messages: String,
+    output: Option<String>,
+    status: String,
+    error: Option<String>,
+    started_at: i64,
+    completed_at: Option<i64>,
+    duration_ms: Option<i64>,
+    usage: Option<String>,
+    cache_key: Option<String>,
+}
+
+fn raw_run_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<RawPromptRun> {
+    Ok(RawPromptRun {
         id: row.get("id")?,
         prompt_revision_id: row.get("prompt_revision_id")?,
         profile_revision_id: row.get("profile_revision_id")?,
         test_case_id: row.get("test_case_id")?,
-        inputs: decode(&inputs)?,
-        rendered_messages: decode(&rendered)?,
+        inputs: row.get("inputs")?,
+        rendered_messages: row.get("rendered_messages")?,
         output: row.get("output")?,
         status: row.get("status")?,
         error: row.get("error")?,
-        started_at: millis_to_iso8601(row.get("started_at")?),
-        completed_at: row
-            .get::<_, Option<i64>>("completed_at")?
-            .map(millis_to_iso8601),
+        started_at: row.get("started_at")?,
+        completed_at: row.get("completed_at")?,
         duration_ms: row.get("duration_ms")?,
-        usage: usage.map(|raw| decode(&raw)).transpose()?,
+        usage: row.get("usage")?,
         cache_key: row.get("cache_key")?,
     })
 }
 
-pub fn get_run(conn: &Connection, id: &str) -> Result<PromptRun, AppError> {
-    conn.query_row(
-        "SELECT * FROM prompt_runs WHERE id = ?1",
-        [id],
-        run_from_row,
-    )
-    .optional()
-    .map_err(|error| db_err("failed to read prompt run", error))?
-    .ok_or_else(|| AppError::not_found(format!("prompt run `{id}` not found")))
+fn reveal_text(raw: &str, key: Option<&[u8]>) -> Result<Option<String>, AppError> {
+    if crate::services::security::is_encrypted_value(raw) {
+        match key {
+            Some(key) => Ok(Some(crate::services::security::decrypt(raw, key)?)),
+            None => Ok(None),
+        }
+    } else {
+        Ok(Some(raw.to_string()))
+    }
 }
 
-pub fn list_runs(conn: &Connection) -> Result<Vec<PromptRun>, AppError> {
+fn reveal_json<T>(raw: &str, key: Option<&[u8]>) -> Result<T, AppError>
+where
+    T: Default + serde::de::DeserializeOwned,
+{
+    match reveal_text(raw, key)? {
+        Some(plain) => serde_json::from_str(&plain)
+            .map_err(|error| AppError::internal(format!("failed to decode prompt run: {error}"))),
+        None => Ok(T::default()),
+    }
+}
+
+fn present_run(raw: RawPromptRun, key: Option<&[u8]>) -> Result<PromptRun, AppError> {
+    let output = match raw.output.as_deref() {
+        Some(value) => reveal_text(value, key)?,
+        None => None,
+    };
+    Ok(PromptRun {
+        id: raw.id,
+        prompt_revision_id: raw.prompt_revision_id,
+        profile_revision_id: raw.profile_revision_id,
+        test_case_id: raw.test_case_id,
+        inputs: reveal_json(&raw.inputs, key)?,
+        rendered_messages: reveal_json(&raw.rendered_messages, key)?,
+        output,
+        status: raw.status,
+        error: raw.error,
+        started_at: millis_to_iso8601(raw.started_at),
+        completed_at: raw.completed_at.map(millis_to_iso8601),
+        duration_ms: raw.duration_ms,
+        usage: raw
+            .usage
+            .map(|raw| decode(&raw))
+            .transpose()
+            .map_err(|error| db_err("failed to decode prompt run usage", error))?,
+        cache_key: raw.cache_key,
+    })
+}
+
+fn maybe_seal(value: String, key: Option<&[u8]>) -> Result<String, AppError> {
+    match key {
+        Some(key) => crate::services::security::encrypt(&value, key),
+        None => Ok(value),
+    }
+}
+
+fn revision_is_private(conn: &Connection, id: &str) -> Result<bool, AppError> {
+    conn.query_row(
+        "SELECT is_private FROM prompt_versions WHERE id = ?1",
+        [id],
+        |row| row.get(0),
+    )
+    .optional()
+    .map_err(|error| db_err("failed to read prompt revision privacy", error))?
+    .ok_or_else(|| AppError::not_found(format!("prompt revision `{id}` not found")))
+}
+
+pub fn get_run(
+    conn: &Connection,
+    encryption: &Mutex<EncryptionState>,
+    id: &str,
+) -> Result<PromptRun, AppError> {
+    let raw = conn
+        .query_row(
+            "SELECT * FROM prompt_runs WHERE id = ?1",
+            [id],
+            raw_run_from_row,
+        )
+        .optional()
+        .map_err(|error| db_err("failed to read prompt run", error))?
+        .ok_or_else(|| AppError::not_found(format!("prompt run `{id}` not found")))?;
+    let key = crate::services::security::unlocked_key(encryption)?;
+    present_run(raw, key.as_deref())
+}
+
+pub fn list_runs(
+    conn: &Connection,
+    encryption: &Mutex<EncryptionState>,
+) -> Result<Vec<PromptRun>, AppError> {
     let mut stmt = conn
         .prepare("SELECT * FROM prompt_runs ORDER BY started_at DESC,id DESC LIMIT 500")
         .map_err(|error| db_err("failed to prepare prompt runs", error))?;
-    let runs = stmt
-        .query_map([], run_from_row)
+    let raw_runs = stmt
+        .query_map([], raw_run_from_row)
         .map_err(|error| db_err("failed to query prompt runs", error))?
         .collect::<rusqlite::Result<Vec<_>>>()
         .map_err(|error| db_err("failed to map prompt runs", error))?;
-    Ok(runs)
+    let key = crate::services::security::unlocked_key(encryption)?;
+    raw_runs
+        .into_iter()
+        .map(|raw| present_run(raw, key.as_deref()))
+        .collect()
 }
 
 pub async fn execute_run(
@@ -882,10 +975,15 @@ pub async fn execute_run(
 ) -> Result<PromptRun, AppError> {
     let run_id = uuid::Uuid::new_v4().to_string();
     let started = now_millis();
-    let (rendered, request) = {
+    let (rendered, request, seal_key) = {
         let conn = pool.get().map_err(|error| {
             AppError::io(format!("failed to acquire database connection: {error}"))
         })?;
+        let seal_key = if revision_is_private(&conn, &input.prompt_revision_id)? {
+            Some(required_key(encryption)?)
+        } else {
+            None
+        };
         let rendered = render_prompt(&conn, encryption, &input.prompt_revision_id, &input.inputs)?;
         let request = provider_request(
             &conn,
@@ -893,7 +991,7 @@ pub async fn execute_run(
             &input.profile_revision_id,
             rendered.messages.clone(),
         )?;
-        (rendered, request)
+        (rendered, request, seal_key)
     };
     if request.provider == "openai-compatible" {
         if let Some(endpoint) = request.endpoint.as_deref() {
@@ -911,8 +1009,8 @@ pub async fn execute_run(
                 input.prompt_revision_id,
                 input.profile_revision_id,
                 input.test_case_id,
-                encode(&input.inputs)?,
-                encode(&rendered.messages)?,
+                maybe_seal(encode(&input.inputs)?, seal_key.as_deref())?,
+                maybe_seal(encode(&rendered.messages)?, seal_key.as_deref())?,
                 started,
                 cache_key,
             ],
@@ -935,14 +1033,18 @@ pub async fn execute_run(
     let conn = pool
         .get()
         .map_err(|error| AppError::io(format!("failed to acquire database connection: {error}")))?;
+    let stored_output = match (output, seal_key.as_deref()) {
+        (Some(text), Some(key)) => Some(crate::services::security::encrypt(&text, key)?),
+        (text, _) => text,
+    };
     conn.execute(
         "UPDATE prompt_runs SET output=?1,status=?2,error=?3,completed_at=?4,duration_ms=?5,usage=?6 WHERE id=?7",
-        params![output, status, error, completed, completed - started, usage, run_id],
+        params![stored_output, status, error, completed, completed - started, usage, run_id],
     )
     .map_err(|error| db_err("failed to complete prompt run", error))?;
     sink.emit_run_terminal(&run_id, status);
     let _ = rendered;
-    get_run(&conn, &run_id)
+    get_run(&conn, encryption, &run_id)
 }
 
 fn evaluator_by_id(conn: &Connection, id: &str) -> Result<EvaluatorConfig, AppError> {
@@ -2252,9 +2354,12 @@ mod tests {
                 .len(),
             2
         );
-        assert_eq!(list_runs(&conn).unwrap().len(), 3);
+        assert_eq!(list_runs(&conn, &encryption).unwrap().len(), 3);
         assert_eq!(list_evaluation_runs(&conn).unwrap().len(), 1);
-        assert_eq!(get_run(&conn, &playground.id).unwrap().status, "success");
+        assert_eq!(
+            get_run(&conn, &encryption, &playground.id).unwrap().status,
+            "success"
+        );
     }
 
     #[test]
@@ -2492,7 +2597,10 @@ mod tests {
         assert_eq!(run.status, "cancelled");
         {
             let conn = pool.get().unwrap();
-            assert_eq!(get_run(&conn, &run.id).unwrap().status, "cancelled");
+            assert_eq!(
+                get_run(&conn, &encryption, &run.id).unwrap().status,
+                "cancelled"
+            );
         }
 
         let token = CancellationToken::new();
@@ -2877,5 +2985,132 @@ mod tests {
         .await
         .unwrap();
         assert!(!output.content.trim().is_empty());
+    }
+
+    #[tokio::test]
+    async fn private_run_payloads_are_encrypted_redacted_while_locked_and_rekeyed() {
+        let pool = create_memory_pool().unwrap();
+        let encryption = Mutex::new(EncryptionState::default());
+        let (revision, profile) = {
+            let conn = pool.get().unwrap();
+            init_schema(&conn).unwrap();
+            crate::services::security::set_master_password(&conn, &encryption, "old-password")
+                .unwrap();
+            let prompt = prompt::create_secure(
+                &conn,
+                &encryption,
+                PromptCreate {
+                    title: "Private chat".into(),
+                    user_prompt: "classified body {{name}}".into(),
+                    variables: Some(vec![Variable {
+                        name: "name".into(),
+                        r#type: "text".into(),
+                        label: None,
+                        default_value: None,
+                        options: None,
+                        required: true,
+                    }]),
+                    is_private: Some(true),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            let revision = crate::services::version::list(&conn, &prompt.id)
+                .unwrap()
+                .pop()
+                .unwrap();
+            let profile = create_profile(
+                &conn,
+                &encryption,
+                ExecutionProfileInput {
+                    profile_id: None,
+                    name: "Mock".into(),
+                    provider: "mock".into(),
+                    endpoint: None,
+                    model: "deterministic".into(),
+                    parameters: json!({ "response": "classified-output" }),
+                    credential: None,
+                },
+            )
+            .unwrap();
+            (revision, profile)
+        };
+
+        let run = execute_run(
+            &pool,
+            &encryption,
+            &DefaultProviderAdapter,
+            PromptRunInput {
+                prompt_revision_id: revision.id.clone(),
+                profile_revision_id: profile.id.clone(),
+                inputs: BTreeMap::from([("name".into(), "Ada".into())]),
+                test_case_id: None,
+            },
+            None,
+            &CancellationToken::new(),
+            &Sink,
+        )
+        .await
+        .unwrap();
+        assert_eq!(run.output.as_deref(), Some("classified-output"));
+        assert_eq!(run.inputs.get("name").map(String::as_str), Some("Ada"));
+
+        let conn = pool.get().unwrap();
+        let (inputs, rendered, output): (String, String, Option<String>) = conn
+            .query_row(
+                "SELECT inputs, rendered_messages, output FROM prompt_runs WHERE id = ?1",
+                [&run.id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert!(inputs.starts_with("ENC::"));
+        assert!(rendered.starts_with("ENC::"));
+        assert!(output.as_deref().unwrap().starts_with("ENC::"));
+        assert!(!inputs.contains("Ada"));
+        assert!(!rendered.contains("classified body"));
+        assert!(!output.as_deref().unwrap().contains("classified-output"));
+
+        crate::services::security::lock(&encryption).unwrap();
+        let listed = list_runs(&conn, &encryption).unwrap();
+        let locked_run = listed.iter().find(|item| item.id == run.id).unwrap();
+        assert!(locked_run.inputs.is_empty());
+        assert!(locked_run.rendered_messages.is_empty());
+        assert!(locked_run.output.is_none());
+        assert!(!serde_json::to_string(locked_run)
+            .unwrap()
+            .contains("classified-output"));
+        let got = get_run(&conn, &encryption, &run.id).unwrap();
+        assert!(got.inputs.is_empty());
+        assert!(got.output.is_none());
+
+        crate::services::security::unlock(&conn, &encryption, "old-password").unwrap();
+        let old_key = crate::services::security::unlocked_key(&encryption)
+            .unwrap()
+            .unwrap();
+        crate::services::security::change_master_password(
+            &conn,
+            &encryption,
+            "old-password",
+            "new-password",
+        )
+        .unwrap();
+        let new_key = crate::services::security::unlocked_key(&encryption)
+            .unwrap()
+            .unwrap();
+        let output: String = conn
+            .query_row(
+                "SELECT output FROM prompt_runs WHERE id = ?1",
+                [&run.id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(crate::services::security::decrypt(&output, &old_key).is_err());
+        assert_eq!(
+            crate::services::security::decrypt(&output, &new_key).unwrap(),
+            "classified-output"
+        );
+        let opened = get_run(&conn, &encryption, &run.id).unwrap();
+        assert_eq!(opened.output.as_deref(), Some("classified-output"));
+        assert_eq!(opened.inputs.get("name").map(String::as_str), Some("Ada"));
     }
 }

@@ -45,14 +45,18 @@ chrono = { version = "0.4.38", default-features = false, features = ["clock", "s
 # identifier for each created prompt). The `v4` feature provides random UUIDs.
 uuid = { version = "1", features = ["v4"] }
 # Security_Service (Requirement 15): reproduce the reference crypto construction.
-# `scrypt` derives the 32-byte key from the master password; `aes-gcm` provides
+# `scrypt` derives the 32-byte KEK from the master password; `aes-gcm` provides
 # AES-256-GCM authenticated encryption (12-byte nonce + 16-byte tag); `rand`
-# supplies the cryptographically secure RNG (OsRng) for salts and nonces; and
-# `base64` encodes the `ENC::` envelope and the `{salt, hash}` verifier.
+# supplies the cryptographically secure RNG (OsRng) for salts, nonces, and the
+# DEK; `hmac`+`sha2` separate the wrap key from the stored verifier; `zeroize`
+# clears cached DEK bytes on lock; and `base64` encodes the `ENC::` envelope
+# and the stored verifier document.
 aes-gcm = "0.10"
 scrypt = "0.11"
 rand = "0.8"
 base64 = "0.22"
+hmac = "0.12"
+zeroize = { version = "1", features = ["derive"] }
 # Rules_Service (Requirement 14): SHA-256 content hashing for rule files. The
 # managed content hash is compared to the target file's hash to compute
 # `syncStatus` (14.2) and to detect changes on save (14.4). Pinned to the stable

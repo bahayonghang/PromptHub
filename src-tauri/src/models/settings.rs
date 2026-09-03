@@ -82,8 +82,19 @@ pub struct Settings {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub minimize_on_launch: Option<bool>,
     /// Optional GitHub personal access token.
+    ///
+    /// Persisted as `ENC::` when a master password exists. `settings.get`
+    /// clears this field and reports [`Self::has_github_token`] instead.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub github_token: Option<String>,
+    /// Whether a GitHub token is stored. Surfaced by `settings.get`; not a
+    /// persistence field.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub has_github_token: Option<bool>,
+    /// Whether `sync.password` is stored. Surfaced by `settings.get`; not a
+    /// persistence field.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub has_sync_password: Option<bool>,
     /// Security state summary.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub security: Option<SecuritySettings>,

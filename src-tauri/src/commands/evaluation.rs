@@ -74,12 +74,12 @@ pub async fn run<R: tauri::Runtime>(
 
 #[tauri::command(rename = "evaluation.runList")]
 pub fn run_list(state: tauri::State<'_, AppState>) -> CommandResult<Vec<PromptRun>> {
-    into_command(conn(&state).and_then(|conn| evaluation::list_runs(&conn)))
+    into_command(conn(&state).and_then(|conn| evaluation::list_runs(&conn, &state.encryption)))
 }
 
 #[tauri::command(rename = "evaluation.runGet")]
 pub fn run_get(id: String, state: tauri::State<'_, AppState>) -> CommandResult<PromptRun> {
-    into_command(conn(&state).and_then(|conn| evaluation::get_run(&conn, &id)))
+    into_command(conn(&state).and_then(|conn| evaluation::get_run(&conn, &state.encryption, &id)))
 }
 
 #[tauri::command(rename = "evaluation.cancel")]

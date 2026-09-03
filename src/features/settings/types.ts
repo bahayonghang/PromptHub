@@ -51,7 +51,12 @@ export interface Settings {
   updateChannel?: string | null;
   launchAtStartup?: boolean | null;
   minimizeOnLaunch?: boolean | null;
+  /** Accepted on `settings.update` patches; `settings.get` never returns it. */
   githubToken?: string | null;
+  /** Whether a GitHub token is stored. `settings.get` reports this instead of the secret. */
+  hasGithubToken?: boolean | null;
+  /** Whether `sync.password` is stored. `settings.get` reports this instead of the secret. */
+  hasSyncPassword?: boolean | null;
   security?: SecuritySettingsSummary | null;
   /** Theme flavor: Latte | Frappé | Macchiato | Mocha | Claude Light | Claude Dark. */
   flavor?: string | null;

@@ -17,6 +17,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 
 use tokio_util::sync::CancellationToken;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::storage::DbPool;
 
@@ -49,14 +50,15 @@ pub struct RuntimePaths {
 
 /// In-memory encryption state, guarded by a `Mutex` within [`AppState`].
 ///
-/// Holds the derived key (when unlocked) and a `locked` flag. The key material is
-/// never serialized or exposed to the Frontend. Concrete key derivation and the
-/// `ENC::` envelope land with the Security_Service (task 7.1).
-#[derive(Debug, Default)]
+/// Holds the data-encryption key (when unlocked) and a `locked` flag. The key
+/// material is never serialized or exposed to the Frontend. `lock` and Drop
+/// zeroize cached DEK bytes.
+#[derive(Debug, Default, Zeroize, ZeroizeOnDrop)]
 pub struct EncryptionState {
-    /// The derived encryption key, present only while the app is unlocked.
+    /// The data-encryption key, present only while the app is unlocked.
     pub derived_key: Option<Vec<u8>>,
     /// Whether encrypted data is currently locked from access.
+    #[zeroize(skip)]
     pub locked: bool,
 }
 

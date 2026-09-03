@@ -14,7 +14,7 @@ pub fn settings_get(state: tauri::State<'_, AppState>) -> CommandResult<Settings
 
 #[tauri::command(rename = "settings.update")]
 pub fn settings_update(patch: Value, state: tauri::State<'_, AppState>) -> CommandResult<Settings> {
-    into_command(conn(&state).and_then(|conn| settings::update(&conn, &patch)))
+    into_command(conn(&state).and_then(|conn| settings::update(&conn, &state.encryption, &patch)))
 }
 
 #[tauri::command(rename = "settings.list_system_fonts")]

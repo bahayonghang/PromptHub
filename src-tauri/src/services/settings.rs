@@ -30,11 +30,14 @@
 //! supplies a pooled connection.
 #![allow(dead_code)]
 
+use std::sync::Mutex;
+
 use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::Value;
 
 use crate::error::AppError;
 use crate::models::Settings;
+use crate::state::EncryptionState;
 
 /// Settings-table key under which the full [`Settings`] JSON document is stored.
 const SETTINGS_KEY: &str = "app";
@@ -57,7 +60,14 @@ fn defaults() -> Settings {
 
 /// Returns the stored application settings, or the defaults when none have been
 /// persisted (Requirement 19.1).
+///
+/// Secret fields (`githubToken`, `sync.password`) are never returned. Existence
+/// is reported as `hasGithubToken` / `hasSyncPassword`.
 pub fn get(conn: &Connection) -> Result<Settings, AppError> {
+    Ok(redact_secrets(load_stored(conn)?))
+}
+
+fn load_stored(conn: &Connection) -> Result<Settings, AppError> {
     let stored: Option<String> = conn
         .query_row(
             "SELECT value FROM settings WHERE key = ?1",
@@ -74,6 +84,52 @@ pub fn get(conn: &Connection) -> Result<Settings, AppError> {
     }
 }
 
+fn secret_present(value: Option<&str>) -> bool {
+    value.map(|value| !value.is_empty()).unwrap_or(false)
+}
+
+fn redact_secrets(mut settings: Settings) -> Settings {
+    settings.has_github_token = Some(secret_present(settings.github_token.as_deref()));
+    settings.github_token = None;
+    settings.has_sync_password = Some(secret_present(
+        settings
+            .sync
+            .as_ref()
+            .and_then(|sync| sync.password.as_deref()),
+    ));
+    if let Some(sync) = settings.sync.as_mut() {
+        sync.password = None;
+    }
+    settings
+}
+
+fn nonempty_secret(value: Option<&Value>) -> bool {
+    match value {
+        Some(Value::String(text)) => !text.is_empty(),
+        Some(Value::Null) | None => false,
+        Some(_) => true,
+    }
+}
+
+fn secret_write_requested(patch: &Value) -> bool {
+    nonempty_secret(patch.get("githubToken")) || nonempty_secret(patch.pointer("/sync/password"))
+}
+
+/// Keeps persisted secrets when a redacted DTO or a nested `sync` object is
+/// written back without a replacement value. Top-level merge replaces the whole
+/// `sync` object, so an omitted `password` would otherwise wipe `ENC::` bytes.
+fn restore_omitted_secrets(result: &mut Settings, current: &Settings, patch: &Value) {
+    if !nonempty_secret(patch.get("githubToken")) {
+        result.github_token = current.github_token.clone();
+    }
+    if !nonempty_secret(patch.pointer("/sync/password")) {
+        let stored = current.sync.as_ref().and_then(|sync| sync.password.clone());
+        if let Some(sync) = result.sync.as_mut() {
+            sync.password = stored;
+        }
+    }
+}
+
 /// Merges a partial settings object over the stored settings, persists the
 /// result, and returns it (Requirement 19.2).
 ///
@@ -82,29 +138,72 @@ pub fn get(conn: &Connection) -> Result<Settings, AppError> {
 /// is validated by deserializing it back into [`Settings`] *before* the write, so
 /// a patch that names an unknown-typed value is rejected with `VALIDATION` and
 /// nothing is persisted (Requirement 2.3).
-pub fn update(conn: &Connection, patch: &Value) -> Result<Settings, AppError> {
+pub fn update(
+    conn: &Connection,
+    encryption: &Mutex<EncryptionState>,
+    patch: &Value,
+) -> Result<Settings, AppError> {
     let patch_obj = patch
         .as_object()
         .ok_or_else(|| AppError::validation("settings update must be a JSON object"))?;
 
-    // Start from the stored settings (or defaults) as a JSON object.
-    let current = get(conn)?;
+    let writing_secrets = secret_write_requested(patch);
+    let seal_key = if writing_secrets {
+        if !crate::services::security::has_master_password(conn)? {
+            return Err(AppError::validation(
+                "githubToken and sync.password require a master password",
+            ));
+        }
+        Some(
+            crate::services::security::unlocked_key(encryption)?.ok_or_else(|| {
+                AppError::locked("unlock the library before saving githubToken or sync.password")
+            })?,
+        )
+    } else {
+        None
+    };
+
+    // Merge over the stored document (including ENC:: secrets) so a redacted
+    // DTO cannot wipe persisted tokens. hasGithubToken / hasSyncPassword on a
+    // patch are DTO-only and must not be written back.
+    let current = load_stored(conn)?;
     let mut merged = serde_json::to_value(&current)
         .map_err(|e| AppError::internal(format!("failed to encode current settings: {e}")))?;
     let merged_obj = merged
         .as_object_mut()
         .expect("Settings always serializes to a JSON object");
 
-    // Top-level field merge: supplied fields overwrite, omitted fields persist.
     for (key, value) in patch_obj {
+        if key == "hasGithubToken" || key == "hasSyncPassword" {
+            continue;
+        }
         merged_obj.insert(key.clone(), value.clone());
     }
+    merged_obj.remove("hasGithubToken");
+    merged_obj.remove("hasSyncPassword");
 
     // Validate the merged shape before writing so a bad update never mutates
     // stored data (Req 2.3).
-    let result: Settings = serde_json::from_value(merged)
+    let mut result: Settings = serde_json::from_value(merged)
         .map_err(|e| AppError::validation(format!("invalid settings update: {e}")))?;
     validate(&result)?;
+    restore_omitted_secrets(&mut result, &current, patch);
+
+    if let Some(key) = seal_key.as_deref() {
+        if let Some(token) = result.github_token.as_mut() {
+            if !token.is_empty() && !crate::services::security::is_encrypted_value(token) {
+                *token = crate::services::security::encrypt(token, key)?;
+            }
+        }
+        if let Some(password) = result.sync.as_mut().and_then(|sync| sync.password.as_mut()) {
+            if !password.is_empty() && !crate::services::security::is_encrypted_value(password) {
+                *password = crate::services::security::encrypt(password, key)?;
+            }
+        }
+    }
+
+    result.has_github_token = None;
+    result.has_sync_password = None;
 
     let json = serde_json::to_string(&result)
         .map_err(|e| AppError::internal(format!("failed to encode settings: {e}")))?;
@@ -114,7 +213,7 @@ pub fn update(conn: &Connection, patch: &Value) -> Result<Settings, AppError> {
     )
     .map_err(|e| AppError::internal(format!("failed to persist settings: {e}")))?;
 
-    Ok(result)
+    Ok(redact_secrets(result))
 }
 
 fn validate(settings: &Settings) -> Result<(), AppError> {
@@ -172,6 +271,10 @@ mod tests {
         pool.get().unwrap()
     }
 
+    fn enc() -> Mutex<EncryptionState> {
+        Mutex::new(EncryptionState::default())
+    }
+
     #[test]
     fn list_system_fonts_is_sorted_and_deduplicated() {
         let fonts = list_system_fonts();
@@ -195,7 +298,12 @@ mod tests {
     #[test]
     fn update_persists_supplied_fields_and_returns_result() {
         let conn = conn();
-        let result = update(&conn, &json!({ "theme": "light", "language": "ja" })).unwrap();
+        let result = update(
+            &conn,
+            &enc(),
+            &json!({ "theme": "light", "language": "ja" }),
+        )
+        .unwrap();
         assert_eq!(result.theme, "light");
         assert_eq!(result.language, "ja");
         // Unspecified required field keeps its default.
@@ -206,9 +314,14 @@ mod tests {
     fn update_leaves_unspecified_fields_unchanged() {
         let conn = conn();
         // First update sets theme + autoSave.
-        update(&conn, &json!({ "theme": "light", "autoSave": false })).unwrap();
+        update(
+            &conn,
+            &enc(),
+            &json!({ "theme": "light", "autoSave": false }),
+        )
+        .unwrap();
         // Second update touches only language.
-        let result = update(&conn, &json!({ "language": "fr" })).unwrap();
+        let result = update(&conn, &enc(), &json!({ "language": "fr" })).unwrap();
         assert_eq!(result.language, "fr");
         // Previously-set fields are preserved.
         assert_eq!(result.theme, "light");
@@ -218,10 +331,18 @@ mod tests {
     #[test]
     fn get_returns_stored_settings_after_update() {
         let conn = conn();
-        update(&conn, &json!({ "theme": "system", "githubToken": "abc" })).unwrap();
+        update(
+            &conn,
+            &enc(),
+            &json!({ "theme": "system", "defaultFolderId": "f1" }),
+        )
+        .unwrap();
         let stored = get(&conn).unwrap();
         assert_eq!(stored.theme, "system");
-        assert_eq!(stored.github_token.as_deref(), Some("abc"));
+        assert_eq!(stored.default_folder_id.as_deref(), Some("f1"));
+        assert_eq!(stored.has_github_token, Some(false));
+        assert_eq!(stored.has_sync_password, Some(false));
+        assert!(stored.github_token.is_none());
     }
 
     #[test]
@@ -229,6 +350,7 @@ mod tests {
         let conn = conn();
         let result = update(
             &conn,
+            &enc(),
             &json!({ "sync": { "enabled": true, "provider": "webdav", "endpoint": "https://x" } }),
         )
         .unwrap();
@@ -241,7 +363,7 @@ mod tests {
     #[test]
     fn update_rejects_non_object_patch() {
         let conn = conn();
-        let err = update(&conn, &json!("not-an-object")).unwrap_err();
+        let err = update(&conn, &enc(), &json!("not-an-object")).unwrap_err();
         assert_eq!(err.code_str(), "VALIDATION");
     }
 
@@ -249,9 +371,9 @@ mod tests {
     fn update_rejects_wrong_typed_field_without_mutating() {
         let conn = conn();
         // Seed a known value.
-        update(&conn, &json!({ "theme": "light" })).unwrap();
+        update(&conn, &enc(), &json!({ "theme": "light" })).unwrap();
         // `theme` must be a string; a number is rejected.
-        let err = update(&conn, &json!({ "theme": 42 })).unwrap_err();
+        let err = update(&conn, &enc(), &json!({ "theme": 42 })).unwrap_err();
         assert_eq!(err.code_str(), "VALIDATION");
         // The earlier value is still stored (no mutation on error).
         assert_eq!(get(&conn).unwrap().theme, "light");
@@ -360,7 +482,7 @@ mod tests {
                     prior_obj.insert(APPEARANCE_KEYS[i].to_string(), Value::String(v.clone()));
                 }
             }
-            update(&conn, &Value::Object(prior_obj)).unwrap();
+            update(&conn, &enc(), &Value::Object(prior_obj)).unwrap();
 
             // Apply an arbitrary subset of appearance fields as a patch.
             let mut patch_obj = serde_json::Map::new();
@@ -369,7 +491,7 @@ mod tests {
                     patch_obj.insert(APPEARANCE_KEYS[i].to_string(), Value::String(v.clone()));
                 }
             }
-            let result = update(&conn, &Value::Object(patch_obj)).unwrap();
+            let result = update(&conn, &enc(), &Value::Object(patch_obj)).unwrap();
 
             // Non-appearance fields are untouched by the appearance patch.
             prop_assert_eq!(result.theme.as_str(), theme);
@@ -415,7 +537,7 @@ mod tests {
                 "fontScale": scale,
                 "density": density,
             });
-            update(&conn, &patch).unwrap();
+            update(&conn, &enc(), &patch).unwrap();
 
             // Read back with no intervening update.
             let stored = get(&conn).unwrap();
@@ -433,6 +555,7 @@ mod tests {
         let conn = conn();
         let result = update(
             &conn,
+            &enc(),
             &json!({
                 "flavor": "Mocha",
                 "accentColor": "Blue",
@@ -470,9 +593,9 @@ mod tests {
     fn wrong_typed_appearance_field_is_rejected_without_mutating() {
         let conn = conn();
         // Seed a known appearance value.
-        update(&conn, &json!({ "flavor": "Latte" })).unwrap();
+        update(&conn, &enc(), &json!({ "flavor": "Latte" })).unwrap();
         // `flavor` must be a string; a number is rejected by validate-before-write.
-        let err = update(&conn, &json!({ "flavor": 42 })).unwrap_err();
+        let err = update(&conn, &enc(), &json!({ "flavor": 42 })).unwrap_err();
         assert_eq!(err.code_str(), "VALIDATION");
         // The previously stored value is unchanged (no mutation on error).
         assert_eq!(get(&conn).unwrap().flavor.as_deref(), Some("Latte"));
@@ -483,6 +606,7 @@ mod tests {
         let conn = conn();
         update(
             &conn,
+            &enc(),
             &json!({
                 "language": "ja",
                 "themeFamily": "catppuccin",
@@ -492,7 +616,7 @@ mod tests {
         )
         .unwrap();
 
-        let result = update(&conn, &json!({ "themeFamily": "claude" })).unwrap();
+        let result = update(&conn, &enc(), &json!({ "themeFamily": "claude" })).unwrap();
         assert_eq!(result.language, "ja");
         assert_eq!(result.theme_family.as_deref(), Some("claude"));
         assert_eq!(result.catppuccin_dark_variant.as_deref(), Some("macchiato"));
@@ -506,7 +630,7 @@ mod tests {
     #[test]
     fn invalid_font_stack_is_rejected_before_write() {
         let conn = conn();
-        update(&conn, &json!({ "interfaceFontStack": ["Inter"] })).unwrap();
+        update(&conn, &enc(), &json!({ "interfaceFontStack": ["Inter"] })).unwrap();
 
         for invalid in [
             json!([]),
@@ -514,7 +638,7 @@ mod tests {
             json!(["  "]),
             json!(["bad\nfont"]),
         ] {
-            let err = update(&conn, &json!({ "interfaceFontStack": invalid })).unwrap_err();
+            let err = update(&conn, &enc(), &json!({ "interfaceFontStack": invalid })).unwrap_err();
             assert_eq!(err.code_str(), "VALIDATION");
             assert_eq!(
                 get(&conn).unwrap().interface_font_stack,
@@ -522,7 +646,7 @@ mod tests {
             );
         }
 
-        let err = update(&conn, &json!({ "interfaceFontStack": "Inter" })).unwrap_err();
+        let err = update(&conn, &enc(), &json!({ "interfaceFontStack": "Inter" })).unwrap_err();
         assert_eq!(err.code_str(), "VALIDATION");
         assert_eq!(
             get(&conn).unwrap().interface_font_stack,
@@ -553,5 +677,217 @@ mod tests {
         assert!(settings.theme_family.is_none());
         assert!(settings.catppuccin_dark_variant.is_none());
         assert!(settings.interface_font_stack.is_none());
+    }
+
+    #[test]
+    fn settings_get_redacts_secrets_and_requires_master_password_to_write_them() {
+        let conn = conn();
+        let enc = enc();
+        let err = update(&conn, &enc, &json!({ "githubToken": "ghp_plaintext" })).unwrap_err();
+        assert_eq!(err.code_str(), "VALIDATION");
+        assert!(load_stored(&conn).unwrap().github_token.is_none());
+
+        let err = update(
+            &conn,
+            &enc,
+            &json!({ "sync": { "enabled": true, "provider": "webdav", "password": "sync-secret" } }),
+        )
+        .unwrap_err();
+        assert_eq!(err.code_str(), "VALIDATION");
+
+        crate::services::security::set_master_password(&conn, &enc, "password123").unwrap();
+        let dto = update(
+            &conn,
+            &enc,
+            &json!({
+                "githubToken": "ghp_plaintext",
+                "sync": { "enabled": true, "provider": "webdav", "password": "sync-secret" }
+            }),
+        )
+        .unwrap();
+        assert_eq!(dto.has_github_token, Some(true));
+        assert_eq!(dto.has_sync_password, Some(true));
+        assert!(dto.github_token.is_none());
+        assert!(dto
+            .sync
+            .as_ref()
+            .and_then(|sync| sync.password.as_ref())
+            .is_none());
+
+        let raw: String = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = ?1",
+                params![SETTINGS_KEY],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(raw.contains("ENC::"));
+        assert!(!raw.contains("ghp_plaintext"));
+        assert!(!raw.contains("sync-secret"));
+
+        let got = get(&conn).unwrap();
+        assert_eq!(got.has_github_token, Some(true));
+        assert_eq!(got.has_sync_password, Some(true));
+        assert!(got.github_token.is_none());
+        assert!(serde_json::to_string(&got)
+            .unwrap()
+            .contains("hasGithubToken"));
+        assert!(!serde_json::to_string(&got)
+            .unwrap()
+            .contains("ghp_plaintext"));
+        assert!(!serde_json::to_string(&got).unwrap().contains("sync-secret"));
+    }
+
+    #[test]
+    fn existing_plaintext_secrets_are_sealed_on_first_master_password() {
+        let conn = conn();
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, ?2)",
+            params![
+                SETTINGS_KEY,
+                json!({
+                    "theme": "dark",
+                    "language": "en",
+                    "autoSave": true,
+                    "githubToken": "ghp_legacy",
+                    "sync": { "enabled": true, "provider": "webdav", "password": "legacy-sync" }
+                })
+                .to_string()
+            ],
+        )
+        .unwrap();
+        let enc = enc();
+        crate::services::security::set_master_password(&conn, &enc, "password123").unwrap();
+        let raw: String = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = ?1",
+                params![SETTINGS_KEY],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(raw.contains("ENC::"));
+        assert!(!raw.contains("ghp_legacy"));
+        assert!(!raw.contains("legacy-sync"));
+        let dto = get(&conn).unwrap();
+        assert_eq!(dto.has_github_token, Some(true));
+        assert_eq!(dto.has_sync_password, Some(true));
+    }
+
+    #[test]
+    fn writing_secrets_while_locked_is_locked_and_writes_nothing() {
+        let conn = conn();
+        let enc = enc();
+        crate::services::security::set_master_password(&conn, &enc, "password123").unwrap();
+        crate::services::security::lock(&enc).unwrap();
+        let err = update(&conn, &enc, &json!({ "githubToken": "ghp_new" })).unwrap_err();
+        assert_eq!(err.code_str(), "LOCKED");
+        let raw: String = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = ?1",
+                params![SETTINGS_KEY],
+                |row| row.get(0),
+            )
+            .optional()
+            .unwrap()
+            .unwrap_or_default();
+        assert!(!raw.contains("ghp_new"));
+    }
+
+    #[test]
+    fn change_master_password_rekeys_settings_secrets() {
+        let conn = conn();
+        let enc = enc();
+        crate::services::security::set_master_password(&conn, &enc, "oldpassword").unwrap();
+        update(
+            &conn,
+            &enc,
+            &json!({ "githubToken": "ghp_keep", "sync": { "enabled": true, "provider": "webdav", "password": "sync-keep" } }),
+        )
+        .unwrap();
+        let old_key = crate::services::security::unlocked_key(&enc)
+            .unwrap()
+            .unwrap();
+        crate::services::security::change_master_password(
+            &conn,
+            &enc,
+            "oldpassword",
+            "newpassword",
+        )
+        .unwrap();
+        let new_key = crate::services::security::unlocked_key(&enc)
+            .unwrap()
+            .unwrap();
+        let raw: String = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = ?1",
+                params![SETTINGS_KEY],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let stored: Settings = serde_json::from_str(&raw).unwrap();
+        let token = stored.github_token.unwrap();
+        let password = stored.sync.unwrap().password.unwrap();
+        assert!(token.starts_with("ENC::"));
+        assert!(crate::services::security::decrypt(&token, &old_key).is_err());
+        assert_eq!(
+            crate::services::security::decrypt(&token, &new_key).unwrap(),
+            "ghp_keep"
+        );
+        assert_eq!(
+            crate::services::security::decrypt(&password, &new_key).unwrap(),
+            "sync-keep"
+        );
+    }
+
+    #[test]
+    fn redacted_or_nested_patch_does_not_wipe_persisted_secrets() {
+        let conn = conn();
+        let enc = enc();
+        crate::services::security::set_master_password(&conn, &enc, "password123").unwrap();
+        update(
+            &conn,
+            &enc,
+            &json!({
+                "githubToken": "ghp_keep",
+                "sync": { "enabled": true, "provider": "webdav", "password": "sync-keep" }
+            }),
+        )
+        .unwrap();
+
+        let dto = get(&conn).unwrap();
+        update(&conn, &enc, &serde_json::to_value(&dto).unwrap()).unwrap();
+        update(
+            &conn,
+            &enc,
+            &json!({
+                "sync": { "enabled": true, "provider": "webdav", "endpoint": "https://dav.example" }
+            }),
+        )
+        .unwrap();
+
+        let raw: String = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = ?1",
+                params![SETTINGS_KEY],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let stored: Settings = serde_json::from_str(&raw).unwrap();
+        let key = crate::services::security::unlocked_key(&enc)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            crate::services::security::decrypt(stored.github_token.as_deref().unwrap(), &key)
+                .unwrap(),
+            "ghp_keep"
+        );
+        assert_eq!(
+            crate::services::security::decrypt(
+                stored.sync.unwrap().password.as_deref().unwrap(),
+                &key
+            )
+            .unwrap(),
+            "sync-keep"
+        );
     }
 }
