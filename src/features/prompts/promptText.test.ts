@@ -155,6 +155,31 @@ describe("buildPromptCopyText", () => {
       "[System]\nStay curious.\n\n[User]\nWhat is memory?\n\n[Assistant]\nAsk a better question.",
     );
   });
+
+  it("copies user-only chat messages without a User label", () => {
+    expect(
+      buildPromptCopyText({
+        systemPrompt: "",
+        userPrompt: "",
+        messages: [{ role: "user", content: "Ask one question." }],
+        variables: [],
+      }),
+    ).toBe("Ask one question.");
+  });
+
+  it("joins multiple user-only chat messages without User labels", () => {
+    expect(
+      buildPromptCopyText({
+        systemPrompt: "",
+        userPrompt: "",
+        messages: [
+          { role: "user", content: "First." },
+          { role: "user", content: "Second." },
+        ],
+        variables: [],
+      }),
+    ).toBe("First.\n\nSecond.");
+  });
 });
 
 describe("seedChatMessages", () => {

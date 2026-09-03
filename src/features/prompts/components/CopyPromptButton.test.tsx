@@ -167,6 +167,6 @@ describe("CopyPromptButton", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Copy Chat" }));
     });
-    expect(writeText).toHaveBeenCalledWith("[User]\nHello inlined body");
+    expect(writeText).toHaveBeenCalledWith("Hello inlined body");
   });
 });

@@ -416,7 +416,7 @@ describe("PromptEditor create chat default and copy", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Copy prompt" }));
     });
-    expect(writeText).toHaveBeenCalledWith("[User]\nDraft copy body");
+    expect(writeText).toHaveBeenCalledWith("Draft copy body");
   });
 
   it("opens a saved text-mode prompt in chat when chat is preferred", () => {
