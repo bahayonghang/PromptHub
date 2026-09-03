@@ -1,0 +1,4 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/cross-layer/prompt-library-foundations.md", "reason": "Do not regress private/bundle contracts"}
+{"file": ".trellis/spec/cross-layer/prompt-evaluation-loop.md", "reason": "Do not regress evaluation SSRF and labels"}
+{"file": ".trellis/tasks/09-03-engineering-audit/research/audit-findings.md", "reason": "High findings must map to a child"}
