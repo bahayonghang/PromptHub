@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/cross-layer/index.md", "reason": "Cross-layer checklist for library and evaluation contracts"}
+{"file": ".trellis/spec/cross-layer/prompt-library-foundations.md", "reason": "Prompt, revision, private content, portable bundle, and schema contracts the new tests must encode"}
+{"file": ".trellis/spec/cross-layer/prompt-evaluation-loop.md", "reason": "Evaluation render, run, matrix, cancel, SSRF, label, and evaluator contracts"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Frontend test styles: inject fake APIs, no module mocks, no tautological tests"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Keep assertions on layer-boundary error codes and unchanged snapshots"}
+{"file": ".trellis/tasks/09-03-core-test-coverage/research/coverage-gaps.md", "reason": "Risk-ordered gap inventory with file:line anchors"}
