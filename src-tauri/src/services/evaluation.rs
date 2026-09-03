@@ -893,6 +893,17 @@ pub async fn execute_run(
             &input.profile_revision_id,
             rendered.messages.clone(),
         )?;
+        (rendered, request)
+    };
+    if request.provider == "openai-compatible" {
+        if let Some(endpoint) = request.endpoint.as_deref() {
+            crate::services::network_safety::prepare_public_url(endpoint, PROVIDER_TIMEOUT).await?;
+        }
+    }
+    {
+        let conn = pool.get().map_err(|error| {
+            AppError::io(format!("failed to acquire database connection: {error}"))
+        })?;
         conn.execute(
             "INSERT INTO prompt_runs (id,prompt_revision_id,profile_revision_id,test_case_id,inputs,rendered_messages,status,started_at,cache_key) VALUES (?1,?2,?3,?4,?5,?6,'running',?7,?8)",
             params![
@@ -907,8 +918,7 @@ pub async fn execute_run(
             ],
         )
         .map_err(|error| db_err("failed to create prompt run", error))?;
-        (rendered, request)
-    };
+    }
     let result = adapter.execute(request, cancel, &run_id, sink).await;
     let completed = now_millis();
     let (status, output, error, usage) = match result {
@@ -1521,6 +1531,17 @@ mod tests {
         fn emit_matrix_progress(&self, _id: &str, _completed: i64, _total: i64, _cell: &str) {}
     }
 
+    struct CancelOnFirstProgress {
+        token: CancellationToken,
+    }
+    impl EvaluationEventSink for CancelOnFirstProgress {
+        fn emit_run_chunk(&self, _run_id: &str, _chunk: &str) {}
+        fn emit_run_terminal(&self, _run_id: &str, _status: &str) {}
+        fn emit_matrix_progress(&self, _id: &str, _completed: i64, _total: i64, _cell: &str) {
+            self.token.cancel();
+        }
+    }
+
     struct FlakyAdapter(AtomicBool);
     impl ProviderAdapter for FlakyAdapter {
         fn execute<'a>(
@@ -1582,6 +1603,65 @@ mod tests {
             .unwrap();
         drop(conn);
         (pool, encryption, revision)
+    }
+
+    fn table_count(conn: &Connection, table: &str) -> i64 {
+        conn.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+            row.get(0)
+        })
+        .unwrap()
+    }
+
+    fn mock_profile(
+        conn: &Connection,
+        encryption: &Mutex<EncryptionState>,
+    ) -> ExecutionProfileRevision {
+        create_profile(
+            conn,
+            encryption,
+            ExecutionProfileInput {
+                profile_id: None,
+                name: "Mock".into(),
+                provider: "mock".into(),
+                endpoint: None,
+                model: "deterministic".into(),
+                parameters: json!({ "response": "yes" }),
+                credential: None,
+            },
+        )
+        .unwrap()
+    }
+
+    fn named_case_set(conn: &Connection, name: &str, case_count: usize) -> TestSet {
+        save_test_set(
+            conn,
+            TestSetInput {
+                id: None,
+                name: name.into(),
+                cases: (0..case_count)
+                    .map(|index| TestCaseInput {
+                        id: None,
+                        name: format!("Case {index}"),
+                        inputs: BTreeMap::from([("name".into(), "Ada".into())]),
+                        expected_output: Some("yes".into()),
+                        annotations: json!({}),
+                    })
+                    .collect(),
+            },
+        )
+        .unwrap()
+    }
+
+    fn evaluator(conn: &Connection, name: &str, kind: &str, config: Value) -> EvaluatorConfig {
+        create_evaluator(
+            conn,
+            EvaluatorInput {
+                name: name.into(),
+                kind: kind.into(),
+                config,
+            },
+        )
+        .unwrap()
     }
 
     #[test]
@@ -2175,6 +2255,599 @@ mod tests {
         assert_eq!(list_runs(&conn).unwrap().len(), 3);
         assert_eq!(list_evaluation_runs(&conn).unwrap().len(), 1);
         assert_eq!(get_run(&conn, &playground.id).unwrap().status, "success");
+    }
+
+    #[test]
+    fn label_rejects_invalid_label_action_foreign_and_unevaluated_revisions() {
+        let (pool, _encryption, revision) = setup();
+        let conn = pool.get().unwrap();
+        let other = prompt::create(
+            &conn,
+            PromptCreate {
+                title: "Other".into(),
+                user_prompt: "body".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let other_revision = crate::services::version::list(&conn, &other.id)
+            .unwrap()
+            .pop()
+            .unwrap();
+        let labels_before = table_count(&conn, "prompt_labels");
+        let history_before = table_count(&conn, "prompt_label_history");
+
+        let invalid_label =
+            move_label(&conn, &revision.prompt_id, "prod", &revision.id, "move").unwrap_err();
+        assert_eq!(invalid_label.code_str(), "VALIDATION");
+
+        let invalid_action = move_label(
+            &conn,
+            &revision.prompt_id,
+            "candidate",
+            &revision.id,
+            "assign",
+        )
+        .unwrap_err();
+        assert_eq!(invalid_action.code_str(), "VALIDATION");
+
+        let foreign = move_label(
+            &conn,
+            &revision.prompt_id,
+            "candidate",
+            &other_revision.id,
+            "move",
+        )
+        .unwrap_err();
+        assert_eq!(foreign.code_str(), "NOT_FOUND");
+
+        let unevaluated = move_label(
+            &conn,
+            &revision.prompt_id,
+            "candidate",
+            &revision.id,
+            "move",
+        )
+        .unwrap_err();
+        assert_eq!(unevaluated.code_str(), "VALIDATION");
+
+        assert_eq!(table_count(&conn, "prompt_labels"), labels_before);
+        assert_eq!(table_count(&conn, "prompt_label_history"), history_before);
+    }
+
+    #[tokio::test]
+    async fn label_move_and_rollback_append_history_without_rewriting_prompt_rows() {
+        let (pool, encryption, first_revision) = setup();
+        let (second_revision, profile, test_set, evaluator) = {
+            let conn = pool.get().unwrap();
+            let second_revision = crate::services::version::create(
+                &conn,
+                &first_revision.prompt_id,
+                Some("candidate".into()),
+            )
+            .unwrap();
+            let profile = mock_profile(&conn, &encryption);
+            let test_set = named_case_set(&conn, "Labels", 1);
+            let evaluator = evaluator(&conn, "Exact", "exact", json!({}));
+            (second_revision, profile, test_set, evaluator)
+        };
+        run_matrix(
+            &pool,
+            &encryption,
+            &DefaultProviderAdapter,
+            EvaluationMatrixInput {
+                test_set_id: test_set.id,
+                prompt_revision_ids: vec![first_revision.id.clone(), second_revision.id.clone()],
+                profile_revision_ids: vec![profile.id],
+                evaluator_ids: vec![evaluator.id],
+            },
+            &CancellationToken::new(),
+            &Sink,
+        )
+        .await
+        .unwrap();
+
+        let conn = pool.get().unwrap();
+        let prompt_before = prompt::get(&conn, &first_revision.prompt_id).unwrap();
+        let versions_before =
+            crate::services::version::list(&conn, &first_revision.prompt_id).unwrap();
+        let history_before = table_count(&conn, "prompt_label_history");
+
+        move_label(
+            &conn,
+            &first_revision.prompt_id,
+            "candidate",
+            &first_revision.id,
+            "move",
+        )
+        .unwrap();
+        move_label(
+            &conn,
+            &first_revision.prompt_id,
+            "candidate",
+            &second_revision.id,
+            "move",
+        )
+        .unwrap();
+        let rolled = move_label(
+            &conn,
+            &first_revision.prompt_id,
+            "candidate",
+            &first_revision.id,
+            "rollback",
+        )
+        .unwrap();
+        assert_eq!(rolled.prompt_revision_id, first_revision.id);
+
+        let history = label_history(&conn, &first_revision.prompt_id).unwrap();
+        assert_eq!(history.len(), history_before as usize + 3);
+        assert!(history.iter().any(|entry| entry.action == "rollback"));
+        assert_eq!(
+            prompt::get(&conn, &first_revision.prompt_id).unwrap(),
+            prompt_before
+        );
+        assert_eq!(
+            crate::services::version::list(&conn, &first_revision.prompt_id).unwrap(),
+            versions_before
+        );
+    }
+
+    #[tokio::test]
+    async fn manual_result_stays_skipped_until_reviewed_and_rejects_bad_cells() {
+        let (pool, encryption, revision) = setup();
+        let missing = set_manual_result(
+            &pool.get().unwrap(),
+            "missing-cell",
+            "missing-evaluator",
+            true,
+            "ok",
+        )
+        .unwrap_err();
+        assert_eq!(missing.code_str(), "NOT_FOUND");
+
+        let (profile, test_set, exact, manual) = {
+            let conn = pool.get().unwrap();
+            (
+                mock_profile(&conn, &encryption),
+                named_case_set(&conn, "Manual", 1),
+                evaluator(&conn, "Exact", "exact", json!({})),
+                evaluator(&conn, "Human", "manual", json!({})),
+            )
+        };
+        let detail = run_matrix(
+            &pool,
+            &encryption,
+            &DefaultProviderAdapter,
+            EvaluationMatrixInput {
+                test_set_id: test_set.id,
+                prompt_revision_ids: vec![revision.id],
+                profile_revision_ids: vec![profile.id],
+                evaluator_ids: vec![exact.id.clone(), manual.id.clone()],
+            },
+            &CancellationToken::new(),
+            &Sink,
+        )
+        .await
+        .unwrap();
+        let cell = &detail.cells[0];
+        let manual_result = cell
+            .results
+            .iter()
+            .find(|result| result.evaluator_id == manual.id)
+            .unwrap();
+        assert!(manual_result.skipped);
+        assert_eq!(manual_result.passed, None);
+        let results_before = cell.results.clone();
+
+        let conn = pool.get().unwrap();
+        let non_manual = set_manual_result(&conn, &cell.id, &exact.id, true, "ok").unwrap_err();
+        assert_eq!(non_manual.code_str(), "VALIDATION");
+        let unchanged = get_evaluation_run(&conn, &detail.run.id)
+            .unwrap()
+            .cells
+            .into_iter()
+            .find(|item| item.id == cell.id)
+            .unwrap();
+        assert_eq!(unchanged.results, results_before);
+
+        let reviewed = set_manual_result(&conn, &cell.id, &manual.id, true, "looks good").unwrap();
+        let stored = reviewed
+            .results
+            .iter()
+            .find(|result| result.evaluator_id == manual.id)
+            .unwrap();
+        assert!(!stored.skipped);
+        assert_eq!(stored.passed, Some(true));
+    }
+
+    #[tokio::test]
+    async fn cancelled_run_and_matrix_cells_persist_cancelled() {
+        let (pool, encryption, revision) = setup();
+        let (profile, test_set, evaluator) = {
+            let conn = pool.get().unwrap();
+            (
+                mock_profile(&conn, &encryption),
+                named_case_set(&conn, "Cancel", 2),
+                evaluator(&conn, "Exact", "exact", json!({})),
+            )
+        };
+        let cancelled = CancellationToken::new();
+        cancelled.cancel();
+        let run = execute_run(
+            &pool,
+            &encryption,
+            &DefaultProviderAdapter,
+            PromptRunInput {
+                prompt_revision_id: revision.id.clone(),
+                profile_revision_id: profile.id.clone(),
+                inputs: BTreeMap::from([("name".into(), "Ada".into())]),
+                test_case_id: None,
+            },
+            None,
+            &cancelled,
+            &Sink,
+        )
+        .await
+        .unwrap();
+        assert_eq!(run.status, "cancelled");
+        {
+            let conn = pool.get().unwrap();
+            assert_eq!(get_run(&conn, &run.id).unwrap().status, "cancelled");
+        }
+
+        let token = CancellationToken::new();
+        let detail = run_matrix(
+            &pool,
+            &encryption,
+            &DefaultProviderAdapter,
+            EvaluationMatrixInput {
+                test_set_id: test_set.id,
+                prompt_revision_ids: vec![revision.id],
+                profile_revision_ids: vec![profile.id],
+                evaluator_ids: vec![evaluator.id],
+            },
+            &token,
+            &CancelOnFirstProgress {
+                token: token.clone(),
+            },
+        )
+        .await
+        .unwrap();
+        let persisted = {
+            let conn = pool.get().unwrap();
+            get_evaluation_run(&conn, &detail.run.id).unwrap()
+        };
+        assert_eq!(persisted.run.status, "cancelled");
+        assert_eq!(
+            persisted
+                .cells
+                .iter()
+                .filter(|cell| cell.status == "success")
+                .count(),
+            1
+        );
+        assert_eq!(
+            persisted
+                .cells
+                .iter()
+                .filter(|cell| cell.status == "cancelled")
+                .count(),
+            1
+        );
+        assert!(persisted
+            .cells
+            .iter()
+            .all(|cell| cell.status != "error" && cell.status != "running"));
+    }
+
+    #[test]
+    fn create_profile_with_credential_while_locked_is_unauthorized() {
+        let pool = create_memory_pool().unwrap();
+        let conn = pool.get().unwrap();
+        init_schema(&conn).unwrap();
+        let encryption = Mutex::new(EncryptionState::default());
+        crate::services::security::set_master_password(&conn, &encryption, "password123").unwrap();
+        crate::services::security::lock(&encryption).unwrap();
+        let before = table_count(&conn, "execution_profile_revisions");
+
+        let err = create_profile(
+            &conn,
+            &encryption,
+            ExecutionProfileInput {
+                profile_id: None,
+                name: "Remote".into(),
+                provider: "openai-compatible".into(),
+                endpoint: Some("https://example.com/v1/chat/completions".into()),
+                model: "model".into(),
+                parameters: json!({}),
+                credential: Some("secret-token".into()),
+            },
+        )
+        .unwrap_err();
+        assert_eq!(err.code_str(), "UNAUTHORIZED");
+        assert_eq!(table_count(&conn, "execution_profile_revisions"), before);
+    }
+
+    #[tokio::test]
+    async fn execute_run_with_credential_while_locked_is_unauthorized_and_writes_nothing() {
+        let (pool, encryption, revision) = setup();
+        let profile = {
+            let conn = pool.get().unwrap();
+            crate::services::security::set_master_password(&conn, &encryption, "password123")
+                .unwrap();
+            create_profile(
+                &conn,
+                &encryption,
+                ExecutionProfileInput {
+                    profile_id: None,
+                    name: "Remote".into(),
+                    provider: "openai-compatible".into(),
+                    endpoint: Some("https://example.com/v1/chat/completions".into()),
+                    model: "model".into(),
+                    parameters: json!({}),
+                    credential: Some("secret-token".into()),
+                },
+            )
+            .unwrap()
+        };
+        crate::services::security::lock(&encryption).unwrap();
+        let before = {
+            let conn = pool.get().unwrap();
+            table_count(&conn, "prompt_runs")
+        };
+        let err = execute_run(
+            &pool,
+            &encryption,
+            &DefaultProviderAdapter,
+            PromptRunInput {
+                prompt_revision_id: revision.id,
+                profile_revision_id: profile.id,
+                inputs: BTreeMap::from([("name".into(), "Ada".into())]),
+                test_case_id: None,
+            },
+            None,
+            &CancellationToken::new(),
+            &Sink,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(err.code_str(), "UNAUTHORIZED");
+        let after = {
+            let conn = pool.get().unwrap();
+            table_count(&conn, "prompt_runs")
+        };
+        assert_eq!(after, before);
+    }
+
+    #[tokio::test]
+    async fn execute_run_blocks_loopback_openai_endpoint_without_network() {
+        let (pool, encryption, revision) = setup();
+        for endpoint in ["http://127.0.0.1/", "http://localhost/"] {
+            let profile = {
+                let conn = pool.get().unwrap();
+                create_profile(
+                    &conn,
+                    &encryption,
+                    ExecutionProfileInput {
+                        profile_id: None,
+                        name: format!("Blocked {endpoint}"),
+                        provider: "openai-compatible".into(),
+                        endpoint: Some(endpoint.into()),
+                        model: "model".into(),
+                        parameters: json!({}),
+                        credential: None,
+                    },
+                )
+                .unwrap()
+            };
+            let before = {
+                let conn = pool.get().unwrap();
+                table_count(&conn, "prompt_runs")
+            };
+            let err = execute_run(
+                &pool,
+                &encryption,
+                &DefaultProviderAdapter,
+                PromptRunInput {
+                    prompt_revision_id: revision.id.clone(),
+                    profile_revision_id: profile.id,
+                    inputs: BTreeMap::from([("name".into(), "Ada".into())]),
+                    test_case_id: None,
+                },
+                None,
+                &CancellationToken::new(),
+                &Sink,
+            )
+            .await
+            .unwrap_err();
+            assert_eq!(err.code_str(), "SSRF_BLOCKED");
+            let after = {
+                let conn = pool.get().unwrap();
+                table_count(&conn, "prompt_runs")
+            };
+            assert_eq!(after, before);
+        }
+    }
+
+    #[tokio::test]
+    async fn evaluation_input_validation_writes_nothing() {
+        let (pool, encryption, revision) = setup();
+        let conn = pool.get().unwrap();
+        let sets_before = table_count(&conn, "test_sets");
+        let cases_before = table_count(&conn, "test_cases");
+        let evaluators_before = table_count(&conn, "evaluator_configs");
+        let profiles_before = table_count(&conn, "execution_profile_revisions");
+        let runs_before = table_count(&conn, "evaluation_runs");
+        let cells_before = table_count(&conn, "evaluation_cells");
+
+        let empty_name = save_test_set(
+            &conn,
+            TestSetInput {
+                id: None,
+                name: "  ".into(),
+                cases: vec![],
+            },
+        )
+        .unwrap_err();
+        assert_eq!(empty_name.code_str(), "VALIDATION");
+
+        let too_many = save_test_set(
+            &conn,
+            TestSetInput {
+                id: None,
+                name: "Huge".into(),
+                cases: (0..1001)
+                    .map(|index| TestCaseInput {
+                        id: None,
+                        name: format!("c{index}"),
+                        inputs: BTreeMap::new(),
+                        expected_output: None,
+                        annotations: json!({}),
+                    })
+                    .collect(),
+            },
+        )
+        .unwrap_err();
+        assert_eq!(too_many.code_str(), "VALIDATION");
+
+        let empty_case = save_test_set(
+            &conn,
+            TestSetInput {
+                id: None,
+                name: "Cases".into(),
+                cases: vec![TestCaseInput {
+                    id: None,
+                    name: " ".into(),
+                    inputs: BTreeMap::new(),
+                    expected_output: None,
+                    annotations: json!({}),
+                }],
+            },
+        )
+        .unwrap_err();
+        assert_eq!(empty_case.code_str(), "VALIDATION");
+
+        let bad_annotations = save_test_set(
+            &conn,
+            TestSetInput {
+                id: None,
+                name: "Cases".into(),
+                cases: vec![TestCaseInput {
+                    id: None,
+                    name: "One".into(),
+                    inputs: BTreeMap::new(),
+                    expected_output: None,
+                    annotations: json!([]),
+                }],
+            },
+        )
+        .unwrap_err();
+        assert_eq!(bad_annotations.code_str(), "VALIDATION");
+
+        let empty_import = import_test_set(
+            &conn,
+            r#"{"id":"x","name":"","cases":[],"createdAt":"2026-01-01T00:00:00.000Z","updatedAt":"2026-01-01T00:00:00.000Z"}"#,
+        )
+        .unwrap_err();
+        assert_eq!(empty_import.code_str(), "VALIDATION");
+
+        let bad_kind = create_evaluator(
+            &conn,
+            EvaluatorInput {
+                name: "Odd".into(),
+                kind: "llm-judge".into(),
+                config: json!({}),
+            },
+        )
+        .unwrap_err();
+        assert_eq!(bad_kind.code_str(), "VALIDATION");
+
+        let bad_regex = create_evaluator(
+            &conn,
+            EvaluatorInput {
+                name: "Regex".into(),
+                kind: "regex".into(),
+                config: json!({ "pattern": "(" }),
+            },
+        )
+        .unwrap_err();
+        assert_eq!(bad_regex.code_str(), "VALIDATION");
+
+        let empty_profile = create_profile(
+            &conn,
+            &encryption,
+            ExecutionProfileInput {
+                profile_id: None,
+                name: " ".into(),
+                provider: "mock".into(),
+                endpoint: None,
+                model: "deterministic".into(),
+                parameters: json!({}),
+                credential: None,
+            },
+        )
+        .unwrap_err();
+        assert_eq!(empty_profile.code_str(), "VALIDATION");
+
+        assert_eq!(table_count(&conn, "test_sets"), sets_before);
+        assert_eq!(table_count(&conn, "test_cases"), cases_before);
+        assert_eq!(table_count(&conn, "evaluator_configs"), evaluators_before);
+        assert_eq!(
+            table_count(&conn, "execution_profile_revisions"),
+            profiles_before
+        );
+
+        drop(conn);
+        let empty_ids = run_matrix(
+            &pool,
+            &encryption,
+            &DefaultProviderAdapter,
+            EvaluationMatrixInput {
+                test_set_id: "missing".into(),
+                prompt_revision_ids: vec![],
+                profile_revision_ids: vec![],
+                evaluator_ids: vec![],
+            },
+            &CancellationToken::new(),
+            &Sink,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(empty_ids.code_str(), "VALIDATION");
+
+        let empty_set_id = {
+            let conn = pool.get().unwrap();
+            save_test_set(
+                &conn,
+                TestSetInput {
+                    id: None,
+                    name: "Empty".into(),
+                    cases: vec![],
+                },
+            )
+            .unwrap()
+            .id
+        };
+        let empty_set = run_matrix(
+            &pool,
+            &encryption,
+            &DefaultProviderAdapter,
+            EvaluationMatrixInput {
+                test_set_id: empty_set_id,
+                prompt_revision_ids: vec![revision.id],
+                profile_revision_ids: vec!["profile".into()],
+                evaluator_ids: vec!["evaluator".into()],
+            },
+            &CancellationToken::new(),
+            &Sink,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(empty_set.code_str(), "VALIDATION");
+
+        let conn = pool.get().unwrap();
+        assert_eq!(table_count(&conn, "evaluation_runs"), runs_before);
+        assert_eq!(table_count(&conn, "evaluation_cells"), cells_before);
     }
 
     #[tokio::test]

@@ -1662,4 +1662,218 @@ mod tests {
         assert_eq!(listed.outgoing.len(), 1);
         assert_eq!(listed.outgoing[0].resolution, "resolved");
     }
+
+    fn write_bundle(path: &Path, manifest: &PromptBundleManifest) {
+        let file = fs::File::create(path).unwrap();
+        let mut zip = ZipWriter::new(file);
+        zip.start_file(MANIFEST_NAME, SimpleFileOptions::default())
+            .unwrap();
+        zip.write_all(&serde_json::to_vec(manifest).unwrap())
+            .unwrap();
+        zip.finish().unwrap();
+    }
+
+    fn empty_manifest(format_version: u32) -> PromptBundleManifest {
+        PromptBundleManifest {
+            format_version,
+            exported_at: "2026-01-01T00:00:00.000Z".into(),
+            prompts: Vec::new(),
+            revisions: Vec::new(),
+            folders: Vec::new(),
+            type_definitions: Vec::new(),
+            references: Vec::new(),
+            media_files: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn unsupported_format_version_is_validation_and_creates_no_backup() {
+        let pool = create_memory_pool().unwrap();
+        let conn = pool.get().unwrap();
+        init_schema(&conn).unwrap();
+        let root = tempfile::tempdir().unwrap();
+        let data = root.path().join("data");
+        fs::create_dir_all(&data).unwrap();
+        for version in [0_u32, 3_u32] {
+            let path = root.path().join(format!("v{version}.prompthub"));
+            write_bundle(&path, &empty_manifest(version));
+            let backups = root.path().join(format!("backups-{version}"));
+            let error = import_bundle(
+                &conn,
+                &path,
+                ImportConflictPolicy::Skip,
+                &data,
+                &backups,
+                &root.path().join("media"),
+                None,
+            )
+            .unwrap_err();
+            assert_eq!(error.code_str(), "VALIDATION");
+            assert!(!backups.exists());
+            assert!(prompt::list(&conn).unwrap().is_empty());
+        }
+    }
+
+    #[test]
+    fn format_version_1_bundle_without_type_definitions_imports() {
+        let source_pool = create_memory_pool().unwrap();
+        let source = source_pool.get().unwrap();
+        init_schema(&source).unwrap();
+        prompt::create(
+            &source,
+            PromptCreate {
+                title: "Legacy".into(),
+                user_prompt: "body".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let BundleData {
+            prompts,
+            revisions,
+            folders,
+            type_definitions,
+        } = load_all(&source).unwrap();
+        assert!(type_definitions.is_empty());
+        let manifest = PromptBundleManifest {
+            format_version: 1,
+            exported_at: "2020-01-01T00:00:00.000Z".into(),
+            prompts,
+            revisions,
+            folders,
+            type_definitions: Vec::new(),
+            references: Vec::new(),
+            media_files: Vec::new(),
+        };
+
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("v1.prompthub");
+        write_bundle(&path, &manifest);
+
+        let target_pool = create_memory_pool().unwrap();
+        let target = target_pool.get().unwrap();
+        init_schema(&target).unwrap();
+        let data = root.path().join("data");
+        fs::create_dir_all(&data).unwrap();
+        let imported = import_bundle(
+            &target,
+            &path,
+            ImportConflictPolicy::Skip,
+            &data,
+            &root.path().join("backups"),
+            &root.path().join("media"),
+            None,
+        )
+        .unwrap();
+        assert_eq!(imported.added, 1);
+        assert_eq!(prompt::list(&target).unwrap().len(), 1);
+        assert_eq!(prompt::list(&target).unwrap()[0].title, "Legacy");
+    }
+
+    #[test]
+    fn cyclic_folder_parent_chain_is_validation_before_backup() {
+        let pool = create_memory_pool().unwrap();
+        let conn = pool.get().unwrap();
+        init_schema(&conn).unwrap();
+        let mut manifest = empty_manifest(FORMAT_VERSION);
+        manifest.folders = vec![
+            Folder {
+                id: "a".into(),
+                name: "A".into(),
+                icon: None,
+                parent_id: Some("b".into()),
+                sort_order: 0,
+                created_at: "2026-01-01T00:00:00.000Z".into(),
+                updated_at: None,
+            },
+            Folder {
+                id: "b".into(),
+                name: "B".into(),
+                icon: None,
+                parent_id: Some("a".into()),
+                sort_order: 1,
+                created_at: "2026-01-01T00:00:00.000Z".into(),
+                updated_at: None,
+            },
+        ];
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("cycle.prompthub");
+        write_bundle(&path, &manifest);
+        let data = root.path().join("data");
+        fs::create_dir_all(&data).unwrap();
+        let backups = root.path().join("backups");
+        let error = import_bundle(
+            &conn,
+            &path,
+            ImportConflictPolicy::Skip,
+            &data,
+            &backups,
+            &root.path().join("media"),
+            None,
+        )
+        .unwrap_err();
+        assert_eq!(error.code_str(), "VALIDATION");
+        assert!(!backups.exists());
+        assert!(crate::services::folder::list(&conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn plaintext_private_fields_are_validation_before_backup() {
+        let source_pool = create_memory_pool().unwrap();
+        let source = source_pool.get().unwrap();
+        init_schema(&source).unwrap();
+        prompt::create(
+            &source,
+            PromptCreate {
+                title: "Leaked".into(),
+                user_prompt: "plaintext secret".into(),
+                is_private: Some(true),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let BundleData {
+            mut prompts,
+            mut revisions,
+            folders,
+            type_definitions,
+        } = load_all(&source).unwrap();
+        prompts[0].is_private = true;
+        prompts[0].user_prompt = "plaintext secret".into();
+        revisions[0].is_private = true;
+        revisions[0].user_prompt = "plaintext secret".into();
+        let manifest = PromptBundleManifest {
+            format_version: FORMAT_VERSION,
+            exported_at: "2026-01-01T00:00:00.000Z".into(),
+            prompts,
+            revisions,
+            folders,
+            type_definitions,
+            references: Vec::new(),
+            media_files: Vec::new(),
+        };
+
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("plaintext-private.prompthub");
+        write_bundle(&path, &manifest);
+        let target_pool = create_memory_pool().unwrap();
+        let target = target_pool.get().unwrap();
+        init_schema(&target).unwrap();
+        let data = root.path().join("data");
+        fs::create_dir_all(&data).unwrap();
+        let backups = root.path().join("backups");
+        let error = import_bundle(
+            &target,
+            &path,
+            ImportConflictPolicy::Skip,
+            &data,
+            &backups,
+            &root.path().join("media"),
+            Some(&[0u8; 32]),
+        )
+        .unwrap_err();
+        assert_eq!(error.code_str(), "VALIDATION");
+        assert!(!backups.exists());
+        assert!(prompt::list(&target).unwrap().is_empty());
+    }
 }

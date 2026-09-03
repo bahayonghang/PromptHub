@@ -754,6 +754,42 @@ mod tests {
     }
 
     #[test]
+    fn unlock_without_verifier_is_unauthorized_and_leaves_lock_unchanged() {
+        let pool = test_pool();
+        let conn = pool.get().unwrap();
+        let enc = Mutex::new(EncryptionState::default());
+        let before = status(&conn, &enc).unwrap();
+        assert!(!before.has_master_password);
+        assert!(before.is_locked);
+
+        let err = unlock(&conn, &enc, "password123").unwrap_err();
+        assert_eq!(err.code_str(), "UNAUTHORIZED");
+
+        let after = status(&conn, &enc).unwrap();
+        assert_eq!(after.has_master_password, before.has_master_password);
+        assert_eq!(after.is_locked, before.is_locked);
+        assert!(get_stored(&conn).unwrap().is_none());
+    }
+
+    #[test]
+    fn change_master_password_without_verifier_is_unauthorized_and_leaves_lock_unchanged() {
+        let pool = test_pool();
+        let conn = pool.get().unwrap();
+        let enc = Mutex::new(EncryptionState::default());
+        let before = status(&conn, &enc).unwrap();
+        assert!(!before.has_master_password);
+        assert!(before.is_locked);
+
+        let err = change_master_password(&conn, &enc, "oldpassword", "newpassword").unwrap_err();
+        assert_eq!(err.code_str(), "UNAUTHORIZED");
+
+        let after = status(&conn, &enc).unwrap();
+        assert_eq!(after.has_master_password, before.has_master_password);
+        assert_eq!(after.is_locked, before.is_locked);
+        assert!(get_stored(&conn).unwrap().is_none());
+    }
+
+    #[test]
     fn unlocked_key_can_decrypt_previously_encrypted_value() {
         let pool = test_pool();
         let conn = pool.get().unwrap();

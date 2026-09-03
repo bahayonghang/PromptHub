@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { BridgeError } from "../../runtime";
 import {
   buildSearchQuery,
   COUNT_QUERY_CONCURRENCY,
@@ -602,6 +603,55 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
 
     expect(result).toBeNull();
     expect(usePromptStore.getState().error).toBe("Prompt p9 not found");
+  });
+
+  it("surfaces UNAUTHORIZED from create, update, and copy of locked private content", async () => {
+    const locked = new BridgeError(
+      "UNAUTHORIZED",
+      "unlock the prompt library to access private content",
+    );
+    const existing = [makePrompt({ id: "p1", title: "Public" })];
+    const searchPrompts = vi.fn(async () => makePage(existing));
+    resetStore(
+      makeApi({
+        searchPrompts,
+        createPrompt: vi.fn(async () => {
+          throw locked;
+        }),
+        updatePrompt: vi.fn(async () => {
+          throw locked;
+        }),
+        duplicatePrompt: vi.fn(async () => {
+          throw locked;
+        }),
+      }),
+    );
+    usePromptStore.setState({ prompts: existing, total: 1 });
+
+    const created = await usePromptStore.getState().createPrompt({
+      title: "Private",
+      userPrompt: "secret",
+      isPrivate: true,
+    });
+    expect(created).toBeNull();
+    expect(usePromptStore.getState().error).toBe(locked.message);
+    expect(usePromptStore.getState().prompts).toEqual(existing);
+    expect(searchPrompts).not.toHaveBeenCalled();
+
+    const updated = await usePromptStore
+      .getState()
+      .savePrompt("p1", { isPrivate: true });
+    expect(updated).toBeNull();
+    expect(usePromptStore.getState().error).toBe(locked.message);
+    expect(usePromptStore.getState().prompts).toEqual(existing);
+    expect(searchPrompts).not.toHaveBeenCalled();
+
+    const copied = await usePromptStore.getState().duplicatePrompt("p1");
+    expect(copied).toBeNull();
+    expect(usePromptStore.getState().error).toBe(locked.message);
+    expect(usePromptStore.getState().prompts).toEqual(existing);
+    expect(usePromptStore.getState().selectedPromptId).toBeNull();
+    expect(searchPrompts).not.toHaveBeenCalled();
   });
 
   it("deletePrompt() clears the selection when the deleted prompt was selected (Req 6.5)", async () => {

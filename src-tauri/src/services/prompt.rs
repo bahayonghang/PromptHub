@@ -1444,6 +1444,105 @@ mod tests {
     }
 
     #[test]
+    fn create_rejects_invalid_message_role_and_empty_content() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let bad_role = create(
+            &conn,
+            PromptCreate {
+                title: "Chat".into(),
+                user_prompt: String::new(),
+                messages: Some(vec![PromptMessage {
+                    role: "tool".into(),
+                    content: "Hello".into(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(bad_role.code, ErrorCode::Validation);
+        assert!(list(&conn).unwrap().is_empty());
+
+        let empty_content = create(
+            &conn,
+            PromptCreate {
+                title: "Chat".into(),
+                user_prompt: String::new(),
+                messages: Some(vec![PromptMessage {
+                    role: "user".into(),
+                    content: "  ".into(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(empty_content.code, ErrorCode::Validation);
+        assert!(list(&conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn create_accepts_chat_only_messages_with_empty_user_prompt() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let messages = vec![
+            PromptMessage {
+                role: "system".into(),
+                content: "Be brief".into(),
+            },
+            PromptMessage {
+                role: "user".into(),
+                content: "Hello".into(),
+            },
+            PromptMessage {
+                role: "assistant".into(),
+                content: "Hi".into(),
+            },
+        ];
+        let created = create(
+            &conn,
+            PromptCreate {
+                title: "Chat only".into(),
+                user_prompt: String::new(),
+                messages: Some(messages.clone()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(created.user_prompt, "");
+        assert_eq!(created.messages, messages);
+        assert_eq!(list(&conn).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn update_rejects_clearing_user_prompt_and_messages() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let created = create(
+            &conn,
+            PromptCreate {
+                title: "Keep body".into(),
+                user_prompt: "original".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let before = get(&conn, &created.id).unwrap();
+
+        let err = update(
+            &conn,
+            &created.id,
+            PromptUpdate {
+                user_prompt: Some(String::new()),
+                messages: Some(vec![]),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(err.code, ErrorCode::Validation);
+        assert_eq!(get(&conn, &created.id).unwrap(), before);
+    }
+
+    #[test]
     fn create_rejects_invalid_prompt_type() {
         let pool = schema_pool();
         let conn = pool.get().unwrap();
@@ -2438,6 +2537,98 @@ mod tests {
         let rekeyed = get_secure(&conn, &encryption, &created.id).unwrap();
         assert_eq!(rekeyed.user_prompt, "classified body");
         assert_eq!(rekeyed.notes.as_deref(), Some("classified notes"));
+    }
+
+    #[test]
+    fn create_secure_private_while_locked_is_unauthorized_and_writes_nothing() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let encryption = Mutex::new(EncryptionState::default());
+        crate::services::security::set_master_password(&conn, &encryption, "password123").unwrap();
+        crate::services::security::lock(&encryption).unwrap();
+        let before = list(&conn).unwrap().len();
+
+        let err = create_secure(
+            &conn,
+            &encryption,
+            PromptCreate {
+                title: "Locked private".into(),
+                user_prompt: "secret body".into(),
+                is_private: Some(true),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(err.code, ErrorCode::Unauthorized);
+        assert_eq!(list(&conn).unwrap().len(), before);
+        assert!(list(&conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn update_secure_public_to_private_while_locked_is_unauthorized_and_unchanged() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let encryption = Mutex::new(EncryptionState::default());
+        let created = create(
+            &conn,
+            PromptCreate {
+                title: "Public prompt".into(),
+                user_prompt: "public body".into(),
+                is_private: Some(false),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        crate::services::security::set_master_password(&conn, &encryption, "password123").unwrap();
+        crate::services::security::lock(&encryption).unwrap();
+        let before = get(&conn, &created.id).unwrap();
+
+        let err = update_secure(
+            &conn,
+            &encryption,
+            &created.id,
+            PromptUpdate {
+                is_private: Some(true),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(err.code, ErrorCode::Unauthorized);
+        assert_eq!(get(&conn, &created.id).unwrap(), before);
+    }
+
+    #[test]
+    fn update_secure_private_content_while_locked_is_unauthorized_and_unchanged() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let encryption = Mutex::new(EncryptionState::default());
+        crate::services::security::set_master_password(&conn, &encryption, "password123").unwrap();
+        let created = create_secure(
+            &conn,
+            &encryption,
+            PromptCreate {
+                title: "Private prompt".into(),
+                user_prompt: "classified body".into(),
+                is_private: Some(true),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        crate::services::security::lock(&encryption).unwrap();
+        let before = get(&conn, &created.id).unwrap();
+
+        let err = update_secure(
+            &conn,
+            &encryption,
+            &created.id,
+            PromptUpdate {
+                user_prompt: Some("replacement body".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(err.code, ErrorCode::Unauthorized);
+        assert_eq!(get(&conn, &created.id).unwrap(), before);
     }
 
     #[test]
