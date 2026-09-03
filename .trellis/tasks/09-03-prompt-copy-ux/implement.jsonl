@@ -1,0 +1,8 @@
+{"file":".trellis/spec/frontend/index.md","reason":"Pre-development checklist for frontend component, store, and token work."}
+{"file":".trellis/spec/frontend/component-guidelines.md","reason":"Copy stays a feature-local control; list/grid remain props-and-callbacks; no nested buttons."}
+{"file":".trellis/spec/frontend/design-tokens.md","reason":"Success toast uses --success channel token, not a one-off color."}
+{"file":".trellis/spec/frontend/state-management.md","reason":"usageCount patch lives in promptStore; toast replaceGroup lives in toastStore."}
+{"file":".trellis/spec/frontend/quality-guidelines.md","reason":"Runtime Bridge only via api.ts; i18n in all seven bundles; colocated tests."}
+{"file":".trellis/spec/frontend/type-safety.md","reason":"New incrementUsage DTO must mirror the camelCase CommandResult payload."}
+{"file":".trellis/spec/cross-layer/prompt-library-foundations.md","reason":"usage_count is existing library state; increment must not change updated_at or schema version."}
+{"file":".trellis/tasks/09-03-prompt-copy-ux/research/current-surfaces.md","reason":"Screenshot and file:line inventory of the three copy surfaces."}
