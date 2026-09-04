@@ -39,7 +39,7 @@ export function WindowBehaviorPanel() {
               type="button"
               aria-pressed={closeAction === action}
               onClick={() => void setCloseAction(action)}
-              className={`rounded-md border px-4 py-2 text-body transition-colors ${
+              className={`rounded-md border px-4 py-2 text-body transition-colors duration-fast ease-out ${
                 closeAction === action
                   ? "border-primary bg-state-selected text-foreground"
                   : "border-input text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -63,12 +63,12 @@ export function WindowBehaviorPanel() {
           aria-checked={autoLaunch}
           aria-label={t("systemView.window.autoLaunch")}
           onClick={() => void setAutoLaunch(!autoLaunch)}
-          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-fast ease-out ${
             autoLaunch ? "bg-primary" : "bg-input"
           }`}
         >
           <span
-            className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+            className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-base ease-spring ${
               autoLaunch ? "translate-x-5" : "translate-x-0"
             }`}
           />

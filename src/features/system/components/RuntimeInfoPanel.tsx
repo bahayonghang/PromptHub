@@ -96,7 +96,7 @@ export function RuntimeInfoPanel() {
             <button
               type="button"
               onClick={() => void clearCache()}
-              className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-body text-foreground transition-colors hover:bg-accent"
+              className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-body text-foreground transition-colors duration-fast ease-out hover:bg-accent"
             >
               <Trash2Icon className="h-4 w-4" aria-hidden="true" />
               {t("systemView.paths.clearCache")}

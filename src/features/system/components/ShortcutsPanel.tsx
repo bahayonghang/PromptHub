@@ -108,7 +108,7 @@ export function ShortcutsPanel() {
           type="button"
           onClick={addRow}
           disabled={draft.length >= MAX_SHORTCUTS}
-          className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-body text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-body text-foreground transition-colors duration-fast ease-out hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <PlusIcon className="h-4 w-4" aria-hidden="true" />
           {t("systemView.shortcuts.add")}
@@ -116,7 +116,7 @@ export function ShortcutsPanel() {
         <button
           type="button"
           onClick={save}
-          className="rounded-md bg-primary px-3 py-2 text-body text-primary-foreground transition-colors hover:bg-primary/90"
+          className="rounded-md bg-primary px-3 py-2 text-body text-primary-foreground transition-colors duration-fast ease-out hover:bg-primary/90"
         >
           {t("systemView.shortcuts.save")}
         </button>

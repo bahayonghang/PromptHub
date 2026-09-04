@@ -33,21 +33,21 @@ export function CloseDialog() {
           <button
             type="button"
             onClick={dismiss}
-            className="rounded-md border border-input px-4 py-2 text-body text-foreground transition-colors hover:bg-accent"
+            className="rounded-md border border-input px-4 py-2 text-body text-foreground transition-colors duration-fast ease-out hover:bg-accent"
           >
             {t("systemView.close.cancel")}
           </button>
           <button
             type="button"
             onClick={() => void hideToTray()}
-            className="rounded-md border border-input px-4 py-2 text-body text-foreground transition-colors hover:bg-accent"
+            className="rounded-md border border-input px-4 py-2 text-body text-foreground transition-colors duration-fast ease-out hover:bg-accent"
           >
             {t("systemView.close.minimize")}
           </button>
           <button
             type="button"
             onClick={() => void confirm()}
-            className="rounded-md bg-destructive px-4 py-2 text-body text-destructive-foreground transition-colors hover:bg-destructive/90"
+            className="rounded-md bg-destructive px-4 py-2 text-body text-destructive-foreground transition-colors duration-fast ease-out hover:bg-destructive/90"
           >
             {t("systemView.close.confirm")}
           </button>

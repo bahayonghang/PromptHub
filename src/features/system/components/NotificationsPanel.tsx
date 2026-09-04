@@ -76,7 +76,7 @@ export function NotificationsPanel() {
           type="button"
           onClick={() => void send()}
           disabled={!canSend}
-          className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-body text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-body text-foreground transition-colors duration-fast ease-out hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <BellIcon className="h-4 w-4" aria-hidden="true" />
           {t("systemView.notifications.send")}

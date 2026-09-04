@@ -110,7 +110,7 @@ export function SettingsView() {
               title={t(entry.labelKey)}
               aria-current={active ? "page" : undefined}
               onClick={() => setSection(entry.id)}
-              className={`flex items-center gap-2 rounded-md px-3 py-2 text-left text-body transition-colors max-[900px]:justify-center max-[900px]:px-2 ${
+              className={`flex items-center gap-2 rounded-md px-3 py-2 text-left text-body transition-colors duration-fast ease-out max-[900px]:justify-center max-[900px]:px-2 ${
                 active
                   ? "bg-state-selected font-medium text-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground"

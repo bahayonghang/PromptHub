@@ -230,7 +230,7 @@ export function PromptEditor({
               : t("promptsView.editor.save")
           }
           disabled={!canSubmitDraft(draft) || readOnly}
-          className="flex min-h-9 items-center gap-2 rounded-md bg-primary px-4 py-2 text-body font-medium text-primary-foreground transition-opacity disabled:opacity-50"
+          className="flex min-h-9 items-center gap-2 rounded-md bg-primary px-4 py-2 text-body font-medium text-primary-foreground transition-opacity duration-fast ease-out disabled:opacity-50"
         >
           <SaveIcon className="h-4 w-4" aria-hidden="true" />
           <span className="prompt-editor__footer-label">

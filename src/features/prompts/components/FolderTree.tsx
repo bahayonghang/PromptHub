@@ -153,7 +153,7 @@ export function FolderTree({
             handleDrop(node);
           }}
           style={{ paddingLeft: `${node.depth * 12 + 8}px` }}
-          className={`group flex items-center gap-1 rounded-md py-1.5 pr-2 text-body transition-colors ${
+          className={`group flex items-center gap-1 rounded-md py-1.5 pr-2 text-body transition-colors duration-fast ease-out ${
             isSelected
               ? "bg-state-selected text-foreground"
               : "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -301,7 +301,7 @@ export function FolderTree({
       <button
         type="button"
         onClick={() => onSelectFolder(null)}
-        className={`mx-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-body transition-colors ${
+        className={`mx-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-body transition-colors duration-fast ease-out ${
           selectedFolderId == null
             ? "bg-state-selected text-foreground"
             : "text-muted-foreground hover:bg-accent hover:text-foreground"

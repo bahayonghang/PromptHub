@@ -43,7 +43,7 @@ const labelClass = "text-body font-medium text-foreground";
 const selectClass =
   "w-full rounded-md border border-input bg-background px-3 py-2 text-body text-foreground outline-none disabled:cursor-not-allowed disabled:opacity-50";
 const optionClass =
-  "rounded-md border px-3 py-2 text-body transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+  "rounded-md border px-3 py-2 text-body transition-colors duration-fast ease-out disabled:cursor-not-allowed disabled:opacity-50";
 
 function Section({
   icon: Icon,
@@ -161,7 +161,7 @@ export function AppearancePanel() {
                 aria-pressed={selected}
                 disabled={saving("themeFamily")}
                 onClick={() => save("themeFamily", family)}
-                className={`flex min-h-14 items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors ${
+                className={`flex min-h-14 items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors duration-fast ease-out ${
                   selected
                     ? "border-primary bg-state-selected text-foreground"
                     : "border-input text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -203,7 +203,7 @@ export function AppearancePanel() {
                 aria-pressed={selected}
                 disabled={saving("theme")}
                 onClick={() => save("theme", mode)}
-                className={`inline-flex min-h-9 items-center gap-1.5 rounded-sm px-3 text-body transition-colors ${
+                className={`inline-flex min-h-9 items-center gap-1.5 rounded-sm px-3 text-body transition-colors duration-fast ease-out ${
                   selected ? "bg-background font-medium text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -246,7 +246,7 @@ export function AppearancePanel() {
               title={t(`settingsView.appearance.accentOption.${accent}`)}
               disabled={saving("accentColor")}
               onClick={() => save("accentColor", accent)}
-              className={`h-control-md w-control-md rounded-full border-2 transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 ${
+              className={`h-control-md w-control-md rounded-full border-2 transition-transform duration-base ease-spring hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 ${
                 applied.accentColor === accent ? "border-foreground" : "border-transparent"
               }`}
               style={{ backgroundColor: `hsl(${ACCENT_PALETTE[FLAVOR_BASE[variant]][accent]["--primary"]})` }}
@@ -315,7 +315,7 @@ export function AppearancePanel() {
           type="button"
           disabled={fontStack.length >= MAX_INTERFACE_FONT_FAMILIES || nextUnusedFont == null || saving("interfaceFontStack")}
           onClick={() => nextUnusedFont && save("interfaceFontStack", [...fontStack, nextUnusedFont])}
-          className="inline-flex w-fit items-center gap-1.5 rounded-md border border-input px-3 py-2 text-body text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex w-fit items-center gap-1.5 rounded-md border border-input px-3 py-2 text-body text-foreground transition-colors duration-fast ease-out hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <PlusIcon className="h-4 w-4" aria-hidden="true" />
           {t("settingsView.appearance.addFallback")}
