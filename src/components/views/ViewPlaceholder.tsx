@@ -19,7 +19,7 @@ export function ViewPlaceholder({ icon: Icon, title, description }: ViewPlacehol
   return (
     <section className="flex h-full w-full flex-col items-center justify-center gap-3 p-8 text-center">
       <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
-        <Icon className="h-7 w-7" aria-hidden="true" />
+        <Icon className="h-control-sm w-control-sm" aria-hidden="true" />
       </span>
       <h2 className="text-display font-semibold text-foreground">{title}</h2>
       <p className="max-w-md text-body text-muted-foreground">{description}</p>

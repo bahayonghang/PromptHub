@@ -216,7 +216,7 @@ export function DefinitionSection({
                           }
                           onUpdateMessages(next);
                         }}
-                        className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+                        className="flex h-control-md w-control-md items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
                       >
                         <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>

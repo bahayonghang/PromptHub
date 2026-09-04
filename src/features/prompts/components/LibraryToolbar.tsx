@@ -43,7 +43,7 @@ export function LibraryToolbar() {
             onChange={(event) => setKeyword(event.target.value)}
             placeholder={t("promptsView.searchPlaceholder")}
             aria-label={t("promptsView.searchPlaceholder")}
-            className="h-8 w-full rounded-md border border-input bg-background py-1 pl-7 pr-16 text-body text-foreground outline-none"
+            className="h-control-md w-full rounded-md border border-input bg-background py-1 pl-7 pr-16 text-body text-foreground outline-none"
           />
           <span
             className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 font-mono text-meta tabular-nums text-muted-foreground-subtle"
@@ -77,7 +77,7 @@ export function LibraryToolbar() {
             icon={<LayoutListIcon className="h-3.5 w-3.5" aria-hidden="true" />}
             onClick={() => setMode("list")}
             aria-pressed={viewMode === "list"}
-            className={`flex h-7 w-7 items-center justify-center rounded-sm ${
+            className={`flex h-control-sm w-control-sm items-center justify-center rounded-sm ${
               viewMode === "list" ? "bg-state-selected text-foreground" : "text-muted-foreground hover:bg-accent"
             }`}
           />
@@ -86,7 +86,7 @@ export function LibraryToolbar() {
             icon={<LayoutGridIcon className="h-3.5 w-3.5" aria-hidden="true" />}
             onClick={() => setMode("grid")}
             aria-pressed={viewMode === "grid"}
-            className={`flex h-7 w-7 items-center justify-center rounded-sm ${
+            className={`flex h-control-sm w-control-sm items-center justify-center rounded-sm ${
               viewMode === "grid" ? "bg-state-selected text-foreground" : "text-muted-foreground hover:bg-accent"
             }`}
           />
@@ -96,7 +96,7 @@ export function LibraryToolbar() {
           aria-pressed={batchMode}
           aria-label={t("promptsView.chrome.batchToggle")}
           onClick={() => setBatchMode(!batchMode)}
-          className={`h-8 rounded-md border px-2 text-label ${
+          className={`h-control-md rounded-md border px-2 text-label ${
             batchMode
               ? "border-primary bg-state-selected text-foreground"
               : "border-input text-muted-foreground hover:bg-accent hover:text-foreground"

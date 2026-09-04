@@ -7,7 +7,7 @@ import { useToastStore } from "../../notifications/toastStore";
 import type { BundlePreview, ImportConflictPolicy } from "../types";
 
 
-import { IconButton, Select} from "../../../components/ui";
+import { Button, IconButton, Select } from "../../../components/ui";
 
 interface LibraryHeaderProps {
   onCreate: () => void;
@@ -47,11 +47,13 @@ export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
       : t("promptsView.chrome.subtitleWithPath", { count: total, path: dataPath });
 
   return (
-    <div className="flex flex-col gap-2 border-b border-border p-3">
+    <div className="flex flex-col gap-2 border-b border-border px-3 py-2">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate text-body font-semibold text-foreground">{title}</h2>
-          <p className="truncate font-mono text-label text-muted-foreground-subtle">{subtitle}</p>
+        <div className="flex min-w-0 flex-1 items-baseline gap-2">
+          <h1 className="truncate text-title font-semibold text-foreground">{title}</h1>
+          <p className="truncate font-mono text-meta tabular-nums text-muted-foreground-subtle">
+            {subtitle}
+          </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <IconButton
@@ -76,14 +78,10 @@ export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
             onClick={() => setShowImport((open) => !open)}
             aria-pressed={showImport}
           />
-          <button
-            type="button"
-            onClick={onCreate}
-            className="flex h-8 items-center gap-1.5 rounded-md bg-primary px-2.5 text-label font-medium text-primary-foreground"
-          >
+          <Button size="sm" onClick={onCreate}>
             <PlusIcon className="h-3.5 w-3.5" aria-hidden="true" />
             {t("promptsView.newPrompt")}
-          </button>
+          </Button>
         </div>
       </div>
       {showImport && (

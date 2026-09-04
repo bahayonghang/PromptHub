@@ -106,7 +106,7 @@ export function Sidebar({
           onClick={toggleSidebar}
           title={toggleLabel}
           aria-label={toggleLabel}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          className="flex h-control-md w-control-md items-center justify-center rounded-lg text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
         >
           {collapsed ? (
             <PanelLeftOpenIcon className="h-5 w-5" aria-hidden="true" />

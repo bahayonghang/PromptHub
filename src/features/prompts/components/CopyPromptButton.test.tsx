@@ -43,8 +43,10 @@ describe("CopyPromptButton", () => {
     );
 
     const copyButton = screen.getByRole("button", { name: "Copy Steelman" });
-    expect(copyButton.className).toContain("h-9");
-    expect(copyButton.className).toContain("w-9");
+    // 36px hit target, now expressed via the control-height token
+    // (--control-lg: 2.25rem) rather than a raw h-9/w-9.
+    expect(copyButton.className).toContain("h-control-lg");
+    expect(copyButton.className).toContain("w-control-lg");
     expect(copyButton.querySelector("svg")?.classList.contains("h-5")).toBe(true);
     expect(copyButton.querySelector("svg")?.classList.contains("w-5")).toBe(true);
 

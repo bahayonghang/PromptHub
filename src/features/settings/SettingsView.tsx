@@ -96,9 +96,9 @@ export function SettingsView() {
         aria-label={t("settingsView.title")}
         className="flex w-56 shrink-0 flex-col gap-1 border-r border-border p-3 max-[900px]:w-16 max-[900px]:px-2"
       >
-        <h2 className="px-2 pb-2 text-body font-semibold text-foreground max-[900px]:sr-only">
+        <h1 className="px-2 pb-2 text-title font-semibold text-foreground max-[900px]:sr-only">
           {t("settingsView.title")}
-        </h2>
+        </h1>
         {SECTIONS.map((entry) => {
           const Icon = entry.icon;
           const active = section === entry.id;

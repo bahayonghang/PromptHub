@@ -246,7 +246,7 @@ export function AppearancePanel() {
               title={t(`settingsView.appearance.accentOption.${accent}`)}
               disabled={saving("accentColor")}
               onClick={() => save("accentColor", accent)}
-              className={`h-8 w-8 rounded-full border-2 transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 ${
+              className={`h-control-md w-control-md rounded-full border-2 transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 ${
                 applied.accentColor === accent ? "border-foreground" : "border-transparent"
               }`}
               style={{ backgroundColor: `hsl(${ACCENT_PALETTE[FLAVOR_BASE[variant]][accent]["--primary"]})` }}

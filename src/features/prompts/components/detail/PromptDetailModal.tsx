@@ -537,7 +537,7 @@ export function PromptDetailModal({
             {locked && tab === "content" ? (
               <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
                 <LockIcon
-                  className="h-7 w-7 text-muted-foreground"
+                  className="h-control-sm w-control-sm text-muted-foreground"
                   aria-hidden="true"
                 />
                 <h3 className="text-body font-semibold text-foreground">
