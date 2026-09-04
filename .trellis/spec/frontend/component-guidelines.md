@@ -17,6 +17,28 @@ Existing examples to follow:
 - `src/features/settings/components/AppearancePanel.tsx`
 - `src/features/system/components/WindowControls.tsx`
 
+## Use the shared primitives
+
+`src/components/ui/` owns the control vocabulary. Compose these instead of
+re-deriving heights, radii, focus rings, or disabled opacity from raw Tailwind
+strings:
+
+`Button`, `IconButton`, `Input`, `Select`, `Tag`, `Kbd`, `Panel`, `UsageBar`,
+`EmptyState`, `ConfirmDialog`, `Modal`.
+
+Rules:
+
+- **Never** hand-roll a `<button className="rounded-md bg-primary …">`; use
+  `Button` / `IconButton`. `IconButton` requires a `label`, which drives both
+  `aria-label` and `title`.
+- **Never** call `window.confirm`; use `ConfirmDialog` so the dialog is themed
+  and inherits the focus trap.
+- **Never** write a bare `rounded` (it resolves to a hardcoded 4px and bypasses
+  `--radius`). Use `rounded-sm|md|lg`.
+- Pick one control height per horizontal row (`h-control-md` is the default).
+- Colour is never the only signal: pair a selected state with `aria-pressed`,
+  `aria-current`, a check glyph, or a border change.
+
 ---
 
 ## Component Structure
