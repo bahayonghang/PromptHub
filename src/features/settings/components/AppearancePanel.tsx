@@ -37,7 +37,8 @@ import { useSettingsStore, type PreferenceKey, type PreferenceValue } from "../s
 import { PreferenceStatus } from "./PreferenceStatus";
 import { SpecimenCard } from "./SpecimenCard";
 
-import { Button, IconButton, Select} from "../../../components/ui";
+import { Button, IconButton, Select } from "../../../components/ui";
+import { cn } from "../../../components/ui/cn";
 
 const labelClass = "text-body font-medium text-foreground";
 const selectClass =
@@ -236,22 +237,41 @@ export function AppearancePanel() {
       )}
 
       <Section icon={DropletIcon} label={t("settingsView.appearance.accentColor")}>
-        <div className="flex flex-wrap gap-2" role="group" aria-label={t("settingsView.appearance.accentColor")}>
-          {ACCENT_COLORS.map((accent) => (
-            <button
-              key={accent}
-              type="button"
-              aria-pressed={applied.accentColor === accent}
-              aria-label={t(`settingsView.appearance.accentOption.${accent}`)}
-              title={t(`settingsView.appearance.accentOption.${accent}`)}
-              disabled={saving("accentColor")}
-              onClick={() => save("accentColor", accent)}
-              className={`h-control-md w-control-md rounded-full border-2 transition-transform duration-base ease-spring hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 ${
-                applied.accentColor === accent ? "border-foreground" : "border-transparent"
-              }`}
-              style={{ backgroundColor: `hsl(${ACCENT_PALETTE[FLAVOR_BASE[variant]][accent]["--primary"]})` }}
-            />
-          ))}
+        {/*
+          The selected swatch is marked with an offset ring rather than a border
+          drawn on the swatch itself: a border sits *on* the colour and all but
+          disappears when the accent happens to be close to the foreground, while
+          a ring separated by a background-coloured gap stays legible on any hue.
+        */}
+        <div
+          className="grid w-fit grid-cols-5 gap-2.5"
+          role="group"
+          aria-label={t("settingsView.appearance.accentColor")}
+        >
+          {ACCENT_COLORS.map((accent) => {
+            const selected = applied.accentColor === accent;
+            return (
+              <button
+                key={accent}
+                type="button"
+                aria-pressed={selected}
+                aria-label={t(`settingsView.appearance.accentOption.${accent}`)}
+                title={t(`settingsView.appearance.accentOption.${accent}`)}
+                disabled={saving("accentColor")}
+                onClick={() => save("accentColor", accent)}
+                className={cn(
+                  "h-control-md w-control-md rounded-full",
+                  "transition-transform duration-base ease-spring",
+                  "hover:scale-110",
+                  "disabled:cursor-not-allowed disabled:opacity-50",
+                  selected && "ring-2 ring-foreground ring-offset-2 ring-offset-background",
+                )}
+                style={{
+                  backgroundColor: `hsl(${ACCENT_PALETTE[FLAVOR_BASE[variant]][accent]["--primary"]})`,
+                }}
+              />
+            );
+          })}
         </div>
         {status("accentColor")}
       </Section>

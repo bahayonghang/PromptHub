@@ -162,6 +162,22 @@ describe("style conventions", () => {
     expect(bad).toEqual([]);
   });
 
+  it("routes toggle switches through the Switch primitive", () => {
+    // Three panels had hand-rolled `role="switch"` markup that drifted apart
+    // (different knob sizes, a hardcoded white knob that glared on dark themes).
+    expect(offenders(FEATURE, /role="switch"/)).toEqual([]);
+  });
+
+  it("never hardcodes bg-white / bg-black", () => {
+    // These bypass the theme entirely and break one of the two theme families.
+    expect(offenders(TSX, /\bbg-(?:white|black)\b/)).toEqual([]);
+  });
+
+  it("uses the scrim token for modal backdrops", () => {
+    // `bg-background/NN` as a scrim reads as white fog on the light themes.
+    expect(offenders(TSX, /fixed inset-0[^"`]*bg-background\//)).toEqual([]);
+  });
+
   it("only uses alpha modifiers that exist on Tailwind's opacity scale", () => {
     // Off-scale values such as `/14` are silently dropped at build time,
     // leaving the element with no colour at all.

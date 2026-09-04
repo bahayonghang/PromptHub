@@ -17,6 +17,9 @@ export {
 export { Input, type InputProps } from "./Input";
 export { Select, type SelectProps, type SelectOption } from "./Select";
 export { Textarea, type TextareaProps } from "./Textarea";
+export { Switch, type SwitchProps } from "./Switch";
+export { SettingRow, type SettingRowProps } from "./SettingRow";
+export { Banner, type BannerProps, type BannerTone } from "./Banner";
 export { Tag, type TagProps } from "./Tag";
 export { tagSlot, tagClasses, TAG_SLOT_COUNT, type TagSlot } from "./tagColor";
 export { Kbd } from "./Kbd";

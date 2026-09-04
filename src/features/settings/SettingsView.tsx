@@ -18,7 +18,8 @@ import { DataPathPanel } from "./components/DataPathPanel";
 import { SyncPanel } from "./components/SyncPanel";
 import { SystemPanel } from "../system/components/SystemPanel";
 
-import { useConfirm } from "../../components/ui";
+import { Banner, useConfirm } from "../../components/ui";
+import { cn } from "../../components/ui/cn";
 /** The settings sections selectable from the left rail. */
 type SettingsSection = "appearance" | "general" | "security" | "sync" | "dataPath" | "system";
 
@@ -110,11 +111,14 @@ export function SettingsView() {
               title={t(entry.labelKey)}
               aria-current={active ? "page" : undefined}
               onClick={() => setSection(entry.id)}
-              className={`flex items-center gap-2 rounded-md px-3 py-2 text-left text-body transition-colors duration-fast ease-out max-[900px]:justify-center max-[900px]:px-2 ${
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-left text-body",
+                "transition-colors duration-fast ease-out",
+                "max-[900px]:justify-center max-[900px]:gap-0 max-[900px]:px-2",
                 active
                   ? "bg-state-selected font-medium text-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground",
+              )}
             >
               <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="max-[900px]:sr-only">{t(entry.labelKey)}</span>
@@ -126,25 +130,17 @@ export function SettingsView() {
       {/* Active section */}
       <section className="flex min-w-0 flex-1 flex-col">
         {restartRequired && (
-          <div
-            role="status"
-            className="flex items-center gap-2 border-b border-primary/40 bg-state-selected px-4 py-2 text-body text-foreground"
+          <Banner
+            tone="info"
+            icon={<RefreshCwIcon className="h-4 w-4" aria-hidden="true" />}
           >
-            <RefreshCwIcon className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
             {t("settingsView.restartRequired")}
-          </div>
+          </Banner>
         )}
-        {error && (
-          <div
-            role="alert"
-            className="border-b border-destructive/40 bg-destructive/10 px-4 py-2 text-body text-destructive"
-          >
-            {error}
-          </div>
-        )}
+        {error && <Banner tone="danger">{error}</Banner>}
 
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-3xl p-4 sm:p-6">
+          <div className="mx-auto w-full max-w-[42rem] p-4 sm:p-6">
           {section === "appearance" && <AppearancePanel />}
           {section === "general" && (
             <GeneralPanel
