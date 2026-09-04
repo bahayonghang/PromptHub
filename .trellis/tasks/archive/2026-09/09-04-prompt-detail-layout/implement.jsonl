@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend pre-dev checklist and layer index"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "Section composition, Tailwind tokens, no hand-rolled controls"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "just build / just test gates and forbidden style patterns"}
+{"file": ".trellis/spec/frontend/design-tokens.md", "reason": "border-border, spacing, overlay tokens for the meta rail"}
+{"file": ".trellis/tasks/09-04-prompt-detail-layout/research/layout-assessment.md", "reason": "Spatial thesis and two-pane recommendation"}
+{"file": ".trellis/tasks/09-04-prompt-detail-layout/research/layout-detector.md", "reason": "68ch clamp location and container-query mismatch"}

@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/frontend/index.md", "reason": "Quality Check section for frontend work"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Verification commands and forbidden patterns"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "Component and styling conventions"}
+{"file": ".trellis/spec/frontend/design-tokens.md", "reason": "Token usage on new layout chrome"}
+{"file": ".trellis/tasks/09-04-prompt-detail-layout/prd.md", "reason": "Acceptance criteria AC1–AC6"}
+{"file": ".trellis/tasks/09-04-prompt-detail-layout/design.md", "reason": "Two-pane topology and CSS ownership"}
