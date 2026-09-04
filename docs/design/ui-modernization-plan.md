@@ -518,15 +518,15 @@ Token 层是干净的（语义命名、HSL 通道、双主题齐备）。`DESIGN
 
 ---
 
-### 实施状态（本次已完成 1／2／3／4／6）
+### 实施状态（本次已完成 1／2／3／4／5／6）
 
 | 阶段 | 状态 | 说明 |
 |---|---|---|
 | 1 Token 层 | ✅ | 字号阶梯、控件高度、交互态、标签色板、材质、动效 token |
-| 2 基元组件 | ✅ | 11 个基元 + `useConfirm`；`TypeIcon`/`VersionBadge`/`Chip`/`Toolbar`/`Tooltip`/`Textarea` 未做（无迫切调用方） |
+| 2 基元组件 | ✅ | 15 个基元 + `useConfirm`；阶段 5 补齐 `Textarea`/`Switch`/`SettingRow`/`Banner`；`TypeIcon`/`VersionBadge`/`Chip`/`Toolbar`/`Tooltip` 未做（无迫切调用方） |
 | 3 全局替换 | ✅ | 见第 9 节指标表，全部归零 |
 | 4 布局重构 | ◐ | 已删外壳页头、统一控件高度；侧栏与列表/网格的重排未做 |
-| 5 深水区 | ✗ | 详情弹窗 → 停靠面板、设置页、`EvaluationWorkbench` 拆分 |
+| 5 深水区 | ◐ | `EvaluationWorkbench` 已拆分并套基元；详情弹窗排版与层级已细化；设置页已统一 `SettingRow`/`Switch`/`Banner`；Toast 已改语义色条。**「详情模态 → 右侧停靠面板」的状态机改造未做**（见下） |
 | 6 打磨 | ◐ | 动效与焦点环已统一；空状态、骨架屏、主题走查未做 |
 
 **与原清单的偏差（已按实际实现回写）：**
@@ -538,6 +538,29 @@ Token 层是干净的（语义命名、HSL 通道、双主题齐备）。`DESIGN
   且在 7 种语言下不成立。
 - 新 token **未**纳入 `FLAVOR_OVERRIDES`：四个主题家族共用同一套
   交互态与标签色，仅在 `globals.css` 的 `:root` / `.dark` 两个 scope 声明。
+
+**阶段 5 实际范围与取舍：**
+
+阶段 5 原计划的三块中，`EvaluationWorkbench` 拆分、设置页统一、
+详情弹窗排版细化均已完成，但 **6.5 的「详情模态 → 右侧停靠面板」没有做**。
+这一条不是排版问题而是状态机改造：需要新增 `detailPanelOpen` 偏好、
+让列表与面板同时可交互、处理窄窗口下的降级回模态，
+且会与 `PromptsView` 现有的 `overlayOpen` 逻辑正面冲突。
+把它塞进这一轮会让 PR 同时包含"改样式"和"改交互模型"两类风险，
+评审时无法分开回滚，因此单独留作后续 PR。
+
+本轮阶段 5 顺带修掉的既有缺陷：
+
+- **8 个 `Select` 的样式叠加**：阶段 3b 的 codemod 把原 `inputClass`
+  原样搬进了 `wrapperClassName`，导致 border / padding / background
+  在 `Select` 自带外壳上叠加了第二层，且 `rounded-sm` 与基元的
+  `rounded-md` 相互打架。改为 `block` / `size` / 布局类。
+- **模态遮罩用 `bg-background/70`**：在浅色主题下是一层白雾，
+  读起来像蒙在页面前面而不是弹窗后面。新增中性 `--scrim` 令牌
+  （两个 scope 同值），并由守护测试锁定。该守护当场揪出
+  `CloseDialog.tsx` 这个此前四处遮罩中被遗漏的一处。
+- **开关旋钮硬编码 `bg-white`**：深色主题下在 Signal Blue 轨道上刺眼，
+  改为 `bg-card`。
 
 ---
 
@@ -566,7 +589,7 @@ Token 层是干净的（语义命名、HSL 通道、双主题齐备）。`DESIGN
 > 信息架构（阶段 5 的停靠面板改造），不适合放在本次机械替换里。
 
 **以上指标已全部固化为可执行断言**：`src/theme/style-conventions.test.ts`
-（12 条）与 `src/components/layout/chrome.test.ts`（3 条）。这些断言做过
+（15 条）与 `src/components/layout/chrome.test.ts`（3 条）。这些断言做过
 反向验证——注入违规代码后会转红。手工清理完的指标若没有守护，
 下一个 PR 就会重新引入。
 
