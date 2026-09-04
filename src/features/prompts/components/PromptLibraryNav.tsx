@@ -161,7 +161,7 @@ export function PromptLibraryNav() {
                 role="listitem"
                 aria-current={current ? "true" : undefined}
                 onClick={() => handleSelectView(view)}
-                className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm ${
+                className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-body ${
                   current
                     ? "bg-primary/15 text-foreground"
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
@@ -173,7 +173,7 @@ export function PromptLibraryNav() {
                 </span>
                 {count != null && (
                   <span
-                    className="font-mono text-xs text-muted-foreground-subtle"
+                    className="font-mono text-label text-muted-foreground-subtle"
                     aria-label={t("promptsView.library.bucketCount", { count })}
                   >
                     {count}
@@ -220,7 +220,7 @@ export function PromptLibraryNav() {
                 data-tag-chip=""
                 aria-pressed={pressed}
                 onClick={() => handleToggleTag(tag)}
-                className={`inline-flex max-w-full items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${
+                className={`inline-flex max-w-full items-center gap-1 rounded-full border px-2 py-0.5 text-label ${
                   pressed
                     ? "border-primary bg-primary/15 text-foreground"
                     : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"

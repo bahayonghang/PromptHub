@@ -30,8 +30,8 @@ interface SyncPanelProps {
 }
 
 const inputClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring";
-const labelClass = "text-xs font-medium text-muted-foreground";
+  "w-full rounded-md border border-input bg-background px-3 py-2 text-body text-foreground outline-none";
+const labelClass = "text-label font-medium text-muted-foreground";
 
 /** The selectable export categories with their i18n label keys (Req 17.5). */
 const EXPORT_CATEGORIES: ReadonlyArray<{ key: keyof ExportScope; labelKey: string }> = [
@@ -44,7 +44,7 @@ const EXPORT_CATEGORIES: ReadonlyArray<{ key: keyof ExportScope; labelKey: strin
 function TestResultLine({ result }: { result: ConnectionTestResult }) {
   return (
     <p
-      className={`flex items-center gap-1.5 text-xs ${
+      className={`flex items-center gap-1.5 text-label ${
         result.success ? "text-primary" : "text-destructive"
       }`}
     >
@@ -152,7 +152,7 @@ export function SyncPanel({
     <div className="flex flex-col gap-8">
       {/* WebDAV */}
       <section className="flex flex-col gap-3">
-        <h3 className="flex items-center gap-2 text-sm font-medium text-foreground">
+        <h3 className="flex items-center gap-2 text-body font-medium text-foreground">
           <CloudIcon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           {t("settingsView.sync.webdav.title")}
         </h3>
@@ -201,13 +201,13 @@ export function SyncPanel({
               type="button"
               onClick={() => void testWebdav()}
               disabled={webdavTesting}
-              className="w-fit rounded-md border border-input px-4 py-2 text-sm text-foreground hover:bg-accent disabled:opacity-50"
+              className="w-fit rounded-md border border-input px-4 py-2 text-body text-foreground hover:bg-accent disabled:opacity-50"
             >
               {webdavTesting
                 ? t("settingsView.sync.testing")
                 : t("settingsView.sync.testConnection")}
             </button>
-            {webdavError && <p className="text-xs text-destructive">{t(webdavError)}</p>}
+            {webdavError && <p className="text-label text-destructive">{t(webdavError)}</p>}
             {webdavResult && <TestResultLine result={webdavResult} />}
           </div>
         </div>
@@ -215,7 +215,7 @@ export function SyncPanel({
 
       {/* S3 */}
       <section className="flex flex-col gap-3">
-        <h3 className="flex items-center gap-2 text-sm font-medium text-foreground">
+        <h3 className="flex items-center gap-2 text-body font-medium text-foreground">
           <DatabaseIcon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           {t("settingsView.sync.s3.title")}
         </h3>
@@ -289,11 +289,11 @@ export function SyncPanel({
               type="button"
               onClick={() => void testS3()}
               disabled={s3Testing}
-              className="w-fit rounded-md border border-input px-4 py-2 text-sm text-foreground hover:bg-accent disabled:opacity-50"
+              className="w-fit rounded-md border border-input px-4 py-2 text-body text-foreground hover:bg-accent disabled:opacity-50"
             >
               {s3Testing ? t("settingsView.sync.testing") : t("settingsView.sync.testConnection")}
             </button>
-            {s3Error && <p className="text-xs text-destructive">{t(s3Error)}</p>}
+            {s3Error && <p className="text-label text-destructive">{t(s3Error)}</p>}
             {s3Result && <TestResultLine result={s3Result} />}
           </div>
         </div>
@@ -302,16 +302,16 @@ export function SyncPanel({
       {/* Export */}
       <section className="flex flex-col gap-3">
         <div className="flex flex-col gap-0.5">
-          <h3 className="text-sm font-medium text-foreground">
+          <h3 className="text-body font-medium text-foreground">
             {t("settingsView.sync.export.title")}
           </h3>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-label text-muted-foreground">
             {t("settingsView.sync.export.hint")}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
           {EXPORT_CATEGORIES.map(({ key, labelKey }) => (
-            <label key={key} className="flex items-center gap-2 text-sm text-foreground">
+            <label key={key} className="flex items-center gap-2 text-body text-foreground">
               <input
                 type="checkbox"
                 checked={scope[key]}
@@ -327,13 +327,13 @@ export function SyncPanel({
             type="button"
             onClick={() => void runExport()}
             disabled={exporting || !anyScopeSelected}
-            className="flex w-fit items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            className="flex w-fit items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-body font-medium text-primary-foreground disabled:opacity-50"
           >
             <DownloadIcon className="h-4 w-4" aria-hidden="true" />
             {exporting ? t("settingsView.sync.export.exporting") : t("settingsView.sync.export.button")}
           </button>
           {exportPath && (
-            <p className="min-w-0 break-all text-xs text-muted-foreground">
+            <p className="min-w-0 break-all text-label text-muted-foreground">
               {t("settingsView.sync.export.done")} {exportPath}
             </p>
           )}
@@ -344,24 +344,24 @@ export function SyncPanel({
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex flex-col gap-0.5">
-            <h3 className="text-sm font-medium text-foreground">
+            <h3 className="text-body font-medium text-foreground">
               {t("settingsView.sync.backup.title")}
             </h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-label text-muted-foreground">
               {t("settingsView.sync.backup.hint")}
             </p>
           </div>
           <button
             type="button"
             onClick={onCreateBackup}
-            className="shrink-0 rounded-md border border-input px-3 py-2 text-sm text-foreground hover:bg-accent"
+            className="shrink-0 rounded-md border border-input px-3 py-2 text-body text-foreground hover:bg-accent"
           >
             {t("settingsView.sync.backup.create")}
           </button>
         </div>
 
         {backups.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-label text-muted-foreground">
             {t("settingsView.sync.backup.empty")}
           </p>
         ) : (
@@ -372,13 +372,13 @@ export function SyncPanel({
                 className="flex items-center gap-2 rounded-md border border-border px-3 py-2"
               >
                 <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-sm text-foreground">{backup.id}</span>
+                  <span className="truncate text-body text-foreground">{backup.id}</span>
                   <span className="text-meta text-muted-foreground">{backup.createdAt}</span>
                 </span>
                 <button
                   type="button"
                   onClick={() => onRestoreBackup(backup.id)}
-                  className="shrink-0 rounded-md bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground"
+                  className="shrink-0 rounded-md bg-primary px-2.5 py-1.5 text-label font-medium text-primary-foreground"
                 >
                   {t("settingsView.sync.backup.restore")}
                 </button>

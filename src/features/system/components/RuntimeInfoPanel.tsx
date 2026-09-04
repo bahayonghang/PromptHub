@@ -45,8 +45,8 @@ export function RuntimeInfoPanel() {
   const clearCache = useSystemStore((s) => s.clearCache);
   const openPath = useSystemStore((s) => s.openPath);
 
-  const labelClass = "text-sm font-medium text-foreground";
-  const hintClass = "text-xs text-muted-foreground";
+  const labelClass = "text-body font-medium text-foreground";
+  const hintClass = "text-label text-muted-foreground";
 
   return (
     <section className="flex flex-col gap-4">
@@ -68,8 +68,8 @@ export function RuntimeInfoPanel() {
               return (
                 <div key={key} className="flex items-center gap-3 px-3 py-2">
                   <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-xs font-medium text-foreground">{t(labelKey)}</span>
-                    <span className="truncate text-xs text-muted-foreground" title={value ?? ""}>
+                    <span className="text-label font-medium text-foreground">{t(labelKey)}</span>
+                    <span className="truncate text-label text-muted-foreground" title={value ?? ""}>
                       {value ?? "—"}
                     </span>
                   </div>
@@ -99,7 +99,7 @@ export function RuntimeInfoPanel() {
             <button
               type="button"
               onClick={() => void clearCache()}
-              className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+              className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-body text-foreground transition-colors hover:bg-accent"
             >
               <Trash2Icon className="h-4 w-4" aria-hidden="true" />
               {t("systemView.paths.clearCache")}

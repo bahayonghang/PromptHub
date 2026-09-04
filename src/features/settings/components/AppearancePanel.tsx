@@ -38,11 +38,11 @@ import { PreferenceStatus } from "./PreferenceStatus";
 import { SpecimenCard } from "./SpecimenCard";
 
 import { IconButton, Select} from "../../../components/ui";
-const labelClass = "text-sm font-medium text-foreground";
+const labelClass = "text-body font-medium text-foreground";
 const selectClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
+  "w-full rounded-md border border-input bg-background px-3 py-2 text-body text-foreground outline-none disabled:cursor-not-allowed disabled:opacity-50";
 const optionClass =
-  "rounded-md border px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
+  "rounded-md border px-3 py-2 text-body transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
 function Section({
   icon: Icon,
@@ -62,7 +62,7 @@ function Section({
           <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           {label}
         </h3>
-        {hint && <p className="pl-6 text-xs text-muted-foreground">{hint}</p>}
+        {hint && <p className="pl-6 text-label text-muted-foreground">{hint}</p>}
       </div>
       {children}
     </section>
@@ -160,7 +160,7 @@ export function AppearancePanel() {
                 aria-pressed={selected}
                 disabled={saving("themeFamily")}
                 onClick={() => save("themeFamily", family)}
-                className={`flex min-h-14 items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                className={`flex min-h-14 items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors ${
                   selected
                     ? "border-primary bg-primary/10 text-foreground"
                     : "border-input text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -172,10 +172,10 @@ export function AppearancePanel() {
                   ))}
                 </span>
                 <span className="min-w-0 break-words">
-                  <span className="block text-sm font-medium">
+                  <span className="block text-body font-medium">
                     {t(`settingsView.appearance.familyOption.${family}`)}
                   </span>
-                  <span className="block text-xs text-muted-foreground">
+                  <span className="block text-label text-muted-foreground">
                     {t(`settingsView.appearance.familyDescription.${family}`)}
                   </span>
                 </span>
@@ -202,7 +202,7 @@ export function AppearancePanel() {
                 aria-pressed={selected}
                 disabled={saving("theme")}
                 onClick={() => save("theme", mode)}
-                className={`inline-flex min-h-9 items-center gap-1.5 rounded-sm px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                className={`inline-flex min-h-9 items-center gap-1.5 rounded-sm px-3 text-body transition-colors ${
                   selected ? "bg-background font-medium text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -245,7 +245,7 @@ export function AppearancePanel() {
               title={t(`settingsView.appearance.accentOption.${accent}`)}
               disabled={saving("accentColor")}
               onClick={() => save("accentColor", accent)}
-              className={`h-8 w-8 rounded-full border-2 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 ${
+              className={`h-8 w-8 rounded-full border-2 transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 ${
                 applied.accentColor === accent ? "border-foreground" : "border-transparent"
               }`}
               style={{ backgroundColor: `hsl(${ACCENT_PALETTE[FLAVOR_BASE[variant]][accent]["--primary"]})` }}
@@ -270,7 +270,7 @@ export function AppearancePanel() {
             return (
               <li key={`${font}-${index}`} className="flex items-center gap-2">
                 <label className="min-w-0 flex-1">
-                  <span className="mb-1 block text-xs text-muted-foreground">
+                  <span className="mb-1 block text-label text-muted-foreground">
                     {index === 0
                       ? t("settingsView.appearance.primaryFont")
                       : t("settingsView.appearance.fallbackFont", { index })}
@@ -314,7 +314,7 @@ export function AppearancePanel() {
           type="button"
           disabled={fontStack.length >= MAX_INTERFACE_FONT_FAMILIES || nextUnusedFont == null || saving("interfaceFontStack")}
           onClick={() => nextUnusedFont && save("interfaceFontStack", [...fontStack, nextUnusedFont])}
-          className="inline-flex w-fit items-center gap-1.5 rounded-md border border-input px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex w-fit items-center gap-1.5 rounded-md border border-input px-3 py-2 text-body text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <PlusIcon className="h-4 w-4" aria-hidden="true" />
           {t("settingsView.appearance.addFallback")}
@@ -322,11 +322,11 @@ export function AppearancePanel() {
         {systemFontsStatus === "loading" && (
           <div role="status" className="h-4 w-40 animate-pulse rounded-sm bg-muted" aria-label={t("settingsView.appearance.systemFontsLoading")} />
         )}
-        {systemFontsStatus === "empty" && <p className="text-xs text-muted-foreground">{t("settingsView.appearance.systemFontsEmpty")}</p>}
+        {systemFontsStatus === "empty" && <p className="text-label text-muted-foreground">{t("settingsView.appearance.systemFontsEmpty")}</p>}
         {systemFontsStatus === "error" && (
-          <div role="alert" className="flex flex-wrap items-center gap-2 text-xs text-destructive">
+          <div role="alert" className="flex flex-wrap items-center gap-2 text-label text-destructive">
             <span>{t("settingsView.appearance.systemFontsError")}</span>
-            <button type="button" onClick={() => void retrySystemFonts()} className="font-medium underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <button type="button" onClick={() => void retrySystemFonts()} className="font-medium underline underline-offset-2">
               {t("settingsView.preferences.retry")}
             </button>
           </div>

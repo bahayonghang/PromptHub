@@ -96,7 +96,7 @@ export function SettingsView() {
         aria-label={t("settingsView.title")}
         className="flex w-56 shrink-0 flex-col gap-1 border-r border-border p-3 max-[900px]:w-16 max-[900px]:px-2"
       >
-        <h2 className="px-2 pb-2 text-sm font-semibold text-foreground max-[900px]:sr-only">
+        <h2 className="px-2 pb-2 text-body font-semibold text-foreground max-[900px]:sr-only">
           {t("settingsView.title")}
         </h2>
         {SECTIONS.map((entry) => {
@@ -110,7 +110,7 @@ export function SettingsView() {
               title={t(entry.labelKey)}
               aria-current={active ? "page" : undefined}
               onClick={() => setSection(entry.id)}
-              className={`flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-[900px]:justify-center max-[900px]:px-2 ${
+              className={`flex items-center gap-2 rounded-md px-3 py-2 text-left text-body transition-colors max-[900px]:justify-center max-[900px]:px-2 ${
                 active
                   ? "bg-primary/15 font-medium text-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -128,7 +128,7 @@ export function SettingsView() {
         {restartRequired && (
           <div
             role="status"
-            className="flex items-center gap-2 border-b border-primary/40 bg-primary/10 px-4 py-2 text-sm text-foreground"
+            className="flex items-center gap-2 border-b border-primary/40 bg-primary/10 px-4 py-2 text-body text-foreground"
           >
             <RefreshCwIcon className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
             {t("settingsView.restartRequired")}
@@ -137,7 +137,7 @@ export function SettingsView() {
         {error && (
           <div
             role="alert"
-            className="border-b border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+            className="border-b border-destructive/40 bg-destructive/10 px-4 py-2 text-body text-destructive"
           >
             {error}
           </div>

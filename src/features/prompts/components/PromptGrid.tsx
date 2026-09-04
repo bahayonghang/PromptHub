@@ -65,7 +65,7 @@ export function PromptGrid({
                     checked={checked}
                     onChange={() => onToggleSelection(item.id)}
                     aria-label={t("promptsView.batch.selectPrompt", { title: item.title })}
-                    className="mt-1 h-4 w-4 rounded-sm border-input text-primary focus:ring-ring"
+                    className="mt-1 h-4 w-4 rounded-sm border-input text-primary"
                   />
                 )}
                 <CopyPromptButton
@@ -95,9 +95,9 @@ export function PromptGrid({
                     {item.isPrivate && (
                       <LockIcon className="h-3.5 w-3.5 shrink-0" aria-label={t("promptsView.privatePrompt")} />
                     )}
-                    <h3 className="min-w-0 truncate text-sm font-medium text-foreground">{item.title}</h3>
+                    <h3 className="min-w-0 truncate text-body font-medium text-foreground">{item.title}</h3>
                   </div>
-                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
+                  <p className="mt-1 line-clamp-2 text-label text-muted-foreground">{item.description}</p>
                 </div>
                 <button
                   type="button"
@@ -130,7 +130,7 @@ export function PromptGrid({
                 </span>
                 <span className="tabular-nums">{item.usageCount}</span>
                 <span>{item.updatedLabel}</span>
-                <span>{item.versionLabel}</span>
+                <span className="font-mono tabular-nums">{item.versionLabel}</span>
               </div>
             </article>
           </li>

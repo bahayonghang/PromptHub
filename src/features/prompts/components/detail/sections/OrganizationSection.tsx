@@ -17,9 +17,9 @@ export interface OrganizationSectionProps {
   onCreateFolder: (input: CreateFolderInput) => Promise<Folder | null>;
 }
 
-const labelClass = "text-xs font-medium text-muted-foreground";
+const labelClass = "text-label font-medium text-muted-foreground";
 const inputClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
+  "w-full rounded-md border border-input bg-background px-3 py-2 text-body text-foreground outline-none disabled:opacity-50";
 
 export function OrganizationSection({
   draft,
@@ -42,7 +42,7 @@ export function OrganizationSection({
     >
       <h3
         id="prompt-editor-organization"
-        className="text-sm font-semibold text-foreground"
+        className="text-body font-semibold text-foreground"
       >
         {t("promptsView.editor.sections.organization")}
       </h3>
@@ -65,7 +65,7 @@ export function OrganizationSection({
               {draft.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-foreground"
+                  className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-label text-foreground"
                 >
                   {tag}
                   <button
@@ -77,7 +77,7 @@ export function OrganizationSection({
                         tags: draft.tags.filter((item) => item !== tag),
                       })
                     }
-                    className="rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                    className="rounded-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
                   >
                     <XIcon className="h-3 w-3" aria-hidden="true" />
                   </button>
@@ -110,7 +110,7 @@ export function OrganizationSection({
               type="button"
               disabled={readOnly}
               onClick={() => onAddTag(tagInput)}
-              className="flex min-h-9 shrink-0 items-center justify-center gap-1 rounded-md border border-input px-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              className="flex min-h-9 shrink-0 items-center justify-center gap-1 rounded-md border border-input px-3 text-body text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
             >
               <PlusIcon className="h-4 w-4" aria-hidden="true" />
               {t("promptsView.editor.addTag")}

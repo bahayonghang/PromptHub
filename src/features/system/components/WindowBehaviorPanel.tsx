@@ -17,8 +17,8 @@ export function WindowBehaviorPanel() {
   const setCloseAction = useSystemStore((s) => s.setCloseAction);
   const setAutoLaunch = useSystemStore((s) => s.setAutoLaunch);
 
-  const labelClass = "text-sm font-medium text-foreground";
-  const hintClass = "text-xs text-muted-foreground";
+  const labelClass = "text-body font-medium text-foreground";
+  const hintClass = "text-label text-muted-foreground";
 
   return (
     <div className="flex flex-col gap-6">
@@ -39,7 +39,7 @@ export function WindowBehaviorPanel() {
               type="button"
               aria-pressed={closeAction === action}
               onClick={() => void setCloseAction(action)}
-              className={`rounded-md border px-4 py-2 text-sm transition-colors ${
+              className={`rounded-md border px-4 py-2 text-body transition-colors ${
                 closeAction === action
                   ? "border-primary bg-primary/15 text-foreground"
                   : "border-input text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -63,7 +63,7 @@ export function WindowBehaviorPanel() {
           aria-checked={autoLaunch}
           aria-label={t("systemView.window.autoLaunch")}
           onClick={() => void setAutoLaunch(!autoLaunch)}
-          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
             autoLaunch ? "bg-primary" : "bg-input"
           }`}
         >

@@ -53,7 +53,7 @@ export function FilterChips() {
           type="button"
           onClick={chip.onRemove}
           aria-label={t("promptsView.chrome.removeChip", { label: chip.label })}
-          className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-foreground hover:bg-accent"
+          className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-label text-foreground hover:bg-accent"
         >
           <span>{chip.label}</span>
           <XIcon className="h-3 w-3" aria-hidden="true" />
@@ -62,7 +62,7 @@ export function FilterChips() {
       <button
         type="button"
         onClick={() => void resetLibraryFilters()}
-        className="text-xs text-muted-foreground hover:text-foreground"
+        className="text-label text-muted-foreground hover:text-foreground"
       >
         {t("promptsView.chrome.clearAll")}
       </button>

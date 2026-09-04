@@ -8,9 +8,9 @@ export interface MediaSectionProps {
   onChange: (patch: Partial<PromptDraft>) => void;
 }
 
-const labelClass = "text-xs font-medium text-muted-foreground";
+const labelClass = "text-label font-medium text-muted-foreground";
 const inputClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
+  "w-full rounded-md border border-input bg-background px-3 py-2 text-body text-foreground outline-none disabled:opacity-50";
 
 export function MediaSection({
   draft,
@@ -26,7 +26,7 @@ export function MediaSection({
     >
       <h3
         id="prompt-editor-references"
-        className="text-sm font-semibold text-foreground"
+        className="text-body font-semibold text-foreground"
       >
         {t("promptsView.editor.sections.attachments")}
       </h3>

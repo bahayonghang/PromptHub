@@ -396,10 +396,10 @@ export function PromptDetailModal({
               />
             )}
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold text-foreground">
+              <div className="truncate text-body font-semibold text-foreground">
                 {title}
               </div>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-2 text-label text-muted-foreground">
                 {!creating && prompt && (
                   <span>{t("promptsView.detail.versionChip", { version: prompt.currentVersion })}</span>
                 )}
@@ -460,7 +460,7 @@ export function PromptDetailModal({
                           setMenuOpen(false);
                           onDuplicate(prompt.id);
                         }}
-                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-body hover:bg-accent"
                       >
                         <CopyIcon className="h-3.5 w-3.5" aria-hidden="true" />
                         {t("promptsView.duplicatePrompt")}
@@ -472,7 +472,7 @@ export function PromptDetailModal({
                           setMenuOpen(false);
                           onDelete(prompt.id);
                         }}
-                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10"
+                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-body text-destructive hover:bg-destructive/10"
                       >
                         <Trash2Icon className="h-3.5 w-3.5" aria-hidden="true" />
                         {t("promptsView.deletePrompt")}
@@ -519,7 +519,7 @@ export function PromptDetailModal({
                   disabled={disabled}
                   title={disabled ? t("promptsView.detail.lockedTabsHint") : label}
                   onClick={() => setTab(item)}
-                  className={`min-h-9 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 ${
+                  className={`min-h-9 px-3 text-body disabled:opacity-50 ${
                     tab === item
                       ? "border-b-2 border-primary text-foreground"
                       : "text-muted-foreground"
@@ -539,10 +539,10 @@ export function PromptDetailModal({
                   className="h-7 w-7 text-muted-foreground"
                   aria-hidden="true"
                 />
-                <h3 className="text-sm font-semibold text-foreground">
+                <h3 className="text-body font-semibold text-foreground">
                   {t("promptsView.privateLockedTitle")}
                 </h3>
-                <p className="max-w-sm text-sm text-muted-foreground">
+                <p className="max-w-sm text-body text-muted-foreground">
                   {t("promptsView.privateLockedHint")}
                 </p>
               </div>
@@ -556,7 +556,7 @@ export function PromptDetailModal({
               >
                 <div className="prompt-editor__body min-h-0 flex-1 overflow-y-auto px-4 py-5">
                   <div className="flex w-full flex-col gap-6">
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-label text-muted-foreground">
                       {t("promptsView.detail.characterCount", {
                         count: bodyText.length,
                       })}
@@ -586,7 +586,7 @@ export function PromptDetailModal({
                       <button
                         type="button"
                         onClick={() => void copyFilled()}
-                        className="w-fit rounded-md border border-input px-3 py-2 text-sm text-foreground hover:bg-accent"
+                        className="w-fit rounded-md border border-input px-3 py-2 text-body text-foreground hover:bg-accent"
                       >
                         {t("promptsView.detail.fillAndCopy")}
                       </button>
@@ -631,7 +631,7 @@ export function PromptDetailModal({
           </div>
 
           <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3">
-            <span className="text-xs text-muted-foreground">
+            <span className="text-label text-muted-foreground">
               {t("promptsView.detail.saveHint", { mod: modifier })}
               {" · "}
               {t("promptsView.detail.copyHint", { mod: modifier })}
@@ -640,7 +640,7 @@ export function PromptDetailModal({
               <button
                 type="button"
                 onClick={requestClose}
-                className="rounded-md border border-input px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+                className="rounded-md border border-input px-4 py-2 text-body text-muted-foreground hover:bg-accent hover:text-foreground"
               >
                 {t("promptsView.detail.close")}
               </button>
@@ -648,7 +648,7 @@ export function PromptDetailModal({
                 type="button"
                 disabled={!canSubmitDraft(draft) || readOnly || locked}
                 onClick={() => void save()}
-                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                className="rounded-md bg-primary px-4 py-2 text-body font-medium text-primary-foreground disabled:opacity-50"
               >
                 {creating
                   ? t("promptsView.editor.create")
@@ -666,21 +666,21 @@ export function PromptDetailModal({
         className="max-h-none w-full max-w-md"
       >
         <div className="p-5">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-body text-muted-foreground">
             {t("promptsView.detail.dirtyMessage")}
           </p>
           <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={() => resolvePending("cancel")}
-              className="rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
+              className="rounded-md border border-input px-3 py-2 text-body hover:bg-accent"
             >
               {t("promptsView.detail.keepEditing")}
             </button>
             <button
               type="button"
               onClick={finishProceed}
-              className="rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
+              className="rounded-md border border-input px-3 py-2 text-body hover:bg-accent"
             >
               {t("promptsView.detail.discardAndClose")}
             </button>
@@ -701,7 +701,7 @@ export function PromptDetailModal({
                   finishProceed();
                 });
               }}
-              className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
+              className="rounded-md bg-primary px-3 py-2 text-body text-primary-foreground"
             >
               {t("promptsView.detail.saveAndClose")}
             </button>

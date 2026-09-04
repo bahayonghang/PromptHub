@@ -92,6 +92,27 @@ describe("style conventions", () => {
     expect(offenders(FEATURE, /<select\b/)).toEqual([]);
   });
 
+  it("uses the semantic type scale rather than Tailwind's raw sizes", () => {
+    // text-sm/text-xs carry no line-height or letter-spacing intent; the
+    // scale steps (text-body, text-label, ...) do.
+    const raw = /\btext-(?:xs|sm|base|xl|2xl|3xl)\b/;
+    const allowed = new Set([
+      // A font specimen must render at a fixed demonstrative size.
+      "src/features/settings/components/SpecimenCard.tsx",
+    ]);
+    expect(
+      offenders(TSX, raw).filter((hit) => !allowed.has(hit.split(":")[0])),
+    ).toEqual([]);
+  });
+
+  it("declares the focus ring once, in the base layer", () => {
+    // A per-component ring on top of the global outline paints both at once.
+    expect(offenders(TSX, /focus(?:-visible)?:(?:ring|outline)-/)).toEqual([]);
+    const css = read("src/styles/globals.css");
+    expect(css).toContain(":focus-visible");
+    expect(css).toContain("outline: 2px solid hsl(var(--ring))");
+  });
+
   it("only uses alpha modifiers that exist on Tailwind's opacity scale", () => {
     // Off-scale values such as `/14` are silently dropped at build time,
     // leaving the element with no colour at all.

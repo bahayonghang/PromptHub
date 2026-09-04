@@ -42,7 +42,7 @@ function NavButton({ entry, active, collapsed, onSelect }: NavButtonProps) {
       }`}
     >
       <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-      {!collapsed && <span className="min-w-0 flex-1 truncate text-left text-sm">{label}</span>}
+      {!collapsed && <span className="min-w-0 flex-1 truncate text-left text-body">{label}</span>}
     </button>
   );
 }
@@ -95,7 +95,7 @@ export function Sidebar({
       >
         {!collapsed && (
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{t("app.name")}</p>
+            <p className="truncate text-body font-semibold">{t("app.name")}</p>
             <p className="truncate font-mono text-meta text-muted-foreground-subtle">
               {t("promptsView.library.productVersion")}
             </p>
@@ -123,7 +123,7 @@ export function Sidebar({
           title={t("promptsView.library.commandPalette")}
           aria-label={t("promptsView.library.commandPalette")}
           className={`flex items-center rounded-lg border border-border text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground ${
-            collapsed ? "h-10 w-10 justify-center" : "h-9 w-full justify-between px-3 text-sm"
+            collapsed ? "h-10 w-10 justify-center" : "h-9 w-full justify-between px-3 text-body"
           }`}
         >
           <span className="flex items-center gap-2">
@@ -158,7 +158,7 @@ export function Sidebar({
           ) : (
             <MoonIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
           )}
-          {!collapsed && <span className="text-sm">{themeLabel}</span>}
+          {!collapsed && <span className="text-body">{themeLabel}</span>}
         </button>
         {FOOTER_NAV.map((entry) => (
           <NavButton

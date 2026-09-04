@@ -65,12 +65,12 @@ export function FolderPicker({
   };
 
   const inputClass =
-    "min-w-0 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    "min-w-0 w-full rounded-md border border-input bg-background px-3 py-2 text-body text-foreground outline-none";
 
   return (
     <div className="flex flex-col gap-1.5">
       <label
-        className="text-xs font-medium text-muted-foreground"
+        className="text-label font-medium text-muted-foreground"
         htmlFor="prompt-folder"
       >
         {t("promptsView.editor.folder")}
@@ -166,7 +166,7 @@ export function FolderPicker({
             <span
               id="prompt-folder-name-error"
               role="alert"
-              className="text-xs text-destructive"
+              className="text-label text-destructive"
             >
               {t(validationError)}
             </span>

@@ -28,7 +28,7 @@ export function MediaRefList({ label, kind, refs, onChange }: MediaRefListProps)
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+      <span className="flex items-center gap-1.5 text-label font-medium text-muted-foreground">
         <Icon className="h-3.5 w-3.5" aria-hidden="true" />
         {label}
       </span>
@@ -37,7 +37,7 @@ export function MediaRefList({ label, kind, refs, onChange }: MediaRefListProps)
           {refs.map((ref) => (
             <li
               key={ref}
-              className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground"
+              className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1 text-label text-foreground"
             >
               <span className="min-w-0 flex-1 truncate">{ref}</span>
               <button
@@ -63,13 +63,13 @@ export function MediaRefList({ label, kind, refs, onChange }: MediaRefListProps)
               add();
             }
           }}
-          className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground outline-none focus:ring-1 focus:ring-ring"
+          className="w-full rounded-md border border-input bg-background px-2 py-1 text-label text-foreground outline-none"
         />
         <button
           type="button"
           onClick={add}
           aria-label={kind === "image" ? t("promptsView.editor.addImage") : t("promptsView.editor.addVideo")}
-          className="flex shrink-0 items-center gap-1 rounded-md border border-input px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="flex shrink-0 items-center gap-1 rounded-md border border-input px-2 py-1 text-label text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           <PlusIcon className="h-3.5 w-3.5" aria-hidden="true" />
         </button>

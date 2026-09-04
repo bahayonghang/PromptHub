@@ -276,6 +276,25 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  /*
+   * Baseline keyboard focus ring (design plan §7).
+   *
+   * Roughly half the interactive elements in the app never declared a focus
+   * style, so tabbing through a view lost the caret entirely. Putting the ring
+   * on the base layer means every control is keyboard-navigable by default and
+   * new components inherit it, rather than each call site having to remember
+   * the same four utility classes.
+   *
+   * `:focus-visible` (not `:focus`) keeps the ring off mouse clicks. Anything
+   * needing a different treatment can still override it in the components
+   * layer, which wins over base.
+   */
+  :where(a, button, [role="button"], input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: inherit;
+  }
 }
 
 /*

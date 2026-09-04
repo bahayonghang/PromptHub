@@ -23,10 +23,10 @@ export function NotificationsPanel() {
   const [body, setBody] = useState("");
   const [sent, setSent] = useState(false);
 
-  const labelClass = "text-sm font-medium text-foreground";
-  const hintClass = "text-xs text-muted-foreground";
+  const labelClass = "text-body font-medium text-foreground";
+  const hintClass = "text-label text-muted-foreground";
   const fieldClass =
-    "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring";
+    "w-full rounded-md border border-input bg-background px-3 py-2 text-body text-foreground outline-none";
 
   const canSend = title.trim() !== "" || body.trim() !== "";
 
@@ -76,7 +76,7 @@ export function NotificationsPanel() {
           type="button"
           onClick={() => void send()}
           disabled={!canSend}
-          className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-body text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <BellIcon className="h-4 w-4" aria-hidden="true" />
           {t("systemView.notifications.send")}

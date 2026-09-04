@@ -35,8 +35,8 @@ export function GeneralPanel({
 }: GeneralPanelProps) {
   const { t } = useTranslation();
 
-  const labelClass = "text-sm font-medium text-foreground";
-  const hintClass = "text-xs text-muted-foreground";
+  const labelClass = "text-body font-medium text-foreground";
+  const hintClass = "text-label text-muted-foreground";
 
   return (
     <div className="flex flex-col gap-6">
@@ -83,7 +83,7 @@ export function GeneralPanel({
           aria-label={t("settingsView.general.autoSave")}
           disabled={settings == null}
           onClick={() => onUpdate({ autoSave: !(settings?.autoSave ?? false) })}
-          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 ${
+          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
             settings?.autoSave ? "bg-primary" : "bg-input"
           }`}
         >
@@ -108,7 +108,7 @@ export function GeneralPanel({
           aria-label={t("settingsView.general.launchAtStartup")}
           disabled={settings == null}
           onClick={() => onUpdate({ launchAtStartup: !(settings?.launchAtStartup ?? false) })}
-          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 ${
+          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
             settings?.launchAtStartup ? "bg-primary" : "bg-input"
           }`}
         >

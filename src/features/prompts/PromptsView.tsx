@@ -129,7 +129,7 @@ export function PromptsView() {
         {error && (
           <div
             role="alert"
-            className="border-b border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+            className="border-b border-destructive/40 bg-destructive/10 px-4 py-2 text-body text-destructive"
           >
             {error}
           </div>
@@ -165,17 +165,17 @@ export function PromptsView() {
         )}
         <div ref={libraryScrollRef} className="min-h-0 flex-1 overflow-y-auto">
           {loading ? (
-            <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
+            <div className="flex h-full items-center justify-center p-6 text-body text-muted-foreground">
               {t("promptsView.loading")}
             </div>
           ) : prompts.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
-              <p className="text-sm font-medium text-foreground">{t("promptsView.noPrompts")}</p>
-              <p className="max-w-xs text-xs text-muted-foreground">{t("promptsView.noPromptsHint")}</p>
+              <p className="text-body font-medium text-foreground">{t("promptsView.noPrompts")}</p>
+              <p className="max-w-xs text-label text-muted-foreground">{t("promptsView.noPromptsHint")}</p>
               <button
                 type="button"
                 onClick={() => void resetLibraryFilters()}
-                className="mt-1 rounded-md border border-input px-2 py-1 text-xs text-foreground hover:bg-accent"
+                className="mt-1 rounded-md border border-input px-2 py-1 text-label text-foreground hover:bg-accent"
               >
                 {t("promptsView.chrome.clearAll")}
               </button>
@@ -207,7 +207,7 @@ export function PromptsView() {
           )}
         </div>
         <div className="flex h-10 shrink-0 items-center justify-between border-t border-border px-2">
-          <span className="text-xs tabular-nums text-muted-foreground">
+          <span className="text-label tabular-nums text-muted-foreground">
             {t("promptsView.pagination.summary", {
               from: total === 0 ? 0 : offset + 1,
               to: Math.min(offset + prompts.length, total),

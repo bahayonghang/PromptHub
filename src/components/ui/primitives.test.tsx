@@ -31,9 +31,12 @@ describe("Button", () => {
     expect(button.className).toContain("disabled:pointer-events-none");
   });
 
-  it("always carries a visible focus ring", () => {
+  it("relies on the base-layer focus ring rather than a per-component one", () => {
+    // The ring now lives in a single `:focus-visible` rule in globals.css so
+    // that every control gets one; duplicating it here would paint an outline
+    // and a ring at the same time.
     render(<Button>Save</Button>);
-    expect(screen.getByRole("button").className).toContain("focus-visible:ring-2");
+    expect(screen.getByRole("button").className).not.toContain("focus-visible:ring");
   });
 
   it("routes radius through the token scale rather than a bare rounded", () => {

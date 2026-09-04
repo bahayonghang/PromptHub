@@ -151,7 +151,7 @@ export function FolderTree({
             handleDrop(node);
           }}
           style={{ paddingLeft: `${node.depth * 12 + 8}px` }}
-          className={`group flex items-center gap-1 rounded-md py-1.5 pr-2 text-sm transition-colors ${
+          className={`group flex items-center gap-1 rounded-md py-1.5 pr-2 text-body transition-colors ${
             isSelected
               ? "bg-primary/15 text-foreground"
               : "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -185,7 +185,7 @@ export function FolderTree({
                   setRenameValue("");
                 }
               }}
-              className="min-w-0 flex-1 rounded-sm border border-input bg-background px-1 py-0.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+              className="min-w-0 flex-1 rounded-sm border border-input bg-background px-1 py-0.5 text-body text-foreground outline-none"
             />
           ) : (
             <>
@@ -206,7 +206,7 @@ export function FolderTree({
                 <span className="truncate">{node.name}</span>
                 {counts?.[node.id] != null && (
                   <span
-                    className="ml-auto font-mono text-xs text-muted-foreground-subtle"
+                    className="ml-auto font-mono text-label text-muted-foreground-subtle"
                     title={t("promptsView.library.bucketCount", {
                       count: counts[node.id],
                     })}
@@ -270,7 +270,7 @@ export function FolderTree({
                   setCreatingUnder(undefined);
                 }
               }}
-              className="my-1 w-[calc(100%-0.5rem)] rounded-sm border border-input bg-background px-1.5 py-0.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+              className="my-1 w-[calc(100%-0.5rem)] rounded-sm border border-input bg-background px-1.5 py-0.5 text-body text-foreground outline-none"
             />
           </div>
         )}
@@ -294,7 +294,7 @@ export function FolderTree({
       }}
     >
       <div className="flex items-center justify-between px-2 py-1">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <span className="text-label font-semibold uppercase tracking-wide text-muted-foreground">
           {t("promptsView.folders")}
         </span>
         <button
@@ -314,7 +314,7 @@ export function FolderTree({
       <button
         type="button"
         onClick={() => onSelectFolder(null)}
-        className={`mx-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${
+        className={`mx-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-body transition-colors ${
           selectedFolderId == null
             ? "bg-primary/15 text-foreground"
             : "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -327,7 +327,7 @@ export function FolderTree({
       <ul className="mt-1 flex-1 overflow-y-auto px-1">
         {tree.map(renderNode)}
         {tree.length === 0 && creatingUnder === undefined && (
-          <li className="px-2 py-2 text-xs text-muted-foreground">
+          <li className="px-2 py-2 text-label text-muted-foreground">
             {t("promptsView.emptyFolders")}
           </li>
         )}
@@ -346,7 +346,7 @@ export function FolderTree({
                   setCreatingUnder(undefined);
                 }
               }}
-              className="my-1 w-full rounded-sm border border-input bg-background px-1.5 py-1 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+              className="my-1 w-full rounded-sm border border-input bg-background px-1.5 py-1 text-body text-foreground outline-none"
             />
           </li>
         )}

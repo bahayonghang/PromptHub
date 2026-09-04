@@ -149,7 +149,7 @@ export function CopyPromptButton({
         event.stopPropagation();
         void copy();
       }}
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-[transform,color,background-color] hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50 ${
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-[transform,color,background-color] hover:bg-accent hover:text-foreground active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50 ${
         status === "copied" ? "text-primary" : "text-muted-foreground"
       }`}
     >

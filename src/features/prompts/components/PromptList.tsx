@@ -76,7 +76,7 @@ export function PromptList({
             return (
               <tr
                 key={item.id}
-                className={`text-sm ${selected ? "bg-primary/10" : "hover:bg-accent/60"}`}
+                className={`text-body ${selected ? "bg-primary/10" : "hover:bg-accent/60"}`}
               >
                 {batchMode && (
                   <td className="min-w-0 px-1 align-middle">
@@ -85,7 +85,7 @@ export function PromptList({
                       checked={checked}
                       onChange={() => onToggleSelection(item.id)}
                       aria-label={t("promptsView.batch.selectPrompt", { title: item.title })}
-                      className="h-4 w-4 rounded-sm border-input text-primary focus:ring-ring"
+                      className="h-4 w-4 rounded-sm border-input text-primary"
                     />
                   </td>
                 )}
@@ -121,7 +121,7 @@ export function PromptList({
                     </div>
                   </div>
                 </td>
-                <td className="min-w-0 truncate px-1 align-middle text-xs text-muted-foreground">
+                <td className="min-w-0 truncate px-1 align-middle text-label text-muted-foreground">
                   {item.description}
                 </td>
                 <td className="min-w-0 truncate px-1 align-middle text-meta text-muted-foreground">
@@ -130,19 +130,19 @@ export function PromptList({
                     ? ` ${t("promptsView.items.moreTags", { count: item.overflowTagCount })}`
                     : ""}
                 </td>
-                <td className="min-w-0 truncate px-1 align-middle text-xs">
+                <td className="min-w-0 truncate px-1 align-middle text-label">
                   <span className="inline-flex items-center gap-1">
                     <TypeBadge kind={item.typeKind} />
                     <span className="truncate">{item.typeLabel}</span>
                   </span>
                 </td>
-                <td className="min-w-0 truncate px-1 align-middle font-mono text-xs tabular-nums text-muted-foreground-subtle">
+                <td className="min-w-0 truncate px-1 align-middle font-mono text-label tabular-nums text-muted-foreground-subtle">
                   {item.usageCount}
                 </td>
-                <td className="min-w-0 truncate px-1 align-middle font-mono text-xs text-muted-foreground-subtle">
+                <td className="min-w-0 truncate px-1 align-middle font-mono text-label tabular-nums text-muted-foreground-subtle">
                   {item.versionLabel}
                 </td>
-                <td className="min-w-0 truncate px-1 align-middle font-mono text-xs text-muted-foreground-subtle">
+                <td className="min-w-0 truncate px-1 align-middle font-mono text-label text-muted-foreground-subtle">
                   {item.updatedLabel}
                 </td>
                 <td className="px-1 align-middle">

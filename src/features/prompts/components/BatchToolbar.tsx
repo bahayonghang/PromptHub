@@ -31,7 +31,7 @@ export function BatchToolbar({
 
   return (
     <div className="flex flex-col gap-2 border-b border-border bg-muted/40 p-2">
-      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+      <div className="flex items-center gap-1 text-label text-muted-foreground">
         <span className="min-w-0 flex-1">
           {t("promptsView.batch.selected", { count: selectedCount })}
         </span>
@@ -58,7 +58,7 @@ export function BatchToolbar({
           title={t("promptsView.chrome.batchExit")}
           aria-label={t("promptsView.chrome.batchExit")}
           onClick={onExit}
-          className="rounded-sm px-1.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="rounded-sm px-1.5 py-1 text-label text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           {t("promptsView.chrome.batchExit")}
         </button>
@@ -92,7 +92,7 @@ export function BatchToolbar({
           value={tag}
           onChange={(event) => setTag(event.target.value)}
           placeholder={t("promptsView.batch.tagPlaceholder")}
-          className="min-w-0 flex-1 rounded-sm border border-input bg-background px-2 py-1 text-xs text-foreground"
+          className="min-w-0 flex-1 rounded-sm border border-input bg-background px-2 py-1 text-label text-foreground"
         />
         <button
           type="button"

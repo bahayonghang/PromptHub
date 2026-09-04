@@ -17,7 +17,7 @@ export function ToastHost() {
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`toast-item pointer-events-auto flex items-start gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm text-card-foreground shadow-md ${
+          className={`toast-item pointer-events-auto flex items-start gap-2 rounded-md border border-border bg-card px-3 py-2 text-body text-card-foreground shadow-md ${
             toast.tone === "success"
               ? "border-success/40"
               : toast.tone === "danger"

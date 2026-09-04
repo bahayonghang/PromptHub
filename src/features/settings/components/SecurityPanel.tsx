@@ -21,8 +21,8 @@ interface SecurityPanelProps {
 }
 
 const inputClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring";
-const labelClass = "text-xs font-medium text-muted-foreground";
+  "w-full rounded-md border border-input bg-background px-3 py-2 text-body text-foreground outline-none";
+const labelClass = "text-label font-medium text-muted-foreground";
 
 /**
  * Security panel (Req 15). Shows the master-password and lock status (Req 15.1)
@@ -120,12 +120,12 @@ export function SecurityPanel({
           )}
         </span>
         <div className="flex min-w-0 flex-1 flex-col">
-          <span className="text-sm font-medium text-foreground">
+          <span className="text-body font-medium text-foreground">
             {hasMasterPassword
               ? t("settingsView.security.statusConfigured")
               : t("settingsView.security.statusNotConfigured")}
           </span>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-label text-muted-foreground">
             {hasMasterPassword
               ? isLocked
                 ? t("settingsView.security.statusLocked")
@@ -136,7 +136,7 @@ export function SecurityPanel({
       </section>
 
       {localError && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-body text-destructive">
           {t(localError)}
         </p>
       )}
@@ -144,10 +144,10 @@ export function SecurityPanel({
       {/* Action area depends on the current state. */}
       {!hasMasterPassword ? (
         <section className="flex flex-col gap-3">
-          <h3 className="text-sm font-medium text-foreground">
+          <h3 className="text-body font-medium text-foreground">
             {t("settingsView.security.setTitle")}
           </h3>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-label text-muted-foreground">
             {t("settingsView.security.setHint")}
           </p>
           <div className="flex flex-col gap-1">
@@ -180,7 +180,7 @@ export function SecurityPanel({
             type="button"
             onClick={() => void submitSet()}
             disabled={validatePasswordLength(newPw) !== null}
-            className="flex w-fit items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            className="flex w-fit items-center gap-2 rounded-md bg-primary px-4 py-2 text-body font-medium text-primary-foreground disabled:opacity-50"
           >
             <ShieldCheckIcon className="h-4 w-4" aria-hidden="true" />
             {t("settingsView.security.setButton")}
@@ -188,7 +188,7 @@ export function SecurityPanel({
         </section>
       ) : isLocked ? (
         <section className="flex flex-col gap-3">
-          <h3 className="text-sm font-medium text-foreground">
+          <h3 className="text-body font-medium text-foreground">
             {t("settingsView.security.unlockTitle")}
           </h3>
           <div className="flex flex-col gap-1">
@@ -210,7 +210,7 @@ export function SecurityPanel({
           <button
             type="button"
             onClick={() => void submitUnlock()}
-            className="flex w-fit items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            className="flex w-fit items-center gap-2 rounded-md bg-primary px-4 py-2 text-body font-medium text-primary-foreground"
           >
             <UnlockIcon className="h-4 w-4" aria-hidden="true" />
             {t("settingsView.security.unlockButton")}
@@ -221,7 +221,7 @@ export function SecurityPanel({
           <button
             type="button"
             onClick={onLock}
-            className="flex w-fit items-center gap-2 rounded-md border border-input px-4 py-2 text-sm text-foreground hover:bg-accent"
+            className="flex w-fit items-center gap-2 rounded-md border border-input px-4 py-2 text-body text-foreground hover:bg-accent"
           >
             <LockIcon className="h-4 w-4" aria-hidden="true" />
             {t("settingsView.security.lockButton")}
@@ -234,16 +234,16 @@ export function SecurityPanel({
                 setLocalError(null);
                 setShowChange(true);
               }}
-              className="w-fit text-sm font-medium text-primary hover:underline"
+              className="w-fit text-body font-medium text-primary hover:underline"
             >
               {t("settingsView.security.changeTitle")}
             </button>
           ) : (
             <div className="flex flex-col gap-3 rounded-md border border-border p-4">
-              <h3 className="text-sm font-medium text-foreground">
+              <h3 className="text-body font-medium text-foreground">
                 {t("settingsView.security.changeTitle")}
               </h3>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-label text-muted-foreground">
                 {t("settingsView.security.changeRestartHint")}
               </p>
               <div className="flex flex-col gap-1">
@@ -289,7 +289,7 @@ export function SecurityPanel({
                 <button
                   type="button"
                   onClick={() => void submitChange()}
-                  className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+                  className="rounded-md bg-primary px-4 py-2 text-body font-medium text-primary-foreground"
                 >
                   {t("settingsView.security.changeButton")}
                 </button>
@@ -302,7 +302,7 @@ export function SecurityPanel({
                     setChangeNewPw("");
                     setChangeConfirmPw("");
                   }}
-                  className="rounded-md border border-input px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+                  className="rounded-md border border-input px-4 py-2 text-body text-muted-foreground hover:bg-accent hover:text-foreground"
                 >
                   {t("common.cancel")}
                 </button>

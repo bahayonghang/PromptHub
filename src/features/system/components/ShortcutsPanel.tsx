@@ -27,10 +27,10 @@ export function ShortcutsPanel() {
 
   const [draft, setDraft] = useState<Shortcut[]>(registered);
 
-  const labelClass = "text-sm font-medium text-foreground";
-  const hintClass = "text-xs text-muted-foreground";
+  const labelClass = "text-body font-medium text-foreground";
+  const hintClass = "text-label text-muted-foreground";
   const inputClass =
-    "rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring";
+    "rounded-md border border-input bg-background px-3 py-2 text-body text-foreground outline-none";
 
   const updateRow = (index: number, patch: Partial<Shortcut>) => {
     setDraft((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
@@ -110,7 +110,7 @@ export function ShortcutsPanel() {
           type="button"
           onClick={addRow}
           disabled={draft.length >= MAX_SHORTCUTS}
-          className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-body text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <PlusIcon className="h-4 w-4" aria-hidden="true" />
           {t("systemView.shortcuts.add")}
@@ -118,7 +118,7 @@ export function ShortcutsPanel() {
         <button
           type="button"
           onClick={save}
-          className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground transition-colors hover:bg-primary/90"
+          className="rounded-md bg-primary px-3 py-2 text-body text-primary-foreground transition-colors hover:bg-primary/90"
         >
           {t("systemView.shortcuts.save")}
         </button>

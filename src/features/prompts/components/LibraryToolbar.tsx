@@ -42,10 +42,10 @@ export function LibraryToolbar() {
             onChange={(event) => setKeyword(event.target.value)}
             placeholder={t("promptsView.searchPlaceholder")}
             aria-label={t("promptsView.searchPlaceholder")}
-            className="h-8 w-full rounded-md border border-input bg-background py-1 pl-7 pr-16 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="h-8 w-full rounded-md border border-input bg-background py-1 pl-7 pr-16 text-body text-foreground outline-none"
           />
           <span
-            className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 font-mono text-meta text-muted-foreground-subtle"
+            className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 font-mono text-meta tabular-nums text-muted-foreground-subtle"
             aria-live="polite"
           >
             {countLabel}
@@ -99,7 +99,7 @@ export function LibraryToolbar() {
           aria-pressed={batchMode}
           aria-label={t("promptsView.chrome.batchToggle")}
           onClick={() => setBatchMode(!batchMode)}
-          className={`h-8 rounded-md border px-2 text-xs ${
+          className={`h-8 rounded-md border px-2 text-label ${
             batchMode
               ? "border-primary bg-primary/15 text-foreground"
               : "border-input text-muted-foreground hover:bg-accent hover:text-foreground"

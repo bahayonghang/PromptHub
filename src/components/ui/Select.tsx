@@ -69,7 +69,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
           // `appearance-none` removes the native arrow; the element stays in the
           // a11y tree and keeps native keyboard behaviour.
           "min-w-0 flex-1 appearance-none bg-transparent pr-4 text-label text-foreground",
-          "outline-none focus-visible:outline-none",
+          "outline-none",
           "disabled:cursor-not-allowed",
           className,
         )}

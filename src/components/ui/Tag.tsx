@@ -67,7 +67,7 @@ export function Tag({
         BASE,
         tone,
         "transition-colors duration-fast ease-out",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "",
         className,
       )}
     >

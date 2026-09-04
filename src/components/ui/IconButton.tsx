@@ -29,7 +29,7 @@ export interface IconButtonProps
 const BASE =
   "inline-flex shrink-0 items-center justify-center rounded-sm " +
   "transition-colors duration-fast ease-out " +
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+  " " +
   "disabled:pointer-events-none disabled:opacity-50";
 
 const VARIANTS: Record<IconButtonVariant, string> = {

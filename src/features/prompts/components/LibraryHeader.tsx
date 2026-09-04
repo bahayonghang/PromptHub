@@ -49,8 +49,8 @@ export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
     <div className="flex flex-col gap-2 border-b border-border p-3">
       <div className="flex flex-wrap items-center gap-2">
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-sm font-semibold text-foreground">{title}</h2>
-          <p className="truncate font-mono text-xs text-muted-foreground-subtle">{subtitle}</p>
+          <h2 className="truncate text-body font-semibold text-foreground">{title}</h2>
+          <p className="truncate font-mono text-label text-muted-foreground-subtle">{subtitle}</p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <IconButton
@@ -78,7 +78,7 @@ export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
           <button
             type="button"
             onClick={onCreate}
-            className="flex h-8 items-center gap-1.5 rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex h-8 items-center gap-1.5 rounded-md bg-primary px-2.5 text-label font-medium text-primary-foreground"
           >
             <PlusIcon className="h-3.5 w-3.5" aria-hidden="true" />
             {t("promptsView.newPrompt")}
@@ -95,7 +95,7 @@ export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
             }}
             placeholder={t("promptsView.bundle.pathPlaceholder")}
             aria-label={t("promptsView.bundle.path")}
-            className="w-full rounded-sm border border-input bg-background px-2 py-1.5 text-xs text-foreground"
+            className="w-full rounded-sm border border-input bg-background px-2 py-1.5 text-label text-foreground"
           />
           <div className="flex items-center gap-2">
             <Select
@@ -114,13 +114,13 @@ export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
               type="button"
               disabled={bundlePath.trim() === ""}
               onClick={() => void previewBundle(bundlePath.trim()).then(setBundlePreview)}
-              className="rounded-sm border border-input px-2 py-1.5 text-xs text-foreground hover:bg-accent disabled:opacity-50"
+              className="rounded-sm border border-input px-2 py-1.5 text-label text-foreground hover:bg-accent disabled:opacity-50"
             >
               {t("promptsView.bundle.preview")}
             </button>
           </div>
           {bundlePreview && (
-            <div className="text-xs text-muted-foreground">
+            <div className="text-label text-muted-foreground">
               <p>
                 {t("promptsView.bundle.previewSummary", {
                   prompts: bundlePreview.prompts,
@@ -167,7 +167,7 @@ export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
                     }
                   })
                 }
-                className="mt-2 rounded-sm bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-2 rounded-sm bg-primary px-3 py-1.5 text-label font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {t("promptsView.bundle.confirmImport")}
               </button>

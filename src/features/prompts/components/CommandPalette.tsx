@@ -163,7 +163,7 @@ export function CommandPalette() {
               if (row) void activate(row);
             }
           }}
-          className="border-b border-border bg-transparent px-4 py-3 text-sm text-foreground outline-none"
+          className="border-b border-border bg-transparent px-4 py-3 text-body text-foreground outline-none"
         />
         <div
           id="command-palette-list"
@@ -208,7 +208,7 @@ export function CommandPalette() {
               />
             ))}
           {prompts.length === 0 && query.trim() !== "" && (
-            <p className="px-2 py-3 text-sm text-muted-foreground">
+            <p className="px-2 py-3 text-body text-muted-foreground">
               {t("promptsView.palette.empty")}
             </p>
           )}
@@ -238,7 +238,7 @@ function PaletteOption({
       aria-selected={active}
       onMouseEnter={() => undefined}
       onClick={onClick}
-      className={`flex cursor-pointer items-center justify-between rounded-md px-2 py-2 text-sm ${
+      className={`flex cursor-pointer items-center justify-between rounded-md px-2 py-2 text-body ${
         active ? "bg-accent text-foreground" : "text-foreground"
       }`}
     >

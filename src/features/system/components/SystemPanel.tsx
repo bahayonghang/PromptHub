@@ -43,7 +43,7 @@ export function SystemPanel({ launchAtStartup, closeAction }: SystemPanelProps) 
   return (
     <div className="flex flex-col gap-8">
       {error && (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-body text-destructive" role="alert">
           {error}
         </p>
       )}

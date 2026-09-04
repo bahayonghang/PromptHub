@@ -15,7 +15,7 @@ export function TagManager({ tags, onRename, onDelete }: TagManagerProps) {
 
   return (
     <details className="border-b border-border px-3 py-2">
-      <summary className="flex cursor-pointer list-none items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 text-label text-muted-foreground hover:text-foreground">
         <TagsIcon className="h-3.5 w-3.5" aria-hidden="true" />
         {t("promptsView.tags.manage")}
       </summary>
@@ -28,7 +28,7 @@ export function TagManager({ tags, onRename, onDelete }: TagManagerProps) {
                   value={value}
                   onChange={(event) => setValue(event.target.value)}
                   aria-label={t("promptsView.tags.renameValue")}
-                  className="min-w-0 flex-1 rounded-sm border border-input bg-background px-2 py-1 text-xs text-foreground"
+                  className="min-w-0 flex-1 rounded-sm border border-input bg-background px-2 py-1 text-label text-foreground"
                 />
                 <button
                   type="button"
@@ -55,7 +55,7 @@ export function TagManager({ tags, onRename, onDelete }: TagManagerProps) {
               </>
             ) : (
               <>
-                <span className="min-w-0 flex-1 truncate text-xs text-foreground">{tag}</span>
+                <span className="min-w-0 flex-1 truncate text-label text-foreground">{tag}</span>
                 <button
                   type="button"
                   title={t("promptsView.tags.rename")}
