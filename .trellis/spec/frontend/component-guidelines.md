@@ -24,7 +24,7 @@ re-deriving heights, radii, focus rings, or disabled opacity from raw Tailwind
 strings:
 
 `Button`, `IconButton`, `Input`, `Select`, `Tag`, `Kbd`, `Panel`, `UsageBar`,
-`EmptyState`, `ConfirmDialog`, `Modal`.
+`EmptyState`, `EmptyHint`, `Skeleton`, `ConfirmDialog`, `Modal`.
 
 Rules:
 

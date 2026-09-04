@@ -16,6 +16,11 @@ export interface EmptyStateProps {
  * Gives the user a reason and a way out instead of a bare line of grey text.
  * Copy is constrained to a readable measure rather than stretching across the
  * full workspace width.
+ *
+ * Use this only when the empty region owns the whole pane. Inline "nothing
+ * here" copy under an existing heading belongs in {@link EmptyHint} — wrapping
+ * those sites in a centered full-height block would dominate the surrounding
+ * chrome.
  */
 export function EmptyState({ icon, title, description, action, className = "" }: EmptyStateProps) {
   return (
@@ -37,4 +42,21 @@ export function EmptyState({ icon, title, description, action, className = "" }:
       {action != null && <div className="mt-2">{action}</div>}
     </div>
   );
+}
+
+export interface EmptyHintProps {
+  children: ReactNode;
+  className?: string;
+}
+
+/**
+ * One-line empty copy that sits under an existing heading or inside a list.
+ *
+ * Deliberately not EmptyState. The sites that use this already have a title,
+ * a toolbar, or a list row of their own; a centered icon-and-action block
+ * would shout over that context. Keep the two primitives distinct so a later
+ * "just unify them" pass cannot quietly inflate every inline hint.
+ */
+export function EmptyHint({ children, className = "" }: EmptyHintProps) {
+  return <p className={cn("text-label text-muted-foreground", className)}>{children}</p>;
 }

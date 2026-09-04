@@ -4,7 +4,7 @@ import { PlusIcon, Trash2Icon } from "lucide-react";
 import { MAX_SHORTCUTS, type Shortcut, type ShortcutMode } from "../types";
 import { useSystemStore } from "../systemStore";
 
-import { Button, IconButton, Input, Select } from "../../../components/ui";
+import { Button, EmptyHint, IconButton, Input, Select } from "../../../components/ui";
 /** A blank shortcut row used when adding a new entry. */
 const EMPTY_SHORTCUT: Shortcut = { action: "", accelerator: "", mode: "global" };
 
@@ -60,7 +60,7 @@ export function ShortcutsPanel() {
 
       <div className="flex flex-col gap-2">
         {draft.length === 0 && (
-          <p className={hintClass}>{t("systemView.shortcuts.empty")}</p>
+          <EmptyHint>{t("systemView.shortcuts.empty")}</EmptyHint>
         )}
         {draft.map((row, index) => (
           <div key={index} className="flex flex-wrap items-center gap-2">

@@ -18,7 +18,7 @@ import {
 } from "../folderTree";
 import type { Folder } from "../types";
 
-import { IconButton } from "../../../components/ui";
+import { EmptyHint, IconButton } from "../../../components/ui";
 
 interface FolderTreeProps {
   folders: Folder[];
@@ -314,8 +314,8 @@ export function FolderTree({
       <ul className="mt-1 flex-1 overflow-y-auto px-1">
         {tree.map(renderNode)}
         {tree.length === 0 && creatingUnder === undefined && (
-          <li className="px-2 py-2 text-label text-muted-foreground">
-            {t("promptsView.emptyFolders")}
+          <li className="px-2 py-2">
+            <EmptyHint>{t("promptsView.emptyFolders")}</EmptyHint>
           </li>
         )}
         {creatingUnder === null && (

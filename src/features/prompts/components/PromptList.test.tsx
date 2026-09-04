@@ -48,6 +48,22 @@ beforeEach(async () => {
 afterEach(cleanup);
 
 describe("PromptList preview", () => {
+  it("renders a labelled busy skeleton instead of rows while loading", () => {
+    render(
+      <PromptList
+        items={[]}
+        loading
+        selectedPromptId={null}
+        selectedPromptIds={[]}
+        onSelect={vi.fn()}
+        onToggleSelection={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("status", { name: "Loading..." })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Steelman" })).toBeNull();
+  });
+
   it("shows the description instead of the prompt body", () => {
     render(
       <PromptList

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
+  FileTextIcon,
 } from "lucide-react";
 import {
   selectSelectedPrompt,
@@ -20,7 +21,7 @@ import { PromptDetailModal } from "./components/detail/PromptDetailModal";
 import { useToastStore } from "../notifications/toastStore";
 
 
-import { IconButton, useConfirm } from "../../components/ui";
+import { Button, EmptyState, IconButton, useConfirm } from "../../components/ui";
 /**
  * The prompt-editing view (Req 22.3). Library chrome fills the workspace;
  * prompt detail opens in an overlay.
@@ -165,21 +166,44 @@ export function PromptsView() {
         )}
         <div ref={libraryScrollRef} className="min-h-0 flex-1 overflow-y-auto">
           {loading ? (
-            <div className="flex h-full items-center justify-center p-6 text-body text-muted-foreground">
-              {t("promptsView.loading")}
-            </div>
+            viewMode === "grid" ? (
+              <PromptGrid
+                items={[]}
+                loading
+                selectedPromptId={null}
+                selectedPromptIds={[]}
+                batchMode={batchMode}
+                onToggleSelection={togglePromptSelection}
+                onToggleFavorite={(id, next) => void savePrompt(id, { isFavorite: next })}
+                onSelect={(id) => {
+                  void requestSelectPrompt(id);
+                }}
+              />
+            ) : (
+              <PromptList
+                items={[]}
+                loading
+                selectedPromptId={null}
+                selectedPromptIds={[]}
+                batchMode={batchMode}
+                onToggleSelection={togglePromptSelection}
+                onToggleFavorite={(id, next) => void savePrompt(id, { isFavorite: next })}
+                onSelect={(id) => {
+                  void requestSelectPrompt(id);
+                }}
+              />
+            )
           ) : prompts.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
-              <p className="text-body font-medium text-foreground">{t("promptsView.noPrompts")}</p>
-              <p className="max-w-xs text-label text-muted-foreground">{t("promptsView.noPromptsHint")}</p>
-              <button
-                type="button"
-                onClick={() => void resetLibraryFilters()}
-                className="mt-1 rounded-md border border-input px-2 py-1 text-label text-foreground hover:bg-accent"
-              >
-                {t("promptsView.chrome.clearAll")}
-              </button>
-            </div>
+            <EmptyState
+              icon={<FileTextIcon className="h-5 w-5" aria-hidden="true" />}
+              title={t("promptsView.noPrompts")}
+              description={t("promptsView.noPromptsHint")}
+              action={
+                <Button size="sm" onClick={() => void resetLibraryFilters()}>
+                  {t("promptsView.chrome.clearAll")}
+                </Button>
+              }
+            />
           ) : viewMode === "grid" ? (
             <PromptGrid
               items={libraryItems}

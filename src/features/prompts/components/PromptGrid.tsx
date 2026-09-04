@@ -4,19 +4,23 @@ import { ImageIcon, LockIcon, PinIcon, StarIcon, VideoIcon } from "lucide-react"
 import type { LibraryItem } from "../libraryItem";
 import { CopyPromptButton } from "./CopyPromptButton";
 
-import { IconButton, Tag} from "../../../components/ui";
+import { IconButton, Skeleton, Tag } from "../../../components/ui";
 
 interface PromptGridProps {
   items: LibraryItem[];
   selectedPromptId: string | null;
   selectedPromptIds: string[];
   batchMode?: boolean;
+  /** When true, render skeleton cards that match the grid geometry. */
+  loading?: boolean;
   onSelect: (id: string) => void;
   onToggleSelection: (id: string) => void;
   onToggleFavorite: (id: string, next: boolean) => void;
   writeText?: (text: string) => Promise<void>;
   copyPrompt?: (id: string, values: Record<string, string>) => Promise<import("../types").PromptCopyResult>;
 }
+
+const SKELETON_CARDS = 6;
 
 function TypeBadge({ kind }: { kind: LibraryItem["typeKind"] }) {
   if (kind === "image") return <ImageIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />;
@@ -40,6 +44,7 @@ export function PromptGrid({
   selectedPromptId,
   selectedPromptIds,
   batchMode = false,
+  loading = false,
   onSelect,
   onToggleSelection,
   onToggleFavorite,
@@ -49,8 +54,28 @@ export function PromptGrid({
   const { t } = useTranslation();
 
   return (
-    <ul className="grid grid-cols-[repeat(auto-fill,minmax(272px,1fr))] gap-4 p-3">
-      {items.map((item) => {
+    <ul
+      className="grid grid-cols-[repeat(auto-fill,minmax(272px,1fr))] gap-4 p-3"
+      role={loading ? "status" : undefined}
+      aria-label={loading ? t("promptsView.loading") : undefined}
+      aria-busy={loading || undefined}
+    >
+      {loading
+        ? Array.from({ length: SKELETON_CARDS }, (_, index) => (
+            <li key={index}>
+              <article className="flex h-full flex-col gap-2 rounded-lg border border-border p-3">
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-4/5" />
+                <div className="mt-auto flex items-center gap-2">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-3 w-10" />
+                  <Skeleton className="h-3 w-14" />
+                </div>
+              </article>
+            </li>
+          ))
+        : items.map((item) => {
         const selected = item.id === selectedPromptId;
         const checked = selectedPromptIds.includes(item.id);
         return (

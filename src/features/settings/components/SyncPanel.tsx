@@ -18,7 +18,7 @@ import type {
 } from "../types";
 import { validateS3Config, validateWebDavConfig } from "../validation";
 
-import { IconButton, Input } from "../../../components/ui";
+import { EmptyHint, IconButton, Input } from "../../../components/ui";
 
 interface SyncPanelProps {
   settings: Settings | null;
@@ -361,9 +361,7 @@ export function SyncPanel({
         </div>
 
         {backups.length === 0 ? (
-          <p className="text-label text-muted-foreground">
-            {t("settingsView.sync.backup.empty")}
-          </p>
+          <EmptyHint>{t("settingsView.sync.backup.empty")}</EmptyHint>
         ) : (
           <ul className="flex flex-col gap-1.5">
             {backups.map((backup) => (

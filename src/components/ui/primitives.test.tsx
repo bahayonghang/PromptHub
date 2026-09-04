@@ -7,7 +7,8 @@ import { Input } from "./Input";
 import { Select } from "./Select";
 import { Tag } from "./Tag";
 import { UsageBar } from "./UsageBar";
-import { EmptyState } from "./EmptyState";
+import { EmptyHint, EmptyState } from "./EmptyState";
+import { Skeleton } from "./Skeleton";
 
 afterEach(cleanup);
 
@@ -135,6 +136,21 @@ describe("Tag", () => {
     expect(first).toBeDefined();
     expect(second).toBe(first);
   });
+
+  it("forwards data attributes so roving-focus navigation can find the chip", () => {
+    // PromptLibraryNav drives ArrowLeft/ArrowRight over the tag cloud by
+    // querying [data-tag-chip]; dropping the attribute would silently kill
+    // keyboard navigation without failing any render assertion.
+    const { container } = render(
+      <Tag name="工程" data-tag-chip="" onToggle={vi.fn()} />,
+    );
+    expect(container.querySelectorAll("[data-tag-chip]").length).toBe(1);
+  });
+
+  it("labels the count for assistive technology", () => {
+    render(<Tag name="工程" count={12} countLabel="12 prompts" />);
+    expect(screen.getByLabelText("12 prompts").textContent).toBe("12");
+  });
 });
 
 describe("UsageBar", () => {
@@ -175,18 +191,32 @@ describe("EmptyState", () => {
     expect(screen.getByRole("button", { name: "Clear all" })).toBeDefined();
   });
 
-  it("forwards data attributes so roving-focus navigation can find the chip", () => {
-    // PromptLibraryNav drives ArrowLeft/ArrowRight over the tag cloud by
-    // querying [data-tag-chip]; dropping the attribute would silently kill
-    // keyboard navigation without failing any render assertion.
-    const { container } = render(
-      <Tag name="工程" data-tag-chip="" onToggle={vi.fn()} />,
-    );
-    expect(container.querySelectorAll("[data-tag-chip]").length).toBe(1);
+  it("is a full-region placeholder, not a one-line hint", () => {
+    const { container } = render(<EmptyState title="No prompts" />);
+    expect(container.firstElementChild?.className).toContain("items-center");
+    expect(container.firstElementChild?.className).toContain("justify-center");
   });
+});
 
-  it("labels the count for assistive technology", () => {
-    render(<Tag name="工程" count={12} countLabel="12 prompts" />);
-    expect(screen.getByLabelText("12 prompts").textContent).toBe("12");
+describe("EmptyHint", () => {
+  it("renders as a single muted line without a recovery action slot", () => {
+    const { container } = render(<EmptyHint>No backups yet.</EmptyHint>);
+    const node = container.firstElementChild;
+    expect(node?.tagName).toBe("P");
+    expect(node?.className).toContain("text-label");
+    expect(node?.className).toContain("text-muted-foreground");
+    expect(node?.className).not.toContain("items-center");
+    expect(screen.getByText("No backups yet.")).toBeDefined();
+  });
+});
+
+describe("Skeleton", () => {
+  it("uses the shared pulse recipe and stays hidden from assistive tech", () => {
+    const { container } = render(<Skeleton className="h-4 w-40" />);
+    const node = container.firstElementChild;
+    expect(node?.getAttribute("aria-hidden")).toBe("true");
+    expect(node?.className).toContain("animate-pulse");
+    expect(node?.className).toContain("bg-muted");
+    expect(node?.className).toContain("h-4");
   });
 });

@@ -4,19 +4,23 @@ import { ImageIcon, LockIcon, PinIcon, StarIcon, VideoIcon } from "lucide-react"
 import type { LibraryItem } from "../libraryItem";
 import { CopyPromptButton } from "./CopyPromptButton";
 
-import { IconButton } from "../../../components/ui";
+import { IconButton, Skeleton } from "../../../components/ui";
 
 interface PromptListProps {
   items: LibraryItem[];
   selectedPromptId: string | null;
   selectedPromptIds: string[];
   batchMode?: boolean;
+  /** When true, render skeleton rows that match the table geometry. */
+  loading?: boolean;
   onSelect: (id: string) => void;
   onToggleSelection: (id: string) => void;
   onToggleFavorite: (id: string, next: boolean) => void;
   writeText?: (text: string) => Promise<void>;
   copyPrompt?: (id: string, values: Record<string, string>) => Promise<import("../types").PromptCopyResult>;
 }
+
+const SKELETON_ROWS = 8;
 
 function TypeBadge({ kind }: { kind: LibraryItem["typeKind"] }) {
   if (kind === "image") return <ImageIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />;
@@ -45,6 +49,7 @@ export function PromptList({
   selectedPromptId,
   selectedPromptIds,
   batchMode = false,
+  loading = false,
   onSelect,
   onToggleSelection,
   onToggleFavorite,
@@ -54,7 +59,12 @@ export function PromptList({
   const { t } = useTranslation();
 
   return (
-    <div className="overflow-x-hidden p-2">
+    <div
+      className="overflow-x-hidden p-2"
+      role={loading ? "status" : undefined}
+      aria-label={loading ? t("promptsView.loading") : undefined}
+      aria-busy={loading || undefined}
+    >
       <table className="w-full table-fixed border-separate border-spacing-y-1 text-left">
         <thead>
           <tr className="text-meta font-medium text-muted-foreground-subtle">
@@ -72,7 +82,41 @@ export function PromptList({
           </tr>
         </thead>
         <tbody>
-          {items.map((item) => {
+          {loading
+            ? Array.from({ length: SKELETON_ROWS }, (_, index) => (
+                <tr key={index} className="text-body">
+                  {batchMode && (
+                    <td className="px-1 align-middle">
+                      <Skeleton className="h-4 w-4" />
+                    </td>
+                  )}
+                  <td className="px-1 align-middle">
+                    <Skeleton className="h-3.5 w-4/5" />
+                  </td>
+                  <td className="px-1 align-middle">
+                    <Skeleton className="h-3 w-3/4" />
+                  </td>
+                  <td className="px-1 align-middle">
+                    <Skeleton className="h-3 w-2/3" />
+                  </td>
+                  <td className="px-1 align-middle">
+                    <Skeleton className="h-3 w-16" />
+                  </td>
+                  <td className="px-1 align-middle">
+                    <Skeleton className="h-3 w-8" />
+                  </td>
+                  <td className="px-1 align-middle">
+                    <Skeleton className="h-3 w-8" />
+                  </td>
+                  <td className="px-1 align-middle">
+                    <Skeleton className="h-3 w-12" />
+                  </td>
+                  <td className="px-1 align-middle">
+                    <Skeleton className="h-4 w-4" />
+                  </td>
+                </tr>
+              ))
+            : items.map((item) => {
             const selected = item.id === selectedPromptId;
             const checked = selectedPromptIds.includes(item.id);
             return (

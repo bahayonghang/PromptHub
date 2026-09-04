@@ -527,7 +527,7 @@ Token 层是干净的（语义命名、HSL 通道、双主题齐备）。`DESIGN
 | 3 全局替换 | ✅ | 见第 9 节指标表，全部归零 |
 | 4 布局重构 | ◐ | 已删外壳页头、统一控件高度；侧栏与列表/网格的重排未做 |
 | 5 深水区 | ◐ | `EvaluationWorkbench` 已拆分并套基元；详情弹窗排版与层级已细化；设置页已统一 `SettingRow`/`Switch`/`Banner`；Toast 已改语义色条。**「详情模态 → 右侧停靠面板」的状态机改造未做**（见下） |
-| 6 打磨 | ◐ | 动效与焦点环已统一；空状态、骨架屏、主题走查未做 |
+| 6 打磨 | ◐ | 动效与焦点环已统一；空状态已收编为 `EmptyState`/`EmptyHint`，加载骨架已落到列表/网格同构占位；主题走查仍需人工 |
 
 **与原清单的偏差（已按实际实现回写）：**
 
@@ -590,15 +590,15 @@ Token 层是干净的（语义命名、HSL 通道、双主题齐备）。`DESIGN
 | 逐组件 `focus-visible:ring` | 131 | 0（收敛到基础层单条规则） | **0** ✅ |
 | 单行 className > 200 字符 | 4 | 0 | **0** ✅ |
 | 未绑定时长 token 的 `transition-*` | 38 | 0 | **0** ✅ |
-| 顶部 chrome 总高（Prompts 视图） | ~240px | ≤ 112px | **~124px** ⚠️ |
+| 顶部 chrome 总高（Prompts 视图） | ~240px | ≤ 112px | **112px** ✅ |
 
-> chrome 未达到 112px：`LibraryHeader`（标题+统计）与 `LibraryToolbar`
-> （搜索+排序+视图切换）承载的是不同职责，强行合并成一行会在窄窗口下
-> 挤压搜索框。124px 已删掉全部纯重复的层级，进一步压缩需要重新设计
-> 信息架构（阶段 5 的停靠面板改造），不适合放在本次机械替换里。
+> chrome 现为 TitleBar 36 + LibraryHeader 36 + LibraryToolbar 40 = 112px。
+> 两条横栏仍分开（标题行与搜索行职责不同），靠去掉 `py-2`、锁定行高、
+> 以及把文件系统路径移出副标题来达标，而不是把搜索框挤进标题行。
+> FilterChips 与导入面板是显式模式，不计入静息 chrome。
 
 **以上指标已全部固化为可执行断言**：`src/theme/style-conventions.test.ts`
-（17 条）与 `src/components/layout/chrome.test.ts`（3 条）。这些断言做过
+（19 条）与 `src/components/layout/chrome.test.ts`（4 条）。这些断言做过
 反向验证——注入违规代码后会转红。手工清理完的指标若没有守护，
 下一个 PR 就会重新引入。
 

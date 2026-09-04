@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { EmptyState } from "../../../components/ui";
 import type { EvaluationCell, EvaluationRunDetail, ExecutionProfileRevision, TestSet } from "../types";
 import type { PromptVersion } from "../../prompts/types";
 import { StatusDot } from "./StatusDot";
@@ -34,11 +35,7 @@ export function MatrixGrid({
   }
 
   if (!matrix) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-8 text-label text-muted-foreground">
-        {t("evaluation.matrixEmpty")}
-      </div>
-    );
+    return <EmptyState title={t("evaluation.matrixEmpty")} />;
   }
 
   return (

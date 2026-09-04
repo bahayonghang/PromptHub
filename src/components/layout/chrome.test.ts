@@ -35,12 +35,26 @@ describe("application chrome", () => {
     // defect; the row may only use the control-height tokens.
     const toolbar = read("src/features/prompts/components/LibraryToolbar.tsx");
     const raw = toolbar.match(/\bh-\d+(?:\.5)?\b/g) ?? [];
-    // h-3/h-3.5/h-4 are icon glyph sizes, not control heights.
+    // h-3/h-3.5/h-4 are icon glyph sizes, not control heights. h-10 is the
+    // row itself (the 40px slice of the 112px chrome budget).
     const controlish = raw.filter((c: string) => {
       const n = Number(c.replace("h-", ""));
-      return n >= 6;
+      return n >= 6 && n !== 10;
     });
     expect(controlish).toEqual([]);
     expect(toolbar).toContain("h-control-");
+  });
+
+  it("keeps resting Prompts chrome at 112px", () => {
+    // TitleBar 36 + LibraryHeader 36 + LibraryToolbar 40. Filter chips and the
+    // import panel are opt-in and must not pad the resting stack.
+    const titleBar = read("src/features/system/components/TitleBar.tsx");
+    const header = read("src/features/prompts/components/LibraryHeader.tsx");
+    const toolbar = read("src/features/prompts/components/LibraryToolbar.tsx");
+    expect(titleBar).toMatch(/\bh-9\b/);
+    expect(header).toMatch(/\bh-9\b/);
+    expect(toolbar).toMatch(/\bh-10\b/);
+    expect(header).not.toContain("useSystemStore");
+    expect(header).not.toContain("subtitleWithPath");
   });
 });

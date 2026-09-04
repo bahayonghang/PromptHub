@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { EmptyHint } from "../../../components/ui";
 import { Modal } from "../../../components/ui/Modal";
 import { promptApi } from "../api";
 import { usePromptStore } from "../promptStore";
@@ -208,9 +209,7 @@ export function CommandPalette() {
               />
             ))}
           {prompts.length === 0 && query.trim() !== "" && (
-            <p className="px-2 py-3 text-body text-muted-foreground">
-              {t("promptsView.palette.empty")}
-            </p>
+            <EmptyHint className="px-2 py-3">{t("promptsView.palette.empty")}</EmptyHint>
           )}
         </div>
       </div>

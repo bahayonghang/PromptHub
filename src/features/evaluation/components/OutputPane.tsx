@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { EmptyHint } from "../../../components/ui";
 import type { RenderedPrompt } from "../types";
 
 /**
@@ -36,7 +37,7 @@ export function OutputPane({
             ))}
           </div>
         ) : (
-          <span className="text-label text-muted-foreground">{t("evaluation.previewEmpty")}</span>
+          <EmptyHint>{t("evaluation.previewEmpty")}</EmptyHint>
         )}
       </div>
 
@@ -52,7 +53,7 @@ export function OutputPane({
             {streamedOutput}
           </pre>
         ) : (
-          <span className="text-label text-muted-foreground">{t("evaluation.outputEmpty")}</span>
+          <EmptyHint>{t("evaluation.outputEmpty")}</EmptyHint>
         )}
       </div>
     </section>
