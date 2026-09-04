@@ -6,6 +6,7 @@ import type {
 } from "../../../types";
 import type { PromptDraft } from "../promptDraft";
 import { PromptTypePicker } from "../PromptTypePicker";
+import { Input } from "../../../../../components/ui";
 
 export interface IdentitySectionProps {
   draft: PromptDraft;
@@ -18,10 +19,7 @@ export interface IdentitySectionProps {
   ) => Promise<PromptTypeDefinition | null>;
 }
 
-const labelClass = "text-xs font-medium text-muted-foreground";
-const inputClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60";
-
+const labelClass = "text-label font-medium text-muted-foreground";
 export function IdentitySection({
   draft,
   titleValid,
@@ -36,7 +34,7 @@ export function IdentitySection({
     <section aria-labelledby="prompt-editor-basics">
       <h3
         id="prompt-editor-basics"
-        className="text-sm font-semibold text-foreground"
+        className="text-body font-semibold text-foreground"
       >
         {t("promptsView.editor.sections.identity")}
       </h3>
@@ -45,16 +43,16 @@ export function IdentitySection({
           <label className={labelClass} htmlFor="prompt-title">
             {t("promptsView.editor.title")}
           </label>
-          <input
+          <Input
             id="prompt-title"
             value={draft.title}
             placeholder={t("promptsView.editor.titlePlaceholder")}
             disabled={readOnly}
             onChange={(e) => onChange({ title: e.target.value })}
-            className={inputClass}
+            size="lg"
           />
           {!titleValid && (
-            <span className="text-xs text-destructive">
+            <span className="text-label text-destructive">
               {t("promptsView.editor.titleRequired")}
             </span>
           )}
@@ -64,13 +62,13 @@ export function IdentitySection({
           <label className={labelClass} htmlFor="prompt-description">
             {t("promptsView.editor.description")}
           </label>
-          <input
+          <Input
             id="prompt-description"
             value={draft.description}
             placeholder={t("promptsView.editor.descriptionPlaceholder")}
             disabled={readOnly}
             onChange={(e) => onChange({ description: e.target.value })}
-            className={inputClass}
+            size="lg"
           />
         </div>
 
@@ -85,17 +83,17 @@ export function IdentitySection({
           onCreate={onCreatePromptType}
         />
 
-        <label className="flex items-center gap-2 self-end py-2 text-sm text-foreground">
-          <input
+        <label className="flex items-center gap-2 self-end py-2 text-body text-foreground">
+          <Input
             type="checkbox"
             checked={draft.isPrivate}
             disabled={readOnly}
             onChange={(event) => onChange({ isPrivate: event.target.checked })}
-            className="h-4 w-4 shrink-0 rounded border-input text-primary focus:ring-ring"
+            className="h-4 w-4 shrink-0 rounded-sm border-input text-primary"
           />
           <span>
             {t("promptsView.editor.privatePrompt")}
-            <span className="block text-xs text-muted-foreground">
+            <span className="block text-label text-muted-foreground">
               {t("promptsView.editor.privatePromptHint")}
             </span>
           </span>

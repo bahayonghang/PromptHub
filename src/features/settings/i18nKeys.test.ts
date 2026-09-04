@@ -222,6 +222,11 @@ const KEYS = [
   "settingsView.sync.backup.restore",
   "settingsView.sync.backup.delete",
   "settingsView.sync.backup.restoreConfirm",
+  // Titles for the themed ConfirmDialog that replaced window.confirm.
+  "settingsView.sync.backup.restoreTitle",
+  "settingsView.sync.backup.deleteTitle",
+  "settingsView.dataPath.applyTitle",
+  "settingsView.dataPath.recoveryTitle",
   "settingsView.sync.backup.deleteConfirm",
 ];
 

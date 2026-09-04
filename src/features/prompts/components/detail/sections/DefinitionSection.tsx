@@ -14,6 +14,9 @@ import { CopyPromptButton } from "../../CopyPromptButton";
 import { VariableEditor } from "../../VariableEditor";
 import type { PromptDraft } from "../promptDraft";
 
+import { Select, Textarea } from "../../../../../components/ui";
+import { cn } from "../../../../../components/ui/cn";
+
 export interface DefinitionSectionProps {
   draft: PromptDraft;
   prompt: Prompt | null;
@@ -29,10 +32,7 @@ export interface DefinitionSectionProps {
   onPreviewValuesChange: (values: Record<string, string>) => void;
 }
 
-const labelClass = "text-xs font-medium text-muted-foreground";
-const inputClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60";
-
+const labelClass = "text-label font-medium text-muted-foreground";
 export function DefinitionSection({
   draft,
   prompt,
@@ -83,7 +83,7 @@ export function DefinitionSection({
           />
           <h3
             id="prompt-editor-definition"
-            className="text-sm font-semibold text-foreground"
+            className="text-body font-semibold text-foreground"
           >
             {t("promptsView.editor.sections.definition")}
           </h3>
@@ -98,7 +98,7 @@ export function DefinitionSection({
               aria-pressed={!chatMode}
               disabled={readOnly}
               onClick={() => onSetChatMode(false)}
-              className={`flex min-h-8 items-center gap-1.5 rounded px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 ${
+              className={`flex min-h-8 items-center gap-1.5 rounded-sm px-2 text-label disabled:opacity-50 ${
                 !chatMode
                   ? "bg-accent text-foreground"
                   : "text-muted-foreground"
@@ -112,7 +112,7 @@ export function DefinitionSection({
               aria-pressed={chatMode}
               disabled={readOnly}
               onClick={() => onSetChatMode(true)}
-              className={`flex min-h-8 items-center gap-1.5 rounded px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 ${
+              className={`flex min-h-8 items-center gap-1.5 rounded-sm px-2 text-label disabled:opacity-50 ${
                 chatMode
                   ? "bg-accent text-foreground"
                   : "text-muted-foreground"
@@ -132,7 +132,7 @@ export function DefinitionSection({
                 key={`${index}-${message.role}`}
                 className="prompt-editor__message grid grid-cols-1 items-start gap-2 border-b border-border py-3 last:border-b-0"
               >
-                <select
+                <Select
                   value={message.role}
                   aria-label={t("evaluation.messageRole", {
                     index: index + 1,
@@ -146,15 +146,15 @@ export function DefinitionSection({
                     };
                     onUpdateMessages(next);
                   }}
-                  className="prompt-editor__message-role w-full min-w-[6.5rem] rounded-md border border-input bg-background px-2 py-2 text-xs text-foreground"
+                  wrapperClassName="w-full min-w-[6.5rem]"
                 >
                   <option value="system">{t("evaluation.roleSystem")}</option>
                   <option value="user">{t("evaluation.roleUser")}</option>
                   <option value="assistant">
                     {t("evaluation.roleAssistant")}
                   </option>
-                </select>
-                <textarea
+                </Select>
+                <Textarea
                   value={message.content}
                   aria-label={t("evaluation.messageContent", {
                     index: index + 1,
@@ -169,11 +169,14 @@ export function DefinitionSection({
                     onUpdateMessages(next);
                   }}
                   rows={draft.messages.length > 1 ? 8 : 16}
-                  className={`${inputClass} prompt-editor__message-body resize-y font-mono ${
-                    draft.messages.length > 1
-                      ? "prompt-editor__message-body--compact"
-                      : ""
-                  }`}
+                  size="lg"
+                  mono
+                  resizable
+                  className={cn(
+                    "prompt-editor__message-body",
+                    draft.messages.length > 1 &&
+                      "prompt-editor__message-body--compact",
+                  )}
                 />
                 <div className="prompt-editor__message-actions flex gap-1">
                   {[ArrowUpIcon, ArrowDownIcon, Trash2Icon].map(
@@ -214,7 +217,7 @@ export function DefinitionSection({
                           }
                           onUpdateMessages(next);
                         }}
-                        className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30"
+                        className="flex h-control-md w-control-md items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
                       >
                         <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
@@ -232,7 +235,7 @@ export function DefinitionSection({
                   { role: "user", content: "" },
                 ])
               }
-              className="flex min-h-8 w-fit items-center gap-1.5 rounded-md border border-input px-2.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
+              className="flex min-h-8 w-fit items-center gap-1.5 rounded-md border border-input px-2.5 text-label text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
             >
               <PlusIcon className="h-3.5 w-3.5" aria-hidden="true" />
               {t("evaluation.addMessage")}
@@ -244,34 +247,37 @@ export function DefinitionSection({
               <label className={labelClass} htmlFor="prompt-system">
                 {t("promptsView.editor.systemPrompt")}
               </label>
-              <textarea
+              <Textarea
                 id="prompt-system"
                 value={draft.systemPrompt}
                 placeholder={t("promptsView.editor.systemPromptPlaceholder")}
                 disabled={readOnly}
                 onChange={(e) => onUpdateText("systemPrompt", e.target.value)}
                 rows={4}
-                className={`${inputClass} resize-y`}
+                size="lg"
+                resizable
               />
             </div>
             <div className="flex flex-col gap-1">
               <label className={labelClass} htmlFor="prompt-user">
                 {t("promptsView.editor.userPrompt")}
               </label>
-              <textarea
+              <Textarea
                 id="prompt-user"
                 value={draft.userPrompt}
                 placeholder={t("promptsView.editor.userPromptPlaceholder")}
                 disabled={readOnly}
                 onChange={(e) => onUpdateText("userPrompt", e.target.value)}
                 rows={8}
-                className={`${inputClass} resize-y font-mono`}
+                size="lg"
+                mono
+                resizable
               />
             </div>
           </>
         )}
         {!userPromptValid && (
-          <span className="text-xs text-destructive">
+          <span className="text-label text-destructive">
             {t("promptsView.editor.userPromptRequired")}
           </span>
         )}
@@ -300,11 +306,11 @@ export function DefinitionSection({
                       [variable.name]: e.target.value,
                     })
                   }
-                  className="rounded-md border border-input bg-background px-2 py-2 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="rounded-md border border-input bg-background px-2 py-2 text-label text-foreground outline-none"
                 />
               ))}
             </div>
-            <pre className="max-w-full whitespace-pre-wrap break-words bg-muted px-3 py-2 text-xs text-foreground">
+            <pre className="max-w-full whitespace-pre-wrap break-words bg-muted px-3 py-2 text-label text-foreground">
               {previewText}
             </pre>
           </div>

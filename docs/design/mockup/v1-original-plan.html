@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PromptHub — 界面重构示意图</title>
+<style>
+/* ══════════════════════════════════════════════════════════════════════
+   1. TOKEN 层  —  对应方案第 4 节
+   ══════════════════════════════════════════════════════════════════════ */
+:root {
+  color-scheme: light;
+
+  /* — 4.2 表面四级 — */
+  --surface-base:    220 32% 96.5%;
+  --surface-raised:  0 0% 100%;
+  --surface-overlay: 0 0% 100%;
+  --surface-sunken:  220 28% 93.5%;
+
+  /* — 文本 — */
+  --fg:             224 26% 12%;
+  --fg-muted:       223 13% 42%;
+  --fg-subtle:      223 11% 58%;
+
+  /* — 强调 — */
+  --primary:        247 67% 56%;
+  --primary-fg:     0 0% 100%;
+  --ring:           247 67% 56%;
+  --success:        159 58% 34%;
+  --warning:        33 78% 42%;
+  --danger:         352 60% 50%;
+
+  /* — 线 — */
+  --border:         225 22% 88%;
+  --border-strong:  224 20% 80%;
+
+  /* — 4.2 交互态（消灭 /10 /15 魔法数字） — */
+  --state-hover:    224 24% 92%;
+  --state-selected: 247 60% 94%;
+  --state-pressed:  224 24% 88%;
+
+  /* — 4.3 材质 — */
+  --hairline: inset 0 -1px 0 hsl(224 20% 20% / 0.035);
+  --shadow-overlay:
+      0 16px 48px -12px hsl(224 40% 20% / 0.18),
+      0 0 0 1px hsl(var(--border) / 0.9);
+  --shadow-sticky: 0 4px 12px -6px hsl(224 40% 20% / 0.14);
+  --focus-ring: 0 0 0 2px hsl(var(--surface-base)), 0 0 0 4px hsl(var(--ring) / 0.5);
+
+  /* — 4.4 控件高度 — */
+  --control-xs: 24px;
+  --control-sm: 28px;
+  --control-md: 32px;
+  --control-lg: 36px;
+
+  /* — 圆角（全部从 --radius 推导，杜绝裸 rounded） — */
+  --radius:     12px;
+  --radius-md:  10px;
+  --radius-sm:  6px;
+
+  /* — 4.5 密度（基元内部一律用 calc 引用） — */
+  --density-padding: 10px;
+  --density-gap: 8px;
+
+  /* — 7. 动效 — */
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --font-ui: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+             "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --surface-base:    226 28% 6.5%;
+  --surface-raised:  225 24% 9.5%;
+  --surface-overlay: 225 22% 13%;
+  --surface-sunken:  228 30% 4.5%;
+
+  --fg:             225 33% 93%;
+  --fg-muted:       223 16% 66%;
+  --fg-subtle:      222 12% 48%;
+
+  --primary:        248 89% 73%;
+  --primary-fg:     240 28% 14%;
+  --ring:           248 89% 73%;
+  --success:        158 49% 56%;
+  --warning:        40 67% 62%;
+  --danger:         352 67% 66%;
+
+  --border:         223 20% 18%;
+  --border-strong:  223 18% 26%;
+
+  --state-hover:    224 22% 15%;
+  --state-selected: 246 34% 20%;
+  --state-pressed:  224 22% 19%;
+
+  /* 深色下的顶部边缘高光 —— 材质感的关键 */
+  --hairline: inset 0 1px 0 hsl(0 0% 100% / 0.045);
+  --shadow-overlay:
+      0 24px 64px -16px hsl(228 40% 2% / 0.7),
+      0 0 0 1px hsl(0 0% 100% / 0.06);
+  --shadow-sticky: 0 6px 16px -8px hsl(228 40% 2% / 0.6);
+  --focus-ring: 0 0 0 2px hsl(var(--surface-base)), 0 0 0 4px hsl(var(--ring) / 0.55);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   2. 排版阶梯  —  对应方案第 4.1 节（6 档，替代 text-xs/text-sm 二元制）
+   ══════════════════════════════════════════════════════════════════════ */
+.t-micro   { font-size:10px; line-height:14px; letter-spacing:.04em; }
+.t-meta    { font-size:11px; line-height:16px; letter-spacing:.02em; }
+.t-label   { font-size:12px; line-height:16px; letter-spacing:.01em; }
+.t-body    { font-size:13px; line-height:20px; letter-spacing:0; }
+.t-title   { font-size:15px; line-height:22px; letter-spacing:-.006em; font-weight:600; }
+.t-display { font-size:19px; line-height:26px; letter-spacing:-.012em; font-weight:600; }
+.num       { font-variant-numeric: tabular-nums; }
+.mono      { font-family: var(--font-mono); }
+
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { height:100%; }
+body {
+  font-family: var(--font-ui);
+  background: hsl(var(--surface-base));
+  color: hsl(var(--fg));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size:13px; line-height:20px;
+  overflow:hidden;
+}
+button, input, select, textarea { font:inherit; color:inherit; }
+button { background:none; border:none; cursor:pointer; }
+:focus-visible { outline:none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   3. 基元组件  —  对应方案第 5 节
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* — Button — */
+.btn {
+  display:inline-flex; align-items:center; gap:6px;
+  height: var(--control-md); padding:0 12px;
+  border-radius: var(--radius-md);
+  font-size:12px; font-weight:500; letter-spacing:.01em;
+  white-space:nowrap;
+  transition: background-color var(--dur-fast) var(--ease-out),
+              border-color   var(--dur-fast) var(--ease-out),
+              color          var(--dur-fast) var(--ease-out);
+}
+.btn svg { width:14px; height:14px; flex:none; }
+.btn--lg { height: var(--control-lg); padding:0 14px; font-size:13px; }
+.btn--primary {
+  background: hsl(var(--primary)); color: hsl(var(--primary-fg));
+  box-shadow: var(--hairline);
+}
+.btn--primary:hover { background: hsl(var(--primary) / .88); }
+.btn--secondary {
+  background: hsl(var(--surface-raised));
+  border:1px solid hsl(var(--border));
+  color: hsl(var(--fg)); box-shadow: var(--hairline);
+}
+.btn--secondary:hover { background: hsl(var(--state-hover)); border-color: hsl(var(--border-strong)); }
+.btn--ghost { color: hsl(var(--fg-muted)); }
+.btn--ghost:hover { background: hsl(var(--state-hover)); color: hsl(var(--fg)); }
+.btn--danger { color: hsl(var(--danger)); border:1px solid hsl(var(--danger) / .35); }
+.btn--danger:hover { background: hsl(var(--danger) / .12); }
+
+/* — IconButton （替代 6 份重复的 iconButtonClass） — */
+.ibtn {
+  display:inline-flex; align-items:center; justify-content:center;
+  width: var(--control-md); height: var(--control-md);
+  border-radius: var(--radius-sm);
+  color: hsl(var(--fg-muted));
+  transition: background-color var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out);
+}
+.ibtn svg { width:15px; height:15px; }
+.ibtn:hover { background: hsl(var(--state-hover)); color: hsl(var(--fg)); }
+.ibtn--sm { width: var(--control-sm); height: var(--control-sm); }
+.ibtn--sm svg { width:14px; height:14px; }
+.ibtn--xs { width: var(--control-xs); height: var(--control-xs); }
+.ibtn--xs svg { width:13px; height:13px; }
+.ibtn.is-on { color: hsl(var(--primary)); }
+.ibtn--danger:hover { background: hsl(var(--danger) / .15); color: hsl(var(--danger)); }
+
+/* — Input — */
+.field {
+  display:flex; align-items:center; gap:7px;
+  height: var(--control-md); padding:0 10px;
+  background: hsl(var(--surface-sunken));
+  border:1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  color: hsl(var(--fg-muted));
+  transition: border-color var(--dur-fast) var(--ease-out),
+              background-color var(--dur-fast) var(--ease-out);
+}
+.field svg { width:14px; height:14px; flex:none; }
+.field:focus-within { border-color: hsl(var(--ring) / .7); background: hsl(var(--surface-raised)); }
+.field input {
+  border:none; background:none; outline:none; min-width:0; flex:1;
+  font-size:12px; color: hsl(var(--fg));
+}
+.field input::placeholder { color: hsl(var(--fg-subtle)); }
+
+/* — Select（自绘，替代 22 个原生 <select>） — */
+.sel {
+  display:inline-flex; align-items:center; gap:6px;
+  height: var(--control-md); padding:0 8px 0 10px;
+  background: hsl(var(--surface-raised));
+  border:1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  font-size:12px; color: hsl(var(--fg-muted));
+  box-shadow: var(--hairline);
+  transition: border-color var(--dur-fast) var(--ease-out),
+              background-color var(--dur-fast) var(--ease-out);
+}
+.sel:hover { background: hsl(var(--state-hover)); border-color: hsl(var(--border-strong)); }
+.sel svg { width:13px; height:13px; opacity:.7; }
+
+/* — SegmentedControl — */
+.seg {
+  display:inline-flex; gap:2px; padding:2px;
+  height: var(--control-md);
+  background: hsl(var(--surface-sunken));
+  border:1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+}
+.seg button {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:26px; border-radius: calc(var(--radius-sm) - 1px);
+  color: hsl(var(--fg-subtle));
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.seg button svg { width:14px; height:14px; }
+.seg button:hover { color: hsl(var(--fg)); }
+.seg button[aria-pressed="true"] {
+  background: hsl(var(--surface-raised)); color: hsl(var(--fg));
+  box-shadow: 0 1px 2px hsl(228 40% 4% / .18), var(--hairline);
+}
+
+/* — Chip — */
+.chip {
+  display:inline-flex; align-items:center; gap:5px;
+  height: var(--control-sm); padding:0 9px;
+  border-radius:999px;
+  background: hsl(var(--surface-raised));
+  border:1px solid hsl(var(--border));
+  font-size:11px; letter-spacing:.02em; color: hsl(var(--fg-muted));
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.chip:hover { border-color: hsl(var(--border-strong)); color: hsl(var(--fg)); }
+.chip svg { width:11px; height:11px; }
+.chip[aria-pressed="true"] {
+  background: hsl(var(--state-selected));
+  border-color: hsl(var(--primary) / .45);
+  color: hsl(var(--fg));
+}
+.chip--sm { height:20px; padding:0 7px; font-size:10px; letter-spacing:.03em; }
+.chip--static { background: hsl(var(--surface-sunken)); border-color:transparent; }
+
+/* — Kbd — */
+kbd {
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:18px; height:18px; padding:0 5px;
+  font-family: var(--font-mono); font-size:10px;
+  background: hsl(var(--surface-sunken));
+  border:1px solid hsl(var(--border));
+  border-radius:4px; color: hsl(var(--fg-subtle));
+}
+
+/* — Panel — */
+.panel {
+  background: hsl(var(--surface-raised));
+  border:1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: var(--hairline);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   4. 外壳布局  —  对应方案第 6.1 节（chrome 从 ~240px 压到 112px）
+   ══════════════════════════════════════════════════════════════════════ */
+.app { display:flex; flex-direction:column; height:100vh; }
+
+/* TitleBar 36px —— 承载面包屑（原 Header 被删除） */
+.titlebar {
+  display:flex; align-items:center; gap:10px;
+  height:36px; flex:none; padding:0 10px 0 14px;
+  background: hsl(var(--surface-raised));
+  user-select:none;
+  /* 与 ViewBar 之间不画线，靠表面色差区分 */
+}
+.crumbs { display:flex; align-items:center; gap:7px; color: hsl(var(--fg-subtle)); }
+.crumbs .sep { opacity:.5; }
+.crumbs .cur { color: hsl(var(--fg-muted)); font-weight:500; }
+.wincontrols { margin-left:auto; display:flex; gap:2px; }
+.wincontrols .ibtn { width:26px; height:26px; }
+.wincontrols .ibtn svg { width:13px; height:13px; }
+
+.body { display:flex; flex:1; min-height:0; }
+
+/* — 6.2 侧边栏 248px — */
+.side {
+  width:248px; flex:none; display:flex; flex-direction:column;
+  background: hsl(var(--surface-raised));
+  border-right:1px solid hsl(var(--border));
+  min-height:0;
+}
+.side__brand {
+  display:flex; align-items:center; gap:9px;
+  padding:12px 14px 10px;
+}
+.mark {
+  width:26px; height:26px; flex:none; border-radius:8px;
+  background: linear-gradient(hsl(var(--primary) / .95), hsl(var(--primary) / .75));
+  display:flex; align-items:center; justify-content:center;
+  color: hsl(var(--primary-fg));
+  box-shadow: var(--hairline);
+}
+.mark svg { width:15px; height:15px; }
+
+.side__search { padding:0 10px 10px; }
+.side__search .field { width:100%; height: var(--control-md); }
+
+.side__scroll { flex:1; min-height:0; overflow-y:auto; padding:2px 8px 8px; }
+.side__scroll::-webkit-scrollbar { width:8px; }
+.side__scroll::-webkit-scrollbar-thumb {
+  background: hsl(var(--border-strong)); border-radius:99px;
+  border:2px solid hsl(var(--surface-raised));
+}
+
+.grouphead {
+  /* 去掉 uppercase：中文无效，11px 英文全大写反而降可读性 */
+  padding:14px 8px 5px;
+  font-size:11px; line-height:16px; letter-spacing:.02em;
+  color: hsl(var(--fg-subtle)); font-weight:500;
+  display:flex; align-items:center;
+}
+.grouphead .ibtn { margin-left:auto; }
+
+/* 导航行：统一 32px，选中态 = 底色 + 左侧 2px 指示条（非整块蓝底） */
+.nav {
+  position:relative; display:flex; align-items:center; gap:9px;
+  width:100%; height: var(--control-md); padding:0 8px;
+  border-radius: var(--radius-sm);
+  color: hsl(var(--fg-muted)); text-align:left;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.nav svg { width:15px; height:15px; flex:none; opacity:.85; }
+.nav .lab { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; }
+.nav .cnt { font-size:11px; letter-spacing:.02em; color: hsl(var(--fg-subtle)); }
+.nav:hover { background: hsl(var(--state-hover)); color: hsl(var(--fg)); }
+.nav.is-active { background: hsl(var(--state-selected)); color: hsl(var(--fg)); font-weight:500; }
+.nav.is-active svg { color: hsl(var(--primary)); opacity:1; }
+.nav.is-active::before {
+  content:""; position:absolute; left:-8px; top:6px; bottom:6px; width:2px;
+  border-radius:0 2px 2px 0; background: hsl(var(--primary));
+}
+.nav--child { padding-left:26px; }
+.nav--child2 { padding-left:44px; }
+
+.tagcloud { display:flex; flex-wrap:wrap; gap:5px; padding:2px 8px 0; }
+
+.side__foot {
+  margin-top:auto; flex:none; padding:8px;
+  border-top:1px solid hsl(var(--border));
+  display:flex; flex-direction:column; gap:2px;
+}
+
+/* — 主区 — */
+.main { flex:1; min-width:0; display:flex; flex-direction:column; background: hsl(var(--surface-base)); }
+
+/* 6.1 ViewBar 44px —— LibraryHeader + LibraryToolbar 合并 */
+.viewbar {
+  display:flex; align-items:center; gap:8px;
+  height:44px; flex:none; padding:0 14px;
+  border-bottom:1px solid hsl(var(--border));
+  background: hsl(var(--surface-base));
+}
+.viewbar__title { display:flex; align-items:baseline; gap:8px; min-width:0; }
+.viewbar__title h1 { font-size:15px; line-height:22px; letter-spacing:-.006em; font-weight:600; }
+.viewbar__title .cnt { font-size:11px; letter-spacing:.02em; color: hsl(var(--fg-subtle)); }
+.viewbar__spacer { flex:1; }
+.vsep { width:1px; height:18px; background: hsl(var(--border)); flex:none; }
+
+/* FilterChips 32px，仅有筛选时出现 */
+.filterbar {
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  min-height:32px; flex:none; padding:0 14px;
+  border-bottom:1px solid hsl(var(--border));
+  background: hsl(var(--surface-base));
+}
+.filterbar .lbl { font-size:11px; letter-spacing:.02em; color: hsl(var(--fg-subtle)); margin-right:2px; }
+.linkbtn { font-size:11px; letter-spacing:.02em; color: hsl(var(--fg-subtle)); }
+.linkbtn:hover { color: hsl(var(--fg)); text-decoration:underline; }
+
+.scroll { flex:1; min-height:0; overflow-y:auto; }
+.scroll::-webkit-scrollbar { width:10px; }
+.scroll::-webkit-scrollbar-thumb {
+  background: hsl(var(--border-strong)); border-radius:99px;
+  border:3px solid hsl(var(--surface-base));
+}
+
+/* 状态栏 */
+.statusbar {
+  display:flex; align-items:center; gap:10px;
+  height:30px; flex:none; padding:0 14px;
+  border-top:1px solid hsl(var(--border));
+  background: hsl(var(--surface-raised));
+  font-size:11px; letter-spacing:.02em; color: hsl(var(--fg-subtle));
+}
+.statusbar .ibtn { width:22px; height:22px; }
+.statusbar .ibtn svg { width:12px; height:12px; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   5. 列表  —  对应方案第 6.3 节
+   ══════════════════════════════════════════════════════════════════════ */
+table.list { width:100%; border-collapse:collapse; table-layout:fixed; }
+table.list thead th {
+  position:sticky; top:0; z-index:2;
+  background: hsl(var(--surface-base));
+  padding:0 12px; height:30px; text-align:left;
+  font-size:11px; line-height:16px; letter-spacing:.02em; font-weight:500;
+  color: hsl(var(--fg-subtle));
+  border-bottom:1px solid hsl(var(--border));
+  white-space:nowrap;
+}
+table.list tbody tr {
+  border-bottom:1px solid hsl(var(--border) / .55);
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+table.list tbody tr:hover { background: hsl(var(--state-hover) / .6); }
+table.list tbody tr.is-sel { background: hsl(var(--state-selected) / .75); }
+table.list tbody tr.is-sel td:first-child { box-shadow: inset 2px 0 0 hsl(var(--primary)); }
+table.list td { padding:8px 12px; vertical-align:middle; }
+
+/* 标题单元格双行化：标题 + 描述，让描述列可以取消 */
+.cell-title .row1 { display:flex; align-items:center; gap:6px; }
+.cell-title .name {
+  font-size:13px; line-height:20px; font-weight:500; color: hsl(var(--fg));
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.cell-title .desc {
+  font-size:12px; line-height:16px; color: hsl(var(--fg-muted));
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px;
+}
+.pin {
+  display:inline-flex; align-items:center; gap:3px; flex:none;
+  height:16px; padding:0 5px; border-radius:4px;
+  background: hsl(var(--warning) / .16); color: hsl(var(--warning));
+  font-size:10px; letter-spacing:.03em;
+}
+.pin svg { width:9px; height:9px; }
+.lock { width:12px; height:12px; flex:none; color: hsl(var(--fg-subtle)); }
+.trunc { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dim { color: hsl(var(--fg-muted)); }
+.subtle { color: hsl(var(--fg-subtle)); }
+
+.typecell { display:inline-flex; align-items:center; gap:5px; font-size:12px; color: hsl(var(--fg-muted)); }
+.typecell svg { width:13px; height:13px; flex:none; opacity:.8; }
+
+/* 行内操作：静息隐藏，hover / 键盘聚焦时显现 */
+.rowacts { display:flex; align-items:center; gap:1px; justify-content:flex-end; opacity:0;
+           transition: opacity var(--dur-fast) var(--ease-out); }
+tr:hover .rowacts, tr:focus-within .rowacts, tr.is-sel .rowacts { opacity:1; }
+.rowacts .always { opacity:1; }
+tr .rowacts .ibtn.is-on { opacity:1; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   6. 网格  —  对应方案第 6.4 节
+   ══════════════════════════════════════════════════════════════════════ */
+.grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:12px; padding:14px; }
+.card {
+  display:flex; flex-direction:column; min-height:158px;
+  background: hsl(var(--surface-raised));
+  border:1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: var(--hairline);
+  padding:12px;
+  transition: background-color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out);
+}
+.card:hover { border-color: hsl(var(--border-strong)); background: hsl(var(--state-hover) / .5); }
+/* 选中用 ring + offset，不换 border，避免 1px 布局偏移 */
+.card.is-sel {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / .65),
+              0 0 0 4px hsl(var(--surface-base)), var(--hairline);
+}
+.card__head { display:flex; align-items:flex-start; gap:8px; }
+.card__head h3 {
+  font-size:13px; line-height:20px; font-weight:600; min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.card__desc {
+  margin-top:6px; height:32px;
+  font-size:12px; line-height:16px; color: hsl(var(--fg-muted));
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+.card__tags { display:flex; flex-wrap:wrap; gap:4px; margin-top:10px; }
+.card__foot {
+  margin-top:auto; padding-top:10px;
+  display:flex; align-items:center; gap:6px;
+  border-top:1px solid hsl(var(--border) / .7);
+  font-size:11px; letter-spacing:.02em; color: hsl(var(--fg-subtle));
+}
+.dot { opacity:.45; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   7. 详情浮层  —  对应方案第 6.5 节
+   ══════════════════════════════════════════════════════════════════════ */
+.scrim {
+  position:absolute; inset:0; z-index:40;
+  display:flex; align-items:center; justify-content:center; padding:24px;
+  background: hsl(228 30% 4% / .55);
+  backdrop-filter: blur(2px);
+}
+.dialog {
+  width:min(1060px,100%); max-height:min(88vh,780px);
+  display:flex; flex-direction:column; overflow:hidden;
+  background: hsl(var(--surface-overlay));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-overlay);
+  animation: dlg 200ms var(--ease-spring);
+}
+@keyframes dlg { from { opacity:0; transform: translateY(8px) scale(.99); } }
+
+.dlg__head { display:flex; align-items:center; gap:8px; padding:12px 14px 0; }
+.dlg__head h2 {
+  font-size:15px; line-height:22px; letter-spacing:-.006em; font-weight:600;
+  min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.badge {
+  display:inline-flex; align-items:center; gap:4px; height:19px; padding:0 7px;
+  border-radius:999px; font-size:10px; letter-spacing:.03em;
+  background: hsl(var(--success) / .16); color: hsl(var(--success));
+}
+.badge svg { width:10px; height:10px; }
+.badge--dirty { background: hsl(var(--warning) / .16); color: hsl(var(--warning)); }
+
+/* Tab：下划线式，去掉背景块 */
+.tabs { display:flex; gap:2px; padding:8px 14px 0; border-bottom:1px solid hsl(var(--border)); }
+.tab {
+  position:relative; height:32px; padding:0 10px;
+  font-size:12px; font-weight:500; color: hsl(var(--fg-subtle));
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.tab:hover { color: hsl(var(--fg-muted)); }
+.tab.is-active { color: hsl(var(--fg)); }
+.tab.is-active::after {
+  content:""; position:absolute; left:8px; right:8px; bottom:-1px; height:2px;
+  border-radius:2px 2px 0 0; background: hsl(var(--primary));
+}
+.tab .n { margin-left:5px; font-size:10px; color: hsl(var(--fg-subtle)); }
+
+.dlg__body { flex:1; min-height:0; overflow-y:auto; }
+.dlg__body::-webkit-scrollbar { width:10px; }
+.dlg__body::-webkit-scrollbar-thumb {
+  background: hsl(var(--border-strong)); border-radius:99px;
+  border:3px solid hsl(var(--surface-overlay));
+}
+/* 正文限宽 68ch —— DESIGN.md 早有规定但从未执行 */
+.dlg__inner { max-width:68ch; margin:0 auto; padding:22px 20px 28px; display:flex; flex-direction:column; gap:24px; }
+
+.sec { display:flex; flex-direction:column; gap:12px; }
+.sec__head { display:flex; align-items:center; gap:8px; }
+.sec__head h3 { font-size:15px; line-height:22px; letter-spacing:-.006em; font-weight:600; }
+.sec__head .hint { font-size:11px; letter-spacing:.02em; color: hsl(var(--fg-subtle)); margin-left:auto; }
+
+.fgrid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.f { display:flex; flex-direction:column; gap:5px; }
+.f > label { font-size:12px; line-height:16px; letter-spacing:.01em; color: hsl(var(--fg-muted)); font-weight:500; }
+.inp {
+  height: var(--control-lg); padding:0 11px;
+  background: hsl(var(--surface-sunken));
+  border:1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  font-size:13px; outline:none; width:100%;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.inp:focus { border-color: hsl(var(--ring) / .7); }
+.editor {
+  position:relative;
+  background: hsl(var(--surface-sunken));
+  border:1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  overflow:hidden;
+}
+.editor__bar {
+  display:flex; align-items:center; gap:6px; padding:6px 8px 6px 11px;
+  border-bottom:1px solid hsl(var(--border));
+  font-size:11px; letter-spacing:.02em; color: hsl(var(--fg-subtle));
+}
+.editor pre {
+  padding:11px 13px; font-family: var(--font-mono);
+  font-size:12.5px; line-height:20px; color: hsl(var(--fg));
+  white-space:pre-wrap; word-break:break-word;
+}
+.editor__foot {
+  display:flex; align-items:center; gap:8px; padding:5px 10px;
+  border-top:1px solid hsl(var(--border));
+  font-size:10px; letter-spacing:.03em; color: hsl(var(--fg-subtle));
+}
+.var { color: hsl(var(--primary)); background: hsl(var(--primary) / .13);
+       border-radius:4px; padding:1px 3px; }
+
+.dlg__foot {
+  display:flex; align-items:center; gap:8px; flex:none;
+  padding:11px 14px; border-top:1px solid hsl(var(--border));
+  background: hsl(var(--surface-raised));
+}
+.hintrow { display:flex; align-items:center; gap:5px; font-size:11px; letter-spacing:.02em; color: hsl(var(--fg-subtle)); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   8. 设置  —  对应方案第 6.6 节
+   ══════════════════════════════════════════════════════════════════════ */
+.setwrap { display:flex; flex:1; min-height:0; }
+.setnav {
+  width:212px; flex:none; padding:12px 8px;
+  border-right:1px solid hsl(var(--border));
+  background: hsl(var(--surface-raised));
+  display:flex; flex-direction:column; gap:2px;
+}
+.setbody { flex:1; min-width:0; overflow-y:auto; }
+.setbody::-webkit-scrollbar { width:10px; }
+.setbody::-webkit-scrollbar-thumb {
+  background: hsl(var(--border-strong)); border-radius:99px; border:3px solid hsl(var(--surface-base));
+}
+.setinner { max-width:42rem; margin:0 auto; padding:26px 24px 40px; }
+
+.banner {
+  display:flex; align-items:center; gap:9px;
+  padding:9px 14px; border-bottom:1px solid hsl(var(--primary) / .3);
+  background: hsl(var(--primary) / .1); font-size:12px;
+}
+.banner svg { width:14px; height:14px; color: hsl(var(--primary)); flex:none; }
+
+.setgroup { margin-bottom:30px; }
+.setgroup > h2 { font-size:15px; line-height:22px; letter-spacing:-.006em; font-weight:600; margin-bottom:3px; }
+.setgroup > p.sub { font-size:12px; line-height:16px; color: hsl(var(--fg-muted)); margin-bottom:12px; }
+
+/* 统一 SettingRow 基元 */
+.srow {
+  display:flex; align-items:center; gap:20px;
+  padding:13px 0; border-bottom:1px solid hsl(var(--border) / .7);
+}
+.srow:last-child { border-bottom:none; }
+.srow__txt { min-width:0; flex:1; }
+.srow__txt .k { font-size:13px; line-height:20px; font-weight:500; }
+.srow__txt .d { font-size:12px; line-height:16px; color: hsl(var(--fg-muted)); margin-top:2px; }
+.srow__ctl { flex:none; display:flex; align-items:center; gap:8px; }
+
+.swatches { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; }
+.sw {
+  position:relative; height:52px; border-radius: var(--radius-md);
+  border:1px solid hsl(var(--border)); overflow:hidden;
+  display:flex; flex-direction:column;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.sw:hover { border-color: hsl(var(--border-strong)); }
+.sw__top { flex:1; }
+.sw__bot { height:15px; display:flex; }
+.sw__bot i { flex:1; }
+.sw.is-on { border-color: hsl(var(--primary)); box-shadow:0 0 0 2px hsl(var(--primary) / .3); }
+.sw.is-on::after {
+  content:"✓"; position:absolute; top:4px; right:5px;
+  width:15px; height:15px; border-radius:99px;
+  background: hsl(var(--primary)); color: hsl(var(--primary-fg));
+  font-size:9px; display:flex; align-items:center; justify-content:center;
+}
+.swname { font-size:10px; letter-spacing:.03em; color: hsl(var(--fg-subtle)); text-align:center; margin-top:5px; }
+
+.accents { display:flex; gap:8px; }
+.ac { width:26px; height:26px; border-radius:99px; border:2px solid transparent;
+      display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; }
+.ac.is-on { border-color: hsl(var(--fg) / .5); }
+
+.switch {
+  width:38px; height:22px; border-radius:99px; padding:2px;
+  background: hsl(var(--border-strong)); display:flex; flex:none;
+  transition: background-color var(--dur-base) var(--ease-out);
+}
+.switch i {
+  width:18px; height:18px; border-radius:99px; background:#fff; display:block;
+  box-shadow:0 1px 3px hsl(228 40% 4% / .35);
+  transition: transform var(--dur-base) var(--ease-spring);
+}
+.switch[aria-checked="true"] { background: hsl(var(--primary)); }
+.switch[aria-checked="true"] i { transform: translateX(16px); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   9. Toast  —  对应方案第 6.8 节
+   ══════════════════════════════════════════════════════════════════════ */
+.toasts { position:absolute; right:16px; bottom:42px; z-index:50; display:flex; flex-direction:column; gap:8px; }
+.toast {
+  position:relative; display:flex; align-items:flex-start; gap:9px;
+  width:320px; padding:11px 12px 11px 14px;
+  background: hsl(var(--surface-overlay));
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-overlay);
+  font-size:12.5px; overflow:hidden;
+  animation: tin 200ms var(--ease-spring);
+}
+@keyframes tin { from { opacity:0; transform: translateX(16px); } }
+.toast::before { content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background: hsl(var(--success)); }
+.toast svg.ic { width:15px; height:15px; flex:none; color: hsl(var(--success)); margin-top:1px; }
+.toast .bar { position:absolute; left:0; bottom:0; height:2px; background: hsl(var(--success) / .5); animation: tbar 4s linear forwards; }
+@keyframes tbar { from { width:100%; } to { width:0; } }
+
+/* ══════════════════════════════════════════════════════════════════════
+   10. 演示外壳（非产品的一部分）
+   ══════════════════════════════════════════════════════════════════════ */
+.demobar {
+  position:fixed; left:50%; transform:translateX(-50%); bottom:14px; z-index:200;
+  display:flex; align-items:center; gap:4px; padding:5px;
+  background: hsl(var(--surface-overlay));
+  border-radius:999px; box-shadow: var(--shadow-overlay);
+}
+.demobar button {
+  height:28px; padding:0 13px; border-radius:999px;
+  font-size:12px; font-weight:500; color: hsl(var(--fg-muted));
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.demobar button:hover { background: hsl(var(--state-hover)); color: hsl(var(--fg)); }
+.demobar button.on { background: hsl(var(--primary)); color: hsl(var(--primary-fg)); }
+.demobar .div { width:1px; height:18px; background: hsl(var(--border)); margin:0 3px; }
+.screen { display:none; }
+.screen.on { display:flex; flex-direction:column; flex:1; min-height:0; }
+.rel { position:relative; flex:1; min-height:0; display:flex; flex-direction:column; }
+</style>
+</head>
+<body>
+
+<!-- ═══ 图标精灵 ═══ -->
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<g id="i-search"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></g>
+<g id="i-inbox"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></g>
+<g id="i-star"><path d="m12 17.8-6.16 3.24 1.18-6.88-5-4.87 6.9-1L12 2l3.08 6.29 6.9 1-5 4.87 1.18 6.88z"/></g>
+<g id="i-clock"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></g>
+<g id="i-folder"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></g>
+<g id="i-chev-r"><path d="m9 18 6-6-6-6"/></g>
+<g id="i-chev-d"><path d="m6 9 6 6 6-6"/></g>
+<g id="i-chev-l"><path d="m15 18-6-6 6-6"/></g>
+<g id="i-plus"><path d="M5 12h14M12 5v14"/></g>
+<g id="i-list"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></g>
+<g id="i-grid"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></g>
+<g id="i-copy"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></g>
+<g id="i-more"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></g>
+<g id="i-x"><path d="M18 6 6 18M6 6l12 12"/></g>
+<g id="i-min"><path d="M5 12h14"/></g>
+<g id="i-max"><rect x="4" y="4" width="16" height="16" rx="2"/></g>
+<g id="i-set"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></g>
+<g id="i-moon"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9"/></g>
+<g id="i-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/></g>
+<g id="i-pin"><path d="M12 17v5M9 10.8V4h6v6.8l2 3.2H7z"/></g>
+<g id="i-lock"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></g>
+<g id="i-img"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.6-4.6a2 2 0 0 0-2.8 0L3 21"/></g>
+<g id="i-vid"><path d="m22 8-6 4 6 4V8z"/><rect x="2" y="6" width="14" height="12" rx="2"/></g>
+<g id="i-text"><path d="M4 7V5h16v2M9 19h6M12 5v14"/></g>
+<g id="i-tag"><path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.2 8.2a2 2 0 0 0 2.8 0l7.2-7.2a2 2 0 0 0 0-2.8z"/><circle cx="7" cy="7" r="1.2"/></g>
+<g id="i-check"><path d="m20 6-11 11-5-5"/></g>
+<g id="i-refresh"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></g>
+<g id="i-play"><path d="m6 3 14 9-14 9z"/></g>
+<g id="i-hist"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></g>
+<g id="i-link"><path d="M10 13a5 5 0 0 0 7.5.5l3-3A5 5 0 0 0 13.5 3.5l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3A5 5 0 0 0 10.5 20.5l1.7-1.7"/></g>
+<g id="i-sort"><path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 4v16"/></g>
+<g id="i-check-sq"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8.5 12 2.5 2.5 5-5"/></g>
+<g id="i-palette"><circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2a10 10 0 1 0 0 20 2 2 0 0 0 1.6-3.2 2 2 0 0 1 1.6-3.2H18a4 4 0 0 0 4-4 10 10 0 0 0-10-9.6z"/></g>
+<g id="i-shield"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></g>
+<g id="i-db"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></g>
+<g id="i-hdd"><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6.5 18h.01M4 14l3-9h10l3 9"/></g>
+<g id="i-monitor"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></g>
+<g id="i-sliders"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></g>
+<g id="i-type"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></g>
+<g id="i-rows"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/></g>
+<g id="i-zoom"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M11 8v6M21 21l-4.3-4.3"/></g>
+<g id="i-bolt"><path d="M13 2 3 14h8l-1 8 10-12h-8z"/></g>
+<g id="i-down"><path d="M12 3v12M7 11l5 5 5-5M4 21h16"/></g>
+<g id="i-var"><path d="M8 3H7a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2 2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h1M16 3h1a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2 2 2 0 0 0-2 2v4a2 2 0 0 1-2 2h-1"/></g>
+</defs>
+</svg>
+
+<div class="app">
+
+<!-- ══════════ TitleBar 36px：面包屑 + 窗口控制（原 Header 已删除） ══════════ -->
+<div class="titlebar">
+  <div class="mark" style="width:20px;height:20px;border-radius:6px">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><use href="#i-bolt"/></svg>
+  </div>
+  <div class="crumbs t-meta">
+    <span>PromptHub</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="sep" style="width:11px;height:11px"><use href="#i-chev-r"/></svg>
+    <span>提示词</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="sep" style="width:11px;height:11px"><use href="#i-chev-r"/></svg>
+    <span class="cur" id="crumb-last">写作助手</span>
+  </div>
+  <div class="wincontrols">
+    <button class="ibtn" aria-label="最小化"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-min"/></svg></button>
+    <button class="ibtn" aria-label="最大化"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><use href="#i-max"/></svg></button>
+    <button class="ibtn ibtn--danger" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-x"/></svg></button>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- ══════════ 侧边栏 248px ══════════ -->
+  <aside class="side">
+    <div class="side__brand">
+      <div class="mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><use href="#i-bolt"/></svg>
+      </div>
+      <div style="min-width:0">
+        <div class="t-body" style="font-weight:600">PromptHub</div>
+        <div class="t-micro subtle mono">v1.0.0 · 本地库</div>
+      </div>
+    </div>
+
+    <div class="side__search">
+      <div class="field">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-search"/></svg>
+        <input placeholder="搜索或跳转…" />
+        <kbd>⌘K</kbd>
+      </div>
+    </div>
+
+    <div class="side__scroll">
+      <div class="grouphead">资料库</div>
+      <button class="nav is-active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-inbox"/></svg>
+        <span class="lab">全部提示词</span><span class="cnt num">248</span>
+      </button>
+      <button class="nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><use href="#i-star"/></svg>
+        <span class="lab">收藏</span><span class="cnt num">31</span>
+      </button>
+      <button class="nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><use href="#i-clock"/></svg>
+        <span class="lab">最近使用</span>
+      </button>
+
+      <div class="grouphead">
+        文件夹
+        <button class="ibtn ibtn--xs" aria-label="新建文件夹"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-plus"/></svg></button>
+      </div>
+      <button class="nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><use href="#i-folder"/></svg>
+        <span class="lab">写作</span><span class="cnt num">64</span>
+      </button>
+      <button class="nav nav--child"><span class="lab">长文改写</span><span class="cnt num">22</span></button>
+      <button class="nav nav--child"><span class="lab">标题生成</span><span class="cnt num">18</span></button>
+      <button class="nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><use href="#i-folder"/></svg>
+        <span class="lab">代码</span><span class="cnt num">57</span>
+      </button>
+      <button class="nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><use href="#i-folder"/></svg>
+        <span class="lab">图像生成</span><span class="cnt num">40</span>
+      </button>
+      <button class="nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><use href="#i-folder"/></svg>
+        <span class="lab">数据分析</span><span class="cnt num">29</span>
+      </button>
+
+      <div class="grouphead">标签</div>
+      <div class="tagcloud">
+        <button class="chip chip--sm" aria-pressed="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><use href="#i-check"/></svg>
+          GPT-4o <span class="subtle num">42</span>
+        </button>
+        <button class="chip chip--sm">中文 <span class="subtle num">88</span></button>
+        <button class="chip chip--sm">结构化 <span class="subtle num">36</span></button>
+        <button class="chip chip--sm">Few-shot <span class="subtle num">24</span></button>
+        <button class="chip chip--sm">JSON <span class="subtle num">19</span></button>
+        <button class="chip chip--sm">审校 <span class="subtle num">15</span></button>
+        <button class="chip chip--sm">SDXL <span class="subtle num">12</span></button>
+        <button class="chip chip--sm subtle">更多 9 个…</button>
+      </div>
+    </div>
+
+    <div class="side__foot">
+      <button class="nav" onclick="toggleTheme()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" id="theme-icon"><use href="#i-sun"/></svg>
+        <span class="lab" id="theme-label">切换到浅色</span>
+      </button>
+      <button class="nav" onclick="show('set')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-set"/></svg>
+        <span class="lab">设置</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ══════════ 主区 ══════════ -->
+  <main class="main">
+
+    <!-- ─────── 屏 1 / 2：资料库（列表 / 网格） ─────── -->
+    <div class="screen on" id="s-lib">
+      <div class="viewbar">
+        <div class="viewbar__title">
+          <h1>全部提示词</h1>
+          <span class="cnt num">248 条</span>
+        </div>
+        <div class="viewbar__spacer"></div>
+
+        <div class="field" style="width:200px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-search"/></svg>
+          <input placeholder="筛选此视图…" value="写作" />
+        </div>
+        <button class="sel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><use href="#i-sort"/></svg>
+          最近更新
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-chev-d"/></svg>
+        </button>
+        <div class="seg" role="group" aria-label="视图模式">
+          <button aria-pressed="true" id="vm-list" onclick="setView('list')" aria-label="列表视图"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-list"/></svg></button>
+          <button aria-pressed="false" id="vm-grid" onclick="setView('grid')" aria-label="网格视图"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><use href="#i-grid"/></svg></button>
+        </div>
+        <div class="vsep"></div>
+        <button class="ibtn" aria-label="批量选择"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check-sq"/></svg></button>
+        <button class="ibtn" aria-label="更多操作"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="#i-more"/></svg></button>
+        <button class="btn btn--primary" onclick="show('detail')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><use href="#i-plus"/></svg>
+          新建
+        </button>
+      </div>
+
+      <div class="filterbar">
+        <span class="lbl">筛选</span>
+        <button class="chip chip--sm" aria-pressed="true">关键词：写作 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><use href="#i-x"/></svg></button>
+        <button class="chip chip--sm" aria-pressed="true">标签：GPT-4o <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><use href="#i-x"/></svg></button>
+        <button class="linkbtn" style="margin-left:4px">清除全部</button>
+      </div>
+
+      <!-- 列表 -->
+      <div class="scroll" id="view-list">
+        <table class="list">
+          <thead>
+            <tr>
+              <th style="width:34%">名称</th>
+              <th style="width:20%">标签</th>
+              <th style="width:13%">类型</th>
+              <th style="width:9%" class="num">调用</th>
+              <th style="width:9%" class="num">版本</th>
+              <th style="width:12%" class="num">更新于</th>
+              <th style="width:88px"></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+
+      <!-- 网格 -->
+      <div class="scroll" id="view-grid" style="display:none">
+        <div class="grid" id="cards"></div>
+      </div>
+
+      <div class="statusbar">
+        <span>显示 <b class="num" style="color:hsl(var(--fg))">1–12</b> / 共 <b class="num" style="color:hsl(var(--fg))">248</b> 条</span>
+        <span class="dot">·</span>
+        <span>已选 0 项</span>
+        <span style="flex:1"></span>
+        <span class="mono">~/Library/PromptHub</span>
+        <span class="dot">·</span>
+        <span style="display:inline-flex;align-items:center;gap:4px"><i style="width:5px;height:5px;border-radius:99px;background:hsl(var(--success));display:block"></i>已同步</span>
+        <div class="vsep" style="height:14px"></div>
+        <button class="ibtn" aria-label="上一页"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-chev-l"/></svg></button>
+        <button class="ibtn" aria-label="下一页"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-chev-r"/></svg></button>
+      </div>
+    </div>
+
+    <!-- ─────── 屏 3：设置 ─────── -->
+    <div class="screen" id="s-set">
+      <div class="viewbar">
+        <div class="viewbar__title"><h1>设置</h1></div>
+        <div class="viewbar__spacer"></div>
+        <button class="btn btn--ghost" onclick="show('lib')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-chev-l"/></svg>
+          返回资料库
+        </button>
+      </div>
+
+      <div class="banner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-refresh"/></svg>
+        部分更改需重启应用后生效。
+        <span style="flex:1"></span>
+        <button class="btn btn--secondary" style="height:26px;font-size:11px">立即重启</button>
+      </div>
+
+      <div class="setwrap">
+        <nav class="setnav">
+          <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><use href="#i-sliders"/></svg><span class="lab">通用</span></button>
+          <button class="nav is-active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><use href="#i-palette"/></svg><span class="lab">外观</span></button>
+          <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><use href="#i-shield"/></svg><span class="lab">安全</span></button>
+          <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><use href="#i-db"/></svg><span class="lab">同步与备份</span></button>
+          <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><use href="#i-hdd"/></svg><span class="lab">数据路径</span></button>
+          <button class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><use href="#i-monitor"/></svg><span class="lab">系统</span></button>
+        </nav>
+
+        <div class="setbody">
+          <div class="setinner">
+            <div class="setgroup">
+              <h2>主题</h2>
+              <p class="sub">主题家族与明暗模式相互独立。系统模式切换明暗时，不会改变已选家族与强调色。</p>
+              <div class="swatches">
+                <div>
+                  <div class="sw is-on"><div class="sw__top" style="background:#1e1e2e"></div><div class="sw__bot"><i style="background:#313244"></i><i style="background:#89b5fa"></i><i style="background:#cdd6f4"></i></div></div>
+                  <div class="swname">Mocha</div>
+                </div>
+                <div>
+                  <div class="sw"><div class="sw__top" style="background:#303446"></div><div class="sw__bot"><i style="background:#414559"></i><i style="background:#8caaee"></i><i style="background:#c6d0f5"></i></div></div>
+                  <div class="swname">Frappé</div>
+                </div>
+                <div>
+                  <div class="sw"><div class="sw__top" style="background:#24273a"></div><div class="sw__bot"><i style="background:#363a4f"></i><i style="background:#8aadf4"></i><i style="background:#cad3f5"></i></div></div>
+                  <div class="swname">Macchiato</div>
+                </div>
+                <div>
+                  <div class="sw"><div class="sw__top" style="background:#eff1f5"></div><div class="sw__bot"><i style="background:#e6e9ef"></i><i style="background:#1f66f4"></i><i style="background:#4b4e68"></i></div></div>
+                  <div class="swname">Latte</div>
+                </div>
+                <div>
+                  <div class="sw"><div class="sw__top" style="background:#282725"></div><div class="sw__bot"><i style="background:#3a3835"></i><i style="background:#d0a678"></i><i style="background:#eae8e1"></i></div></div>
+                  <div class="swname">Claude 暗</div>
+                </div>
+                <div>
+                  <div class="sw"><div class="sw__top" style="background:#faf9f5"></div><div class="sw__bot"><i style="background:#eeece4"></i><i style="background:#c96442"></i><i style="background:#2b2a26"></i></div></div>
+                  <div class="swname">Claude 亮</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="setgroup">
+              <h2>外观细节</h2>
+              <div class="srow">
+                <div class="srow__txt"><div class="k">明暗模式</div><div class="d">跟随系统，或强制固定为浅色 / 深色。</div></div>
+                <div class="srow__ctl">
+                  <div class="seg" style="height:var(--control-md)">
+                    <button style="width:auto;padding:0 10px;font-size:12px">浅色</button>
+                    <button aria-pressed="true" style="width:auto;padding:0 10px;font-size:12px">深色</button>
+                    <button style="width:auto;padding:0 10px;font-size:12px">系统</button>
+                  </div>
+                </div>
+              </div>
+              <div class="srow">
+                <div class="srow__txt"><div class="k">强调色</div><div class="d">用于主操作、当前选中与键盘焦点。</div></div>
+                <div class="srow__ctl">
+                  <div class="accents">
+                    <button class="ac is-on" style="background:#8b7cf6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" style="width:12px;height:12px"><use href="#i-check"/></svg></button>
+                    <button class="ac" style="background:#89b5fa"></button>
+                    <button class="ac" style="background:#59c2a0"></button>
+                    <button class="ac" style="background:#e5a23c"></button>
+                    <button class="ac" style="background:#e06c8a"></button>
+                  </div>
+                </div>
+              </div>
+              <div class="srow">
+                <div class="srow__txt"><div class="k">界面字号</div><div class="d">基准字号倍率，影响全部界面文字。</div></div>
+                <div class="srow__ctl">
+                  <button class="sel">100%<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-chev-d"/></svg></button>
+                </div>
+              </div>
+              <div class="srow">
+                <div class="srow__txt"><div class="k">显示密度</div><div class="d">紧凑模式会同步收紧列表行高、内边距与控件间距。</div></div>
+                <div class="srow__ctl">
+                  <div class="seg" style="height:var(--control-md)">
+                    <button style="width:auto;padding:0 10px;font-size:12px">紧凑</button>
+                    <button aria-pressed="true" style="width:auto;padding:0 10px;font-size:12px">标准</button>
+                    <button style="width:auto;padding:0 10px;font-size:12px">舒适</button>
+                  </div>
+                </div>
+              </div>
+              <div class="srow">
+                <div class="srow__txt"><div class="k">减少动效</div><div class="d">跟随系统的 prefers-reduced-motion 设置。</div></div>
+                <div class="srow__ctl"><div class="switch" role="switch" aria-checked="false" onclick="tog(this)"><i></i></div></div>
+              </div>
+            </div>
+
+            <div class="setgroup">
+              <h2>字体</h2>
+              <div class="srow">
+                <div class="srow__txt"><div class="k">界面字体</div><div class="d">按顺序回退；未安装的字体会自动跳过。</div></div>
+                <div class="srow__ctl">
+                  <button class="sel" style="min-width:180px">Noto Sans SC<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-left:auto"><use href="#i-chev-d"/></svg></button>
+                </div>
+              </div>
+              <div class="srow">
+                <div class="srow__txt"><div class="k">等宽字体</div><div class="d">用于提示词正文、路径与结构化数值。</div></div>
+                <div class="srow__ctl">
+                  <button class="sel" style="min-width:180px">IBM Plex Mono<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-left:auto"><use href="#i-chev-d"/></svg></button>
+                </div>
+              </div>
+              <div class="panel" style="padding:14px;margin-top:14px">
+                <div class="t-meta subtle" style="margin-bottom:8px">预览</div>
+                <div class="t-display" style="margin-bottom:4px">重构提示词工作台</div>
+                <div class="t-body dim" style="margin-bottom:8px">六档字号阶梯让标题、正文与元信息各归其位，而不是全部挤在 12 与 14 像素两档。</div>
+                <div class="mono" style="font-size:12.5px;line-height:20px;color:hsl(var(--fg-muted))">system: 你是一名<span class="var">{{role}}</span>，请以严谨语气作答。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────── 屏 4：详情浮层 ─────── -->
+    <div class="screen" id="s-detail">
+      <div class="rel">
+        <div class="viewbar">
+          <div class="viewbar__title"><h1>全部提示词</h1><span class="cnt num">248 条</span></div>
+          <div class="viewbar__spacer"></div>
+          <div class="field" style="width:200px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-search"/></svg>
+            <input placeholder="筛选此视图…" />
+          </div>
+          <button class="btn btn--primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><use href="#i-plus"/></svg>新建</button>
+        </div>
+        <div class="scroll">
+          <table class="list"><tbody id="rows-bg"></tbody></table>
+        </div>
+
+        <div class="scrim">
+          <div class="dialog">
+            <div class="dlg__head">
+              <h2>长文改写 · 学术语气</h2>
+              <span class="badge badge--dirty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><use href="#i-pin"/></svg>未保存</span>
+              <span style="flex:1"></span>
+              <button class="ibtn is-on" aria-label="取消收藏"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><use href="#i-star"/></svg></button>
+              <button class="ibtn" aria-label="置顶"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><use href="#i-pin"/></svg></button>
+              <button class="ibtn" aria-label="复制"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><use href="#i-copy"/></svg></button>
+              <button class="ibtn" aria-label="更多"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="#i-more"/></svg></button>
+              <div class="vsep"></div>
+              <button class="ibtn" aria-label="关闭" onclick="show('lib')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-x"/></svg></button>
+            </div>
+
+            <div class="tabs">
+              <button class="tab is-active">内容</button>
+              <button class="tab">版本<span class="n num">12</span></button>
+              <button class="tab">运行</button>
+              <button class="tab">引用<span class="n num">3</span></button>
+            </div>
+
+            <div class="dlg__body">
+              <div class="dlg__inner">
+
+                <section class="sec">
+                  <div class="sec__head"><h3>基本信息</h3></div>
+                  <div class="f">
+                    <label>标题</label>
+                    <input class="inp" value="长文改写 · 学术语气" />
+                  </div>
+                  <div class="f">
+                    <label>描述</label>
+                    <input class="inp" value="将口语化草稿改写为符合期刊规范的学术表达，保留原意与引用。" />
+                  </div>
+                  <div class="fgrid">
+                    <div class="f">
+                      <label>类型</label>
+                      <button class="sel" style="height:var(--control-lg);width:100%">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><use href="#i-text"/></svg>
+                        文本提示词
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-left:auto"><use href="#i-chev-d"/></svg>
+                      </button>
+                    </div>
+                    <div class="f">
+                      <label>文件夹</label>
+                      <button class="sel" style="height:var(--control-lg);width:100%">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><use href="#i-folder"/></svg>
+                        写作 / 长文改写
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-left:auto"><use href="#i-chev-d"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="sec">
+                  <div class="sec__head">
+                    <h3>提示词定义</h3>
+                    <span class="hint">对话模式</span>
+                    <div class="switch" role="switch" aria-checked="true" onclick="tog(this)"><i></i></div>
+                  </div>
+
+                  <div class="editor">
+                    <div class="editor__bar">
+                      <span class="chip chip--sm chip--static">system</span>
+                      <span style="flex:1"></span>
+                      <button class="ibtn ibtn--xs" aria-label="上移"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:rotate(180deg)"><use href="#i-chev-d"/></svg></button>
+                      <button class="ibtn ibtn--xs" aria-label="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-x"/></svg></button>
+                    </div>
+                    <pre>你是一名<span class="var">{{领域}}</span>方向的资深学术编辑。请在不改变原意的前提下，
+将用户提供的草稿改写为符合期刊投稿规范的书面表达。</pre>
+                  </div>
+
+                  <div class="editor">
+                    <div class="editor__bar">
+                      <span class="chip chip--sm chip--static">user</span>
+                      <span style="flex:1"></span>
+                      <button class="ibtn ibtn--xs" aria-label="上移"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:rotate(180deg)"><use href="#i-chev-d"/></svg></button>
+                      <button class="ibtn ibtn--xs" aria-label="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-x"/></svg></button>
+                    </div>
+                    <pre>请改写以下段落，目标期刊风格为 <span class="var">{{期刊}}</span>，
+篇幅控制在 <span class="var">{{字数}}</span> 字以内：
+
+<span class="var">{{草稿}}</span></pre>
+                    <!-- 字符计数移到编辑器右下角：它是元信息，不是标题 -->
+                    <div class="editor__foot">
+                      <span>4 个变量</span><span class="dot">·</span><span class="num">312 字符</span>
+                      <span style="flex:1"></span>
+                      <button class="linkbtn">插入变量</button>
+                    </div>
+                  </div>
+
+                  <button class="btn btn--secondary" style="align-self:flex-start">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><use href="#i-plus"/></svg>
+                    添加消息
+                  </button>
+                </section>
+
+                <section class="sec">
+                  <div class="sec__head">
+                    <h3>变量</h3>
+                    <span class="hint">复制时会用默认值填充</span>
+                  </div>
+                  <div class="panel" style="padding:4px 12px">
+                    <div class="srow" style="padding:9px 0">
+                      <div class="srow__txt"><div class="k mono" style="font-size:12.5px">{{领域}}</div></div>
+                      <div class="srow__ctl"><input class="inp" style="height:var(--control-md);width:220px" value="计算机科学" /></div>
+                    </div>
+                    <div class="srow" style="padding:9px 0">
+                      <div class="srow__txt"><div class="k mono" style="font-size:12.5px">{{期刊}}</div></div>
+                      <div class="srow__ctl"><input class="inp" style="height:var(--control-md);width:220px" value="IEEE TPAMI" /></div>
+                    </div>
+                    <div class="srow" style="padding:9px 0">
+                      <div class="srow__txt"><div class="k mono" style="font-size:12.5px">{{字数}}</div></div>
+                      <div class="srow__ctl"><input class="inp" style="height:var(--control-md);width:220px" value="600" /></div>
+                    </div>
+                    <div class="srow" style="padding:9px 0">
+                      <div class="srow__txt"><div class="k mono" style="font-size:12.5px">{{草稿}}</div></div>
+                      <div class="srow__ctl"><input class="inp" style="height:var(--control-md);width:220px" placeholder="（无默认值）" /></div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="sec">
+                  <div class="sec__head"><h3>组织</h3></div>
+                  <div class="f">
+                    <label>标签</label>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+                      <span class="chip">GPT-4o <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><use href="#i-x"/></svg></span>
+                      <span class="chip">中文 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><use href="#i-x"/></svg></span>
+                      <span class="chip">审校 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><use href="#i-x"/></svg></span>
+                      <button class="chip subtle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><use href="#i-plus"/></svg>添加标签</button>
+                    </div>
+                  </div>
+                </section>
+
+              </div>
+            </div>
+
+            <div class="dlg__foot">
+              <span class="hintrow"><kbd>⌘</kbd><kbd>S</kbd> 保存</span>
+              <span class="dot">·</span>
+              <span class="hintrow"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>C</kbd> 填充并复制</span>
+              <span style="flex:1"></span>
+              <button class="btn btn--ghost" onclick="show('lib')">取消</button>
+              <button class="btn btn--secondary">填充并复制</button>
+              <button class="btn btn--primary">保存更改</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="toasts">
+          <div class="toast">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="ic"><use href="#i-check"/></svg>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:500">已复制到剪贴板</div>
+              <div class="t-meta subtle" style="margin-top:1px">4 个变量已用默认值填充</div>
+            </div>
+            <button class="ibtn ibtn--xs" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-x"/></svg></button>
+            <div class="bar"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+</div>
+
+<!-- 演示切换条 -->
+<div class="demobar">
+  <button class="on" id="b-lib" onclick="show('lib')">资料库</button>
+  <button id="b-detail" onclick="show('detail')">详情浮层</button>
+  <button id="b-set" onclick="show('set')">设置</button>
+  <div class="div"></div>
+  <button onclick="setView('list')" id="b-vlist" class="on">列表</button>
+  <button onclick="setView('grid')" id="b-vgrid">网格</button>
+  <div class="div"></div>
+  <button onclick="toggleTheme()" id="b-theme">浅色</button>
+</div>
+
+<script>
+const DATA = [
+  { t:"长文改写 · 学术语气", d:"将口语化草稿改写为符合期刊规范的学术表达，保留原意与引用格式。", tags:["GPT-4o","中文","审校"], type:"文本", ic:"i-text", n:1284, v:"v12", u:"2 小时前", fav:true, pin:true, sel:true },
+  { t:"结构化 JSON 抽取", d:"从非结构化文本中抽取实体并输出严格符合 schema 的 JSON。", tags:["JSON","结构化"], type:"文本", ic:"i-text", n:962, v:"v8", u:"昨天", fav:true },
+  { t:"电商主图生成", d:"白底商品图，柔和棚拍光，45 度俯视，突出材质细节。", tags:["SDXL","电商"], type:"图像", ic:"i-img", n:743, v:"v5", u:"昨天", lock:true },
+  { t:"代码审查助手", d:"逐行审查 diff，指出潜在缺陷、复杂度问题与命名不一致。", tags:["代码","Few-shot"], type:"文本", ic:"i-text", n:688, v:"v21", u:"3 天前" },
+  { t:"会议纪要整理", d:"将录音转写整理为决议、待办与责任人三段式纪要。", tags:["中文","结构化"], type:"文本", ic:"i-text", n:521, v:"v6", u:"3 天前", fav:true },
+  { t:"短视频分镜脚本", d:"根据主题生成 15 秒竖屏分镜，含镜头、时长与旁白。", tags:["视频","创意"], type:"视频", ic:"i-vid", n:410, v:"v4", u:"5 天前" },
+  { t:"SQL 查询生成", d:"依据自然语言描述与表结构生成可执行的 SQL 查询语句。", tags:["代码","数据"], type:"文本", ic:"i-text", n:377, v:"v9", u:"上周" },
+  { t:"竞品分析框架", d:"按定位、功能、定价、渠道四个维度输出对比矩阵。", tags:["分析","结构化"], type:"文本", ic:"i-text", n:298, v:"v3", u:"上周" },
+  { t:"人像摄影提示词", d:"自然光人像，浅景深，胶片颗粒感，柯达 Portra 400 色调。", tags:["SDXL","摄影"], type:"图像", ic:"i-img", n:264, v:"v7", u:"上周", pin:true },
+  { t:"邮件语气润色", d:"在保持信息完整的前提下调整措辞礼貌度与正式程度。", tags:["中文","审校"], type:"文本", ic:"i-text", n:203, v:"v2", u:"2 周前" },
+  { t:"单元测试补全", d:"针对给定函数生成覆盖边界条件与异常路径的测试用例。", tags:["代码","Few-shot"], type:"文本", ic:"i-text", n:187, v:"v11", u:"2 周前" },
+  { t:"品牌 Slogan 头脑风暴", d:"围绕品牌调性生成 20 条候选口号，并附推荐理由。", tags:["创意","中文"], type:"文本", ic:"i-text", n:156, v:"v5", u:"3 周前" },
+];
+
+const svg = (id, w, sw) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw||1.9}" stroke-linecap="round" stroke-linejoin="round" style="width:${w}px;height:${w}px"><use href="#${id}"/></svg>`;
+
+function rowHTML(p) {
+  return `<tr class="${p.sel ? 'is-sel' : ''}">
+    <td>
+      <div class="cell-title">
+        <div class="row1">
+          ${p.pin ? `<span class="pin">${svg('i-pin',9,2.5)}置顶</span>` : ''}
+          ${p.lock ? `<span class="lock">${svg('i-lock',12,1.9)}</span>` : ''}
+          <span class="name">${p.t}</span>
+        </div>
+        <div class="desc">${p.d}</div>
+      </div>
+    </td>
+    <td><div style="display:flex;gap:4px;overflow:hidden">
+      ${p.tags.slice(0,2).map(x=>`<span class="chip chip--sm chip--static">${x}</span>`).join('')}
+      ${p.tags.length>2?`<span class="t-micro subtle" style="align-self:center">+${p.tags.length-2}</span>`:''}
+    </div></td>
+    <td><span class="typecell">${svg(p.ic,13)}${p.type}</span></td>
+    <td class="t-label subtle num">${p.n.toLocaleString()}</td>
+    <td class="t-label subtle num mono">${p.v}</td>
+    <td class="t-label subtle num">${p.u}</td>
+    <td>
+      <div class="rowacts">
+        <button class="ibtn ibtn--sm ${p.fav?'is-on always':''}" aria-label="收藏">
+          <svg viewBox="0 0 24 24" fill="${p.fav?'currentColor':'none'}" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" style="width:14px;height:14px"><use href="#i-star"/></svg>
+        </button>
+        <button class="ibtn ibtn--sm" aria-label="复制">${svg('i-copy',14)}</button>
+        <button class="ibtn ibtn--sm" aria-label="更多">${svg('i-more',14,2)}</button>
+      </div>
+    </td>
+  </tr>`;
+}
+
+function cardHTML(p) {
+  return `<article class="card ${p.sel?'is-sel':''}">
+    <div class="card__head">
+      <div style="min-width:0;flex:1">
+        <div style="display:flex;align-items:center;gap:5px;min-width:0">
+          ${p.pin ? `<span class="pin">${svg('i-pin',9,2.5)}置顶</span>` : ''}
+          ${p.lock ? `<span class="lock">${svg('i-lock',12,1.9)}</span>` : ''}
+          <h3>${p.t}</h3>
+        </div>
+      </div>
+      <button class="ibtn ibtn--sm ${p.fav?'is-on':''}" aria-label="收藏">
+        <svg viewBox="0 0 24 24" fill="${p.fav?'currentColor':'none'}" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" style="width:14px;height:14px"><use href="#i-star"/></svg>
+      </button>
+    </div>
+    <p class="card__desc">${p.d}</p>
+    <div class="card__tags">
+      ${p.tags.map(x=>`<span class="chip chip--sm chip--static">${x}</span>`).join('')}
+    </div>
+    <div class="card__foot">
+      <span class="typecell" style="font-size:11px">${svg(p.ic,12)}${p.type}</span>
+      <span class="dot">·</span><span class="num">${p.n.toLocaleString()} 次</span>
+      <span class="dot">·</span><span class="num">${p.u}</span>
+      <span style="flex:1"></span>
+      <button class="ibtn ibtn--xs" aria-label="复制">${svg('i-copy',13)}</button>
+    </div>
+  </article>`;
+}
+
+document.getElementById('rows').innerHTML = DATA.map(rowHTML).join('');
+document.getElementById('rows-bg').innerHTML = DATA.slice(0,8).map(rowHTML).join('');
+document.getElementById('cards').innerHTML = DATA.map(cardHTML).join('');
+
+function show(id) {
+  ['lib','detail','set'].forEach(k => {
+    document.getElementById('s-'+k).classList.toggle('on', k===id);
+    document.getElementById('b-'+k).classList.toggle('on', k===id);
+  });
+  document.getElementById('crumb-last').textContent =
+    id==='set' ? '设置' : id==='detail' ? '长文改写 · 学术语气' : '全部提示词';
+}
+function setView(v) {
+  const list = v==='list';
+  document.getElementById('view-list').style.display = list?'':'none';
+  document.getElementById('view-grid').style.display = list?'none':'';
+  document.getElementById('vm-list').setAttribute('aria-pressed', list);
+  document.getElementById('vm-grid').setAttribute('aria-pressed', !list);
+  document.getElementById('b-vlist').classList.toggle('on', list);
+  document.getElementById('b-vgrid').classList.toggle('on', !list);
+}
+function toggleTheme() {
+  const dark = document.documentElement.classList.toggle('dark');
+  document.getElementById('b-theme').textContent = dark ? '浅色' : '深色';
+  document.getElementById('theme-label').textContent = dark ? '切换到浅色' : '切换到深色';
+  document.getElementById('theme-icon').innerHTML =
+    `<use href="#${dark ? 'i-sun' : 'i-moon'}"/>`;
+}
+function tog(el) {
+  el.setAttribute('aria-checked', el.getAttribute('aria-checked') !== 'true');
+}
+</script>
+</body>
+</html>

@@ -66,6 +66,9 @@ import {
 import { platformModifier } from "../../../../shortcuts/platform";
 import { useToastStore } from "../../../notifications/toastStore";
 
+import { Button, IconButton, Kbd } from "../../../../components/ui";
+import { cn } from "../../../../components/ui/cn";
+
 export type DetailTab = "content" | "versions" | "run" | "references";
 
 export interface PromptDetailModalProps {
@@ -97,8 +100,6 @@ export interface PromptDetailModalProps {
 
 const TABS: DetailTab[] = ["content", "versions", "run", "references"];
 
-const iconButtonClass =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40";
 
 export function PromptDetailModal({
   open,
@@ -397,10 +398,10 @@ export function PromptDetailModal({
               />
             )}
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold text-foreground">
+              <div className="truncate text-body font-semibold text-foreground">
                 {title}
               </div>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-2 text-label text-muted-foreground">
                 {!creating && prompt && (
                   <span>{t("promptsView.detail.versionChip", { version: prompt.currentVersion })}</span>
                 )}
@@ -409,66 +410,46 @@ export function PromptDetailModal({
                 )}
               </div>
             </div>
-            <button
-              type="button"
-              title={readOnly ? t("promptsView.detail.edit") : t("promptsView.detail.readOnly")}
-              aria-label={readOnly ? t("promptsView.detail.edit") : t("promptsView.detail.readOnly")}
-              aria-pressed={!readOnly}
+            <IconButton
+              label={readOnly ? t("promptsView.detail.edit") : t("promptsView.detail.readOnly")}
+              icon={<PencilIcon className="h-4 w-4" aria-hidden="true" />}
               disabled={locked}
               onClick={() => setReadOnly((value) => !value)}
-              className={iconButtonClass}
-            >
-              <PencilIcon className="h-4 w-4" aria-hidden="true" />
-            </button>
+              aria-pressed={!readOnly}
+            />
             {!creating && prompt && (
               <>
-                <button
-                  type="button"
-                  title={
+                <IconButton
+                  label={
                     prompt.isFavorite
                       ? t("promptsView.unfavorite")
                       : t("promptsView.favorite")
                   }
-                  aria-label={
-                    prompt.isFavorite
-                      ? t("promptsView.unfavorite")
-                      : t("promptsView.favorite")
-                  }
-                  aria-pressed={prompt.isFavorite}
+                  icon={<StarIcon
+                    className={`h-4 w-4 ${prompt.isFavorite ? "fill-current text-primary" : ""}`}
+                    aria-hidden="true"
+                  />}
                   onClick={() =>
                     onToggleFavorite(prompt.id, !prompt.isFavorite)
                   }
-                  className={iconButtonClass}
-                >
-                  <StarIcon
-                    className={`h-4 w-4 ${prompt.isFavorite ? "fill-current text-primary" : ""}`}
-                    aria-hidden="true"
-                  />
-                </button>
-                <button
-                  type="button"
-                  title={prompt.isPinned ? t("promptsView.unpin") : t("promptsView.pin")}
-                  aria-label={prompt.isPinned ? t("promptsView.unpin") : t("promptsView.pin")}
-                  aria-pressed={prompt.isPinned}
-                  onClick={() => onTogglePin(prompt.id, !prompt.isPinned)}
-                  className={iconButtonClass}
-                >
-                  <PinIcon
+                  aria-pressed={prompt.isFavorite}
+                />
+                <IconButton
+                  label={prompt.isPinned ? t("promptsView.unpin") : t("promptsView.pin")}
+                  icon={<PinIcon
                     className={`h-4 w-4 ${prompt.isPinned ? "fill-current text-primary" : ""}`}
                     aria-hidden="true"
-                  />
-                </button>
+                  />}
+                  onClick={() => onTogglePin(prompt.id, !prompt.isPinned)}
+                  aria-pressed={prompt.isPinned}
+                />
                 <div className="relative">
-                  <button
-                    type="button"
-                    title={t("promptsView.detail.moreActions")}
-                    aria-label={t("promptsView.detail.moreActions")}
-                    aria-expanded={menuOpen}
+                  <IconButton
+                    label={t("promptsView.detail.moreActions")}
+                    icon={<MoreHorizontalIcon className="h-4 w-4" aria-hidden="true" />}
                     onClick={() => setMenuOpen((value) => !value)}
-                    className={iconButtonClass}
-                  >
-                    <MoreHorizontalIcon className="h-4 w-4" aria-hidden="true" />
-                  </button>
+                    aria-expanded={menuOpen}
+                  />
                   {menuOpen && (
                     <div
                       role="menu"
@@ -481,7 +462,7 @@ export function PromptDetailModal({
                           setMenuOpen(false);
                           onDuplicate(prompt.id);
                         }}
-                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
+                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-body hover:bg-accent"
                       >
                         <CopyIcon className="h-3.5 w-3.5" aria-hidden="true" />
                         {t("promptsView.duplicatePrompt")}
@@ -493,7 +474,7 @@ export function PromptDetailModal({
                           setMenuOpen(false);
                           onDelete(prompt.id);
                         }}
-                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10"
+                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-body text-destructive hover:bg-destructive/10"
                       >
                         <Trash2Icon className="h-3.5 w-3.5" aria-hidden="true" />
                         {t("promptsView.deletePrompt")}
@@ -503,22 +484,18 @@ export function PromptDetailModal({
                 </div>
               </>
             )}
-            <button
-              type="button"
-              title={t("promptsView.detail.close")}
-              aria-label={t("promptsView.detail.close")}
+            <IconButton
+              label={t("promptsView.detail.close")}
+              icon={<XIcon className="h-4 w-4" aria-hidden="true" />}
               onClick={requestClose}
-              className={iconButtonClass}
-            >
-              <XIcon className="h-4 w-4" aria-hidden="true" />
-            </button>
+            />
           </header>
 
           <div
             role="tablist"
             aria-label={t("promptsView.detail.content")}
             onKeyDown={onTabKeyDown}
-            className="flex shrink-0 gap-1 border-b border-border px-4"
+            className="flex shrink-0 items-center gap-1 border-b border-border px-4"
           >
             {TABS.map((item) => {
               const disabled =
@@ -544,11 +521,14 @@ export function PromptDetailModal({
                   disabled={disabled}
                   title={disabled ? t("promptsView.detail.lockedTabsHint") : label}
                   onClick={() => setTab(item)}
-                  className={`min-h-9 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 ${
+                  className={cn(
+                    "-mb-px min-h-9 border-b-2 px-3 text-body",
+                    "transition-colors duration-fast ease-out",
+                    "disabled:opacity-50",
                     tab === item
-                      ? "border-b-2 border-primary text-foreground"
-                      : "text-muted-foreground"
-                  }`}
+                      ? "border-primary font-medium text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground",
+                  )}
                 >
                   {label}
                   {count}
@@ -561,13 +541,13 @@ export function PromptDetailModal({
             {locked && tab === "content" ? (
               <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
                 <LockIcon
-                  className="h-7 w-7 text-muted-foreground"
+                  className="h-control-sm w-control-sm text-muted-foreground"
                   aria-hidden="true"
                 />
-                <h3 className="text-sm font-semibold text-foreground">
+                <h3 className="text-body font-semibold text-foreground">
                   {t("promptsView.privateLockedTitle")}
                 </h3>
-                <p className="max-w-sm text-sm text-muted-foreground">
+                <p className="max-w-sm text-body text-muted-foreground">
                   {t("promptsView.privateLockedHint")}
                 </p>
               </div>
@@ -580,12 +560,7 @@ export function PromptDetailModal({
                 }}
               >
                 <div className="prompt-editor__body min-h-0 flex-1 overflow-y-auto px-4 py-5">
-                  <div className="flex w-full flex-col gap-6">
-                    <p className="text-xs text-muted-foreground">
-                      {t("promptsView.detail.characterCount", {
-                        count: bodyText.length,
-                      })}
-                    </p>
+                  <div className="mx-auto flex w-full max-w-[68ch] flex-col gap-7">
                     <IdentitySection
                       draft={draft}
                       titleValid={titleIsValid(draft)}
@@ -608,13 +583,13 @@ export function PromptDetailModal({
                       onPreviewValuesChange={setPreviewValues}
                     />
                     {draft.variables.length > 0 && (
-                      <button
-                        type="button"
+                      <Button
+                        size="lg"
+                        className="w-fit"
                         onClick={() => void copyFilled()}
-                        className="w-fit rounded-md border border-input px-3 py-2 text-sm text-foreground hover:bg-accent"
                       >
                         {t("promptsView.detail.fillAndCopy")}
-                      </button>
+                      </Button>
                     )}
                     <OrganizationSection
                       draft={draft}
@@ -655,30 +630,34 @@ export function PromptDetailModal({
             )}
           </div>
 
-          <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3">
-            <span className="text-xs text-muted-foreground">
-              {t("promptsView.detail.saveHint", { mod: modifier })}
-              {" · "}
-              {t("promptsView.detail.copyHint", { mod: modifier })}
-            </span>
+          <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="flex items-center gap-1 text-label text-muted-foreground">
+                <Kbd>{t("promptsView.detail.saveHint", { mod: modifier })}</Kbd>
+                <Kbd>{t("promptsView.detail.copyHint", { mod: modifier })}</Kbd>
+              </span>
+              {tab === "content" && !locked && (
+                <span className="text-label tabular-nums text-muted-foreground-subtle">
+                  {t("promptsView.detail.characterCount", {
+                    count: bodyText.length,
+                  })}
+                </span>
+              )}
+            </div>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={requestClose}
-                className="rounded-md border border-input px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-              >
+              <Button size="lg" variant="ghost" onClick={requestClose}>
                 {t("promptsView.detail.close")}
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                size="lg"
+                variant="primary"
                 disabled={!canSubmitDraft(draft) || readOnly || locked}
                 onClick={() => void save()}
-                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
               >
                 {creating
                   ? t("promptsView.editor.create")
                   : t("promptsView.editor.save")}
-              </button>
+              </Button>
             </div>
           </footer>
         </div>
@@ -691,24 +670,16 @@ export function PromptDetailModal({
         className="max-h-none w-full max-w-md"
       >
         <div className="p-5">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-body text-muted-foreground">
             {t("promptsView.detail.dirtyMessage")}
           </p>
-          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              onClick={() => resolvePending("cancel")}
-              className="rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
-            >
-              {t("promptsView.detail.keepEditing")}
-            </button>
-            <button
-              type="button"
-              onClick={finishProceed}
-              className="rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
-            >
-              {t("promptsView.detail.discardAndClose")}
-            </button>
+          {/*
+            Three destinations with different weight, so they get different
+            weight: discarding is the only irreversible one and is marked as
+            such, keeping is the quiet escape hatch, saving is the default.
+            Reverse order on desktop puts the primary action nearest the corner.
+          */}
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row-reverse sm:justify-start">
             <button
               type="button"
               onClick={() => {
@@ -726,10 +697,21 @@ export function PromptDetailModal({
                   finishProceed();
                 });
               }}
-              className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
+              className="rounded-md bg-primary px-3 py-2 text-body font-medium text-primary-foreground transition-colors duration-fast ease-out hover:bg-primary/90"
             >
               {t("promptsView.detail.saveAndClose")}
             </button>
+            <Button size="lg" variant="ghost" onClick={() => resolvePending("cancel")}>
+              {t("promptsView.detail.keepEditing")}
+            </Button>
+            <Button
+              size="lg"
+              variant="ghost"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={finishProceed}
+            >
+              {t("promptsView.detail.discardAndClose")}
+            </Button>
           </div>
         </div>
       </Modal>

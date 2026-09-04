@@ -19,9 +19,8 @@ import { BatchToolbar } from "./components/BatchToolbar";
 import { PromptDetailModal } from "./components/detail/PromptDetailModal";
 import { useToastStore } from "../notifications/toastStore";
 
-const iconButtonClass =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40";
 
+import { IconButton, useConfirm } from "../../components/ui";
 /**
  * The prompt-editing view (Req 22.3). Library chrome fills the workspace;
  * prompt detail opens in an overlay.
@@ -73,6 +72,8 @@ export function PromptsView() {
     (s) => s.registerCreatePromptAction,
   );
 
+  const { confirm, confirmDialog } = useConfirm();
+
   useEffect(() => {
     void load();
   }, [load]);
@@ -89,8 +90,14 @@ export function PromptsView() {
     return () => registerCreatePromptAction(null);
   });
 
-  const handleDeletePrompt = (id: string) => {
-    if (window.confirm(t("promptsView.deletePromptConfirm"))) {
+  const handleDeletePrompt = async (id: string) => {
+    if (
+      await confirm({
+        title: t("promptsView.deletePromptTitle"),
+        message: t("promptsView.deletePromptConfirm"),
+        destructive: true,
+      })
+    ) {
       void deletePrompt(id);
       setCreating(false);
     }
@@ -122,7 +129,7 @@ export function PromptsView() {
         {error && (
           <div
             role="alert"
-            className="border-b border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+            className="border-b border-destructive/40 bg-destructive/10 px-4 py-2 text-body text-destructive"
           >
             {error}
           </div>
@@ -136,7 +143,14 @@ export function PromptsView() {
             onMove={(folderId) => void batchMove(folderId)}
             onTag={(selectedTags) => void batchTag(selectedTags)}
             onDelete={() => {
-              if (window.confirm(t("promptsView.batch.deleteConfirm"))) {
+              void (async () => {
+              if (
+                await confirm({
+                  title: t("promptsView.batch.deleteTitle"),
+                  message: t("promptsView.batch.deleteConfirm"),
+                  destructive: true,
+                })
+              ) {
                 void batchDelete().then(() => {
                   useToastStore.getState().push({
                     message: t("promptsView.toast.batchDeleted"),
@@ -144,23 +158,24 @@ export function PromptsView() {
                   });
                 });
               }
+              })();
             }}
             onExit={() => setBatchMode(false)}
           />
         )}
         <div ref={libraryScrollRef} className="min-h-0 flex-1 overflow-y-auto">
           {loading ? (
-            <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
+            <div className="flex h-full items-center justify-center p-6 text-body text-muted-foreground">
               {t("promptsView.loading")}
             </div>
           ) : prompts.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
-              <p className="text-sm font-medium text-foreground">{t("promptsView.noPrompts")}</p>
-              <p className="max-w-xs text-xs text-muted-foreground">{t("promptsView.noPromptsHint")}</p>
+              <p className="text-body font-medium text-foreground">{t("promptsView.noPrompts")}</p>
+              <p className="max-w-xs text-label text-muted-foreground">{t("promptsView.noPromptsHint")}</p>
               <button
                 type="button"
                 onClick={() => void resetLibraryFilters()}
-                className="mt-1 rounded-md border border-input px-2 py-1 text-xs text-foreground hover:bg-accent"
+                className="mt-1 rounded-md border border-input px-2 py-1 text-label text-foreground hover:bg-accent"
               >
                 {t("promptsView.chrome.clearAll")}
               </button>
@@ -192,7 +207,7 @@ export function PromptsView() {
           )}
         </div>
         <div className="flex h-10 shrink-0 items-center justify-between border-t border-border px-2">
-          <span className="text-xs tabular-nums text-muted-foreground">
+          <span className="text-label tabular-nums text-muted-foreground">
             {t("promptsView.pagination.summary", {
               from: total === 0 ? 0 : offset + 1,
               to: Math.min(offset + prompts.length, total),
@@ -200,26 +215,18 @@ export function PromptsView() {
             })}
           </span>
           <div className="flex items-center gap-1">
-            <button
-              type="button"
-              title={t("promptsView.pagination.previous")}
-              aria-label={t("promptsView.pagination.previous")}
+            <IconButton
+              label={t("promptsView.pagination.previous")}
+              icon={<ChevronLeftIcon className="h-4 w-4" aria-hidden="true" />}
               disabled={loading || offset === 0}
               onClick={() => void loadPreviousPage()}
-              className={iconButtonClass}
-            >
-              <ChevronLeftIcon className="h-4 w-4" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              title={t("promptsView.pagination.next")}
-              aria-label={t("promptsView.pagination.next")}
+            />
+            <IconButton
+              label={t("promptsView.pagination.next")}
+              icon={<ChevronRightIcon className="h-4 w-4" aria-hidden="true" />}
               disabled={loading || offset + PROMPT_PAGE_SIZE >= total}
               onClick={() => void loadNextPage()}
-              className={iconButtonClass}
-            >
-              <ChevronRightIcon className="h-4 w-4" aria-hidden="true" />
-            </button>
+            />
           </div>
         </div>
       </section>
@@ -249,18 +256,22 @@ export function PromptsView() {
         onToggleFavorite={(id, next) => void savePrompt(id, { isFavorite: next })}
         onTogglePin={(id, next) => void savePrompt(id, { isPinned: next })}
         onDuplicate={(id) => void duplicatePrompt(id)}
-        onDelete={handleDeletePrompt}
+        onDelete={(id) => void handleDeletePrompt(id)}
         onCreateVersion={(note) => void createVersion(note)}
         onRollback={(version) => {
-          if (
-            window.confirm(
-              t("promptsView.history.restoreConfirm", { version }),
-            )
-          ) {
-            void rollbackVersion(version);
-          }
+          void (async () => {
+            if (
+              await confirm({
+                title: t("promptsView.history.restoreTitle"),
+                message: t("promptsView.history.restoreConfirm", { version }),
+              })
+            ) {
+              void rollbackVersion(version);
+            }
+          })();
         }}
       />
+      {confirmDialog}
     </div>
   );
 }

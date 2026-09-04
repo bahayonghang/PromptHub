@@ -3,6 +3,7 @@ import { ExternalLinkIcon, Trash2Icon } from "lucide-react";
 import type { RuntimePathsReport } from "../types";
 import { useSystemStore } from "../systemStore";
 
+import { IconButton } from "../../../components/ui";
 /** Formats a byte count as a compact human-readable string (e.g. "1.2 MB"). */
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -45,8 +46,8 @@ export function RuntimeInfoPanel() {
   const clearCache = useSystemStore((s) => s.clearCache);
   const openPath = useSystemStore((s) => s.openPath);
 
-  const labelClass = "text-sm font-medium text-foreground";
-  const hintClass = "text-xs text-muted-foreground";
+  const labelClass = "text-body font-medium text-foreground";
+  const hintClass = "text-label text-muted-foreground";
 
   return (
     <section className="flex flex-col gap-4">
@@ -68,21 +69,17 @@ export function RuntimeInfoPanel() {
               return (
                 <div key={key} className="flex items-center gap-3 px-3 py-2">
                   <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-xs font-medium text-foreground">{t(labelKey)}</span>
-                    <span className="truncate text-xs text-muted-foreground" title={value ?? ""}>
+                    <span className="text-label font-medium text-foreground">{t(labelKey)}</span>
+                    <span className="truncate text-label text-muted-foreground" title={value ?? ""}>
                       {value ?? "—"}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => value && void openPath(value)}
+                  <IconButton
+                    label={t("systemView.paths.open")}
+                    icon={<ExternalLinkIcon className="h-4 w-4" aria-hidden="true" />}
                     disabled={!value}
-                    title={t("systemView.paths.open")}
-                    aria-label={t("systemView.paths.open")}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <ExternalLinkIcon className="h-4 w-4" aria-hidden="true" />
-                  </button>
+                    onClick={() => value && void openPath(value)}
+                  />
                 </div>
               );
             })}
@@ -99,7 +96,7 @@ export function RuntimeInfoPanel() {
             <button
               type="button"
               onClick={() => void clearCache()}
-              className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+              className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-body text-foreground transition-colors duration-fast ease-out hover:bg-accent"
             >
               <Trash2Icon className="h-4 w-4" aria-hidden="true" />
               {t("systemView.paths.clearCache")}

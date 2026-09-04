@@ -30,8 +30,8 @@ function App() {
   if (initError) {
     return (
       <main className="flex h-full flex-col items-center justify-center gap-4 bg-background p-8 text-foreground">
-        <h1 className="text-2xl font-semibold text-destructive">{t("shell.startupFailedTitle")}</h1>
-        <p className="max-w-lg text-center text-sm text-muted-foreground">{initError}</p>
+        <h1 className="text-hero font-semibold text-destructive">{t("shell.startupFailedTitle")}</h1>
+        <p className="max-w-lg text-center text-body text-muted-foreground">{initError}</p>
       </main>
     );
   }

@@ -58,6 +58,15 @@
     --density-padding: 0.625rem;
     --density-gap: 1rem;
 
+    /*
+     * Control heights. A single horizontal row of chrome must pick one step;
+     * mixing 28/32/36/40px in one toolbar is the most visible alignment defect.
+     */
+    --control-xs: 1.5rem;
+    --control-sm: 1.75rem;
+    --control-md: 2rem;
+    --control-lg: 2.25rem;
+
     /* Light surfaces and text. */
     --background: 220 37% 97%;
     --foreground: 223 24% 11%;
@@ -101,6 +110,53 @@
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
     --shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
     --shadow-lg: 0 24px 70px rgba(20, 25, 45, 0.16);
+
+    /*
+     * Interaction states. Declared as channel-only HSL so `bg-state-hover/60`
+     * style alpha modifiers keep working. These replace the ad-hoc
+     * `bg-primary/10` / `bg-primary/15` / `hover:bg-accent` mix.
+     */
+    --state-hover: 224 24% 92%;
+    --state-selected: 247 60% 94%;
+
+    /*
+     * Modal scrim. Deliberately a fixed near-black rather than `--background`:
+     * on the light themes a white-tinted wash reads as fog sitting *in front of*
+     * the page, whereas a neutral dark scrim reads as depth behind the dialog.
+     * Same value in both modes so the sense of elevation is identical.
+     */
+    --scrim: 220 25% 4%;
+    --state-pressed: 224 24% 88%;
+
+    /* Favorite is its own semantic role, never the second accent. */
+    --favorite: 38 92% 44%;
+
+    /*
+     * Global tag palette. A tag keeps the same hue in the sidebar, the filter
+     * bar, list rows, cards, and the detail panel.
+     */
+    --tag-1: 212 72% 44%;
+    --tag-2: 158 62% 32%;
+    --tag-3: 16 78% 47%;
+    --tag-4: 268 68% 55%;
+    --tag-5: 42 86% 38%;
+    --tag-6: 330 62% 49%;
+    --tag-7: 190 68% 35%;
+    --tag-8: 0 66% 51%;
+
+    /*
+     * Material. The light theme reads a faint bottom inset; the dark theme
+     * flips it to a top edge highlight (see `.dark`). Applied via `shadow-hairline`.
+     */
+    --hairline: inset 0 -1px 0 hsl(224 20% 20% / 0.035);
+    --shadow-overlay: 0 16px 48px -12px hsl(224 40% 20% / 0.18), 0 0 0 1px hsl(var(--border) / 0.9);
+    --shadow-panel: -12px 0 32px -16px hsl(224 40% 20% / 0.12);
+
+    /* Motion. */
+    --dur-fast: 120ms;
+    --dur-base: 180ms;
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
   }
 
   .dark {
@@ -119,6 +175,12 @@
     --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --density-padding: 0.625rem;
     --density-gap: 1rem;
+
+    /* Control heights (mirror of `:root`). */
+    --control-xs: 1.5rem;
+    --control-sm: 1.75rem;
+    --control-md: 2rem;
+    --control-lg: 2.25rem;
 
     /* Dark surfaces and text. */
     --background: 225 27% 6%;
@@ -163,6 +225,39 @@
     --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
     --shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
     --shadow-lg: 0 24px 80px rgba(0, 0, 0, 0.62);
+
+    /* Interaction states (mirror of `:root`). */
+    --state-hover: 224 22% 15%;
+    --state-selected: 246 34% 20%;
+    --scrim: 220 25% 4%;
+    --state-pressed: 224 22% 19%;
+
+    --favorite: 42 96% 58%;
+
+    /* Global tag palette, lifted for dark surfaces. */
+    --tag-1: 212 82% 68%;
+    --tag-2: 158 60% 58%;
+    --tag-3: 18 88% 66%;
+    --tag-4: 268 84% 74%;
+    --tag-5: 44 88% 62%;
+    --tag-6: 330 76% 70%;
+    --tag-7: 190 72% 58%;
+    --tag-8: 2 78% 68%;
+
+    /*
+     * Material. A 1px top edge highlight is what keeps dark surfaces from
+     * reading as flat black; it is an edge light, not a drop shadow, so it does
+     * not violate the tonal-first rule.
+     */
+    --hairline: inset 0 1px 0 hsl(0 0% 100% / 0.045);
+    --shadow-overlay: 0 24px 64px -16px hsl(228 40% 2% / 0.7), 0 0 0 1px hsl(0 0% 100% / 0.06);
+    --shadow-panel: -12px 0 32px -18px hsl(228 50% 2% / 0.6);
+
+    /* Motion. */
+    --dur-fast: 120ms;
+    --dur-base: 180ms;
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
   }
 }
 
@@ -189,6 +284,25 @@
     font-family: var(--font-interface, ui-sans-serif, system-ui, sans-serif);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /*
+   * Baseline keyboard focus ring (design plan §7).
+   *
+   * Roughly half the interactive elements in the app never declared a focus
+   * style, so tabbing through a view lost the caret entirely. Putting the ring
+   * on the base layer means every control is keyboard-navigable by default and
+   * new components inherit it, rather than each call site having to remember
+   * the same four utility classes.
+   *
+   * `:focus-visible` (not `:focus`) keeps the ring off mouse clicks. Anything
+   * needing a different treatment can still override it in the components
+   * layer, which wins over base.
+   */
+  :where(a, button, [role="button"], input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: inherit;
   }
 }
 
@@ -241,8 +355,23 @@
   animation: prompt-detail-enter 160ms ease-out;
 }
 
+/*
+ * Toasts are anchored to the right edge, so they slide in from it. Reusing the
+ * modal's rise-from-below read as the toast growing out of the window chrome.
+ */
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translateX(0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 .toast-item {
-  animation: prompt-detail-enter 160ms ease-out;
+  animation: toast-enter var(--dur-base) var(--ease-spring);
 }
 
 @container prompt-editor (min-width: 32rem) {

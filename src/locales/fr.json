@@ -188,6 +188,7 @@
         "overwrite": "Écraser avec les données actuelles"
       },
       "applyConfirm": "Appliquer ce changement de répertoire de données ? L'application devra redémarrer pour le terminer.",
+      "applyTitle": "Changer le répertoire de données",
       "recoveryTitle": "Récupérer des données",
       "recoveryHint": "Rechercher des données PromptHub récupérables dans les emplacements connus.",
       "recoveryScan": "Analyser",
@@ -239,7 +240,9 @@
         "restore": "Restaurer",
         "delete": "Supprimer la sauvegarde",
         "restoreConfirm": "Restaurer cette sauvegarde ? L'application devra redémarrer pour le terminer.",
-        "deleteConfirm": "Supprimer cette sauvegarde ? Cette action est irréversible."
+        "restoreTitle": "Restaurer la sauvegarde",
+        "deleteConfirm": "Supprimer cette sauvegarde ? Cette action est irréversible.",
+        "deleteTitle": "Supprimer la sauvegarde"
       }
     }
   },
@@ -1534,6 +1537,7 @@
     "deleteFolder": "Supprimer le dossier",
     "folderNamePlaceholder": "Nom du dossier",
     "deleteFolderConfirm": "Supprimer le dossier « {{name}} » et tous ses sous-dossiers ? Les prompts qu'il contient seront déplacés hors du dossier.",
+    "deleteFolderTitle": "Supprimer le dossier",
     "emptyFolders": "Aucun dossier",
     "promptCount": "{{count}} prompts",
     "noPrompts": "Aucun prompt trouvé",
@@ -1556,6 +1560,7 @@
     "copyPromptLocked": "Deverrouillez la bibliotheque pour copier le contenu prive",
     "deletePrompt": "Supprimer le prompt",
     "deletePromptConfirm": "Supprimer ce prompt ? Son historique des versions sera également supprimé.",
+    "deletePromptTitle": "Supprimer le prompt",
     "privatePrompt": "Prompt prive",
     "privateLockedPreview": "Contenu prive verrouille",
     "privateLockedTitle": "Prompt prive verrouille",
@@ -1588,14 +1593,16 @@
       "tagPlaceholder": "Ajouter une etiquette",
       "addTag": "Ajouter l'etiquette",
       "delete": "Supprimer la selection",
-      "deleteConfirm": "Supprimer les prompts selectionnes et leurs revisions ?"
+      "deleteConfirm": "Supprimer les prompts selectionnes et leurs revisions ?",
+      "deleteTitle": "Supprimer les prompts sélectionnés"
     },
     "tags": {
       "manage": "Gerer les etiquettes",
       "rename": "Renommer l'etiquette",
       "renameValue": "Nouveau nom",
       "delete": "Supprimer l'etiquette",
-      "deleteConfirm": "Supprimer l'etiquette {{tag}} de tous les prompts ?"
+      "deleteConfirm": "Supprimer l'etiquette {{tag}} de tous les prompts ?",
+      "deleteTitle": "Supprimer l’étiquette"
     },
     "library": {
       "nav": "Bibliotheque de prompts",
@@ -1775,6 +1782,7 @@
       "versionLabel": "v{{version}}",
       "restore": "Restaurer",
       "restoreConfirm": "Restaurer la v{{version}} ? Le prompt actuel sera remplacé.",
+      "restoreTitle": "Restaurer la version",
       "showDiff": "Comparer cette révision au prompt actuel",
       "noDiff": "Cette révision correspond au prompt actuel.",
       "sources": {
@@ -1872,6 +1880,7 @@
     "fail": "Fail",
     "labels": "Revision labels",
     "noLabels": "No labels assigned.",
+    "noRuns": "Aucune exécution",
     "status": "Status",
     "allStatuses": "All statuses",
     "allProfiles": "All profiles",

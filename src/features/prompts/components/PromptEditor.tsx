@@ -209,7 +209,7 @@ export function PromptEditor({
             title={t("promptsView.editor.cancel")}
             aria-label={t("promptsView.editor.cancel")}
             onClick={onCancelCreate}
-            className="flex min-h-9 items-center gap-2 rounded-md border border-input px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex min-h-9 items-center gap-2 rounded-md border border-input px-4 py-2 text-body text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <XIcon className="h-4 w-4" aria-hidden="true" />
             <span className="prompt-editor__footer-label">
@@ -230,7 +230,7 @@ export function PromptEditor({
               : t("promptsView.editor.save")
           }
           disabled={!canSubmitDraft(draft) || readOnly}
-          className="flex min-h-9 items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          className="flex min-h-9 items-center gap-2 rounded-md bg-primary px-4 py-2 text-body font-medium text-primary-foreground transition-opacity duration-fast ease-out disabled:opacity-50"
         >
           <SaveIcon className="h-4 w-4" aria-hidden="true" />
           <span className="prompt-editor__footer-label">

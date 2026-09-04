@@ -104,6 +104,18 @@ const COLOR_TOKENS = [
   "--sidebar-foreground",
   "--sidebar-accent",
   "--sidebar-border",
+  "--state-hover",
+  "--state-selected",
+  "--state-pressed",
+  "--favorite",
+  "--tag-1",
+  "--tag-2",
+  "--tag-3",
+  "--tag-4",
+  "--tag-5",
+  "--tag-6",
+  "--tag-7",
+  "--tag-8",
 ] as const;
 
 function tokenMap(body: string): Map<string, string> {
@@ -134,6 +146,45 @@ describe("PromptHub token format", () => {
       "--diff-added",
       "--diff-removed",
       "--font-mono",
+    ]) {
+      expect(lightTokens.has(token)).toBe(true);
+      expect(darkTokens.has(token)).toBe(true);
+    }
+  });
+
+  it("declares the interaction-state, favorite, and tag tokens in both scopes", () => {
+    for (const token of [
+      "--state-hover",
+      "--state-selected",
+      "--state-pressed",
+      "--favorite",
+      "--tag-1",
+      "--tag-2",
+      "--tag-3",
+      "--tag-4",
+      "--tag-5",
+      "--tag-6",
+      "--tag-7",
+      "--tag-8",
+    ]) {
+      expect(lightTokens.has(token)).toBe(true);
+      expect(darkTokens.has(token)).toBe(true);
+    }
+  });
+
+  it("declares the control-height and motion tokens in both scopes", () => {
+    for (const token of [
+      "--control-xs",
+      "--control-sm",
+      "--control-md",
+      "--control-lg",
+      "--dur-fast",
+      "--dur-base",
+      "--ease-out",
+      "--ease-spring",
+      "--hairline",
+      "--shadow-overlay",
+      "--shadow-panel",
     ]) {
       expect(lightTokens.has(token)).toBe(true);
       expect(darkTokens.has(token)).toBe(true);

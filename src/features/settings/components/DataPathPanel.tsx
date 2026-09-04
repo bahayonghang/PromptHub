@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Input } from "../../../components/ui";
 import {
   AlertTriangleIcon,
   FolderInputIcon,
@@ -24,9 +25,6 @@ interface DataPathPanelProps {
   onRecoveryScan: () => void;
   onRecoveryApply: (sourcePath: string) => void;
 }
-
-const inputClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring";
 
 /**
  * Data-path panel (Req 19.3-19.10). Shows the active data directory and, when a
@@ -74,10 +72,10 @@ export function DataPathPanel({
             <HardDriveIcon className="h-5 w-5" aria-hidden="true" />
           </span>
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="text-xs font-medium text-muted-foreground">
+            <span className="text-label font-medium text-muted-foreground">
               {t("settingsView.dataPath.activeLabel")}
             </span>
-            <span className="break-all text-sm text-foreground">
+            <span className="break-all text-body text-foreground">
               {status?.activePath ?? t("common.loading")}
             </span>
           </div>
@@ -86,7 +84,7 @@ export function DataPathPanel({
         {status?.restartRequired && (
           <div
             role="status"
-            className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm text-foreground"
+            className="flex items-center gap-2 rounded-md border border-primary/40 bg-state-selected px-3 py-2 text-body text-foreground"
           >
             <AlertTriangleIcon className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
             <span>
@@ -102,15 +100,15 @@ export function DataPathPanel({
       {/* Change data path: target input + preview */}
       <section className="flex flex-col gap-3">
         <div className="flex flex-col gap-0.5">
-          <h3 className="text-sm font-medium text-foreground">
+          <h3 className="text-body font-medium text-foreground">
             {t("settingsView.dataPath.changeTitle")}
           </h3>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-label text-muted-foreground">
             {t("settingsView.dataPath.changeHint")}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <input
+          <Input
             value={target}
             placeholder={t("settingsView.dataPath.targetPlaceholder")}
             aria-label={t("settingsView.dataPath.targetPlaceholder")}
@@ -118,13 +116,13 @@ export function DataPathPanel({
               setTarget(e.target.value);
               if (preview) onClearPreview();
             }}
-            className={inputClass}
+            size="lg"
           />
           <button
             type="button"
             onClick={handlePreview}
             disabled={target.trim() === ""}
-            className="flex shrink-0 items-center gap-1.5 rounded-md border border-input px-3 py-2 text-sm text-foreground hover:bg-accent disabled:opacity-50"
+            className="flex shrink-0 items-center gap-1.5 rounded-md border border-input px-3 py-2 text-body text-foreground hover:bg-accent disabled:opacity-50"
           >
             {t("settingsView.dataPath.previewButton")}
           </button>
@@ -132,7 +130,7 @@ export function DataPathPanel({
 
         {preview && (
           <div className="flex flex-col gap-3 rounded-md border border-border p-4">
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-label">
               <dt className="text-muted-foreground">{t("settingsView.dataPath.previewExists")}</dt>
               <dd className="text-foreground">
                 {preview.exists ? t("common.success") : t("settingsView.dataPath.previewNo")}
@@ -160,7 +158,7 @@ export function DataPathPanel({
                 {preview.markers.map((marker) => (
                   <li
                     key={marker.path}
-                    className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-foreground"
+                    className="rounded-full bg-muted px-2 py-0.5 text-meta text-foreground"
                   >
                     {marker.name}
                   </li>
@@ -169,7 +167,7 @@ export function DataPathPanel({
             )}
 
             {preview.isCurrent ? (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-label text-muted-foreground">
                 {t("settingsView.dataPath.previewAlreadyCurrent")}
               </p>
             ) : (
@@ -177,7 +175,7 @@ export function DataPathPanel({
                 <button
                   type="button"
                   onClick={() => onApply(preview.targetPath, recommended)}
-                  className="flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+                  className="flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-body font-medium text-primary-foreground"
                 >
                   <FolderInputIcon className="h-4 w-4" aria-hidden="true" />
                   {t(`settingsView.dataPath.applyAction.${recommended}`)}
@@ -186,7 +184,7 @@ export function DataPathPanel({
                   <button
                     type="button"
                     onClick={() => onApply(preview.targetPath, "overwrite")}
-                    className="flex items-center gap-1.5 rounded-md border border-destructive/40 px-4 py-2 text-sm text-destructive hover:bg-destructive/10"
+                    className="flex items-center gap-1.5 rounded-md border border-destructive/40 px-4 py-2 text-body text-destructive hover:bg-destructive/10"
                   >
                     {t("settingsView.dataPath.applyAction.overwrite")}
                   </button>
@@ -201,17 +199,17 @@ export function DataPathPanel({
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex flex-col gap-0.5">
-            <h3 className="text-sm font-medium text-foreground">
+            <h3 className="text-body font-medium text-foreground">
               {t("settingsView.dataPath.recoveryTitle")}
             </h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-label text-muted-foreground">
               {t("settingsView.dataPath.recoveryHint")}
             </p>
           </div>
           <button
             type="button"
             onClick={handleScan}
-            className="flex shrink-0 items-center gap-1.5 rounded-md border border-input px-3 py-2 text-sm text-foreground hover:bg-accent"
+            className="flex shrink-0 items-center gap-1.5 rounded-md border border-input px-3 py-2 text-body text-foreground hover:bg-accent"
           >
             <RotateCcwIcon className="h-4 w-4" aria-hidden="true" />
             {t("settingsView.dataPath.recoveryScan")}
@@ -219,7 +217,7 @@ export function DataPathPanel({
         </div>
 
         {recoveryUnavailable ? (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-label text-muted-foreground">
             {t("settingsView.dataPath.recoveryUnavailable")}
           </p>
         ) : recoverySources.length > 0 ? (
@@ -229,13 +227,13 @@ export function DataPathPanel({
                 key={source.path}
                 className="flex items-center gap-2 rounded-md border border-border px-3 py-2"
               >
-                <span className="min-w-0 flex-1 break-all text-sm text-foreground">
+                <span className="min-w-0 flex-1 break-all text-body text-foreground">
                   {source.path}
                 </span>
                 <button
                   type="button"
                   onClick={() => onRecoveryApply(source.path)}
-                  className="shrink-0 rounded-md bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground"
+                  className="shrink-0 rounded-md bg-primary px-2.5 py-1.5 text-label font-medium text-primary-foreground"
                 >
                   {t("settingsView.dataPath.recoveryApply")}
                 </button>
@@ -244,7 +242,7 @@ export function DataPathPanel({
           </ul>
         ) : (
           scanned && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-label text-muted-foreground">
               {t("settingsView.dataPath.recoveryEmpty")}
             </p>
           )

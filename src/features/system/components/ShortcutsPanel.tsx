@@ -4,6 +4,7 @@ import { PlusIcon, Trash2Icon } from "lucide-react";
 import { MAX_SHORTCUTS, type Shortcut, type ShortcutMode } from "../types";
 import { useSystemStore } from "../systemStore";
 
+import { Button, IconButton, Input, Select } from "../../../components/ui";
 /** A blank shortcut row used when adding a new entry. */
 const EMPTY_SHORTCUT: Shortcut = { action: "", accelerator: "", mode: "global" };
 
@@ -26,11 +27,8 @@ export function ShortcutsPanel() {
 
   const [draft, setDraft] = useState<Shortcut[]>(registered);
 
-  const labelClass = "text-sm font-medium text-foreground";
-  const hintClass = "text-xs text-muted-foreground";
-  const inputClass =
-    "rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring";
-
+  const labelClass = "text-body font-medium text-foreground";
+  const hintClass = "text-label text-muted-foreground";
   const updateRow = (index: number, patch: Partial<Shortcut>) => {
     setDraft((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   };
@@ -66,58 +64,57 @@ export function ShortcutsPanel() {
         )}
         {draft.map((row, index) => (
           <div key={index} className="flex flex-wrap items-center gap-2">
-            <input
+            <Input
               type="text"
               value={row.action}
               onChange={(e) => updateRow(index, { action: e.target.value })}
               placeholder={t("systemView.shortcuts.actionPlaceholder")}
               aria-label={t("systemView.shortcuts.action")}
-              className={`${inputClass} min-w-0 flex-1`}
+              size="lg"
+              wrapperClassName="min-w-0 flex-1"
             />
-            <input
+            <Input
               type="text"
               value={row.accelerator}
               onChange={(e) => updateRow(index, { accelerator: e.target.value })}
               placeholder={t("systemView.shortcuts.acceleratorPlaceholder")}
               aria-label={t("systemView.shortcuts.accelerator")}
-              className={`${inputClass} min-w-0 flex-1`}
+              size="lg"
+              wrapperClassName="min-w-0 flex-1"
             />
-            <select
+            <Select
               value={row.mode}
               onChange={(e) => updateRow(index, { mode: e.target.value as ShortcutMode })}
               aria-label={t("systemView.shortcuts.mode")}
-              className={inputClass}
+              block
             >
               <option value="global">{t("systemView.shortcuts.modeGlobal")}</option>
               <option value="local">{t("systemView.shortcuts.modeLocal")}</option>
-            </select>
-            <button
-              type="button"
+            </Select>
+            <IconButton
+              label={t("systemView.shortcuts.remove")}
+              icon={<Trash2Icon className="h-4 w-4" aria-hidden="true" />}
+              size="lg"
+              variant="danger"
               onClick={() => removeRow(index)}
-              title={t("systemView.shortcuts.remove")}
-              aria-label={t("systemView.shortcuts.remove")}
-              className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground"
-            >
-              <Trash2Icon className="h-4 w-4" aria-hidden="true" />
-            </button>
+            />
           </div>
         ))}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
+        <Button
+          size="lg"
           onClick={addRow}
           disabled={draft.length >= MAX_SHORTCUTS}
-          className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <PlusIcon className="h-4 w-4" aria-hidden="true" />
           {t("systemView.shortcuts.add")}
-        </button>
+        </Button>
         <button
           type="button"
           onClick={save}
-          className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground transition-colors hover:bg-primary/90"
+          className="rounded-md bg-primary px-3 py-2 text-body text-primary-foreground transition-colors duration-fast ease-out hover:bg-primary/90"
         >
           {t("systemView.shortcuts.save")}
         </button>

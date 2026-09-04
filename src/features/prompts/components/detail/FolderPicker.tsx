@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { CheckIcon, FolderPlusIcon, LoaderCircleIcon, XIcon } from "lucide-react";
 import type { CreateFolderInput, Folder } from "../../types";
 
+import { IconButton, Input, Select } from "../../../../components/ui";
+
 export interface FolderPickerProps {
   folders: Folder[];
   value: string | null;
@@ -63,27 +65,22 @@ export function FolderPicker({
     selectRef.current?.focus();
   };
 
-  const inputClass =
-    "min-w-0 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring";
-  const iconButtonClass =
-    "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-input text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
-
   return (
     <div className="flex flex-col gap-1.5">
       <label
-        className="text-xs font-medium text-muted-foreground"
+        className="text-label font-medium text-muted-foreground"
         htmlFor="prompt-folder"
       >
         {t("promptsView.editor.folder")}
       </label>
       <div className="grid grid-cols-[minmax(0,1fr)_2.25rem] gap-2">
-        <select
+        <Select
           ref={selectRef}
           id="prompt-folder"
           value={value ?? ""}
           disabled={disabled}
           onChange={(event) => onChange(event.target.value || null)}
-          className={inputClass}
+          block
         >
           <option value="">{t("promptsView.editor.noFolder")}</option>
           {folders.map((folder) => (
@@ -91,27 +88,25 @@ export function FolderPicker({
               {folder.name}
             </option>
           ))}
-        </select>
-        <button
-          ref={createButtonRef}
-          type="button"
-          title={t("promptsView.newFolder")}
-          aria-label={t("promptsView.newFolder")}
-          aria-expanded={creating}
+        </Select>
+        <IconButton
+          label={t("promptsView.newFolder")}
+          icon={<FolderPlusIcon className="h-4 w-4" aria-hidden="true" />}
+          size="lg"
+          variant="bordered"
           disabled={disabled}
           onClick={() => {
             setCreating(true);
             setValidationError(null);
           }}
-          className={iconButtonClass}
-        >
-          <FolderPlusIcon className="h-4 w-4" aria-hidden="true" />
-        </button>
+          aria-expanded={creating}
+          ref={createButtonRef}
+        />
       </div>
       {creating && (
         <div className="flex flex-col gap-1">
           <div className="grid grid-cols-[minmax(0,1fr)_2.25rem_2.25rem] gap-2">
-            <input
+            <Input
               ref={inputRef}
               value={name}
               aria-label={t("promptsView.editor.folderName")}
@@ -135,25 +130,15 @@ export function FolderPicker({
                   cancel();
                 }
               }}
-              className={inputClass}
+              size="lg"
             />
-            <button
-              type="button"
-              title={
+            <IconButton
+              label={
                 busy
                   ? t("promptsView.editor.creatingFolder")
                   : t("promptsView.editor.createFolder")
               }
-              aria-label={
-                busy
-                  ? t("promptsView.editor.creatingFolder")
-                  : t("promptsView.editor.createFolder")
-              }
-              disabled={busy}
-              onClick={() => void submit()}
-              className={iconButtonClass}
-            >
-              {busy ? (
+              icon={busy ? (
                 <LoaderCircleIcon
                   className="h-4 w-4 animate-spin"
                   aria-hidden="true"
@@ -161,23 +146,25 @@ export function FolderPicker({
               ) : (
                 <CheckIcon className="h-4 w-4" aria-hidden="true" />
               )}
-            </button>
-            <button
-              type="button"
-              title={t("promptsView.editor.cancelFolderCreate")}
-              aria-label={t("promptsView.editor.cancelFolderCreate")}
+              size="lg"
+              variant="bordered"
+              disabled={busy}
+              onClick={() => void submit()}
+            />
+            <IconButton
+              label={t("promptsView.editor.cancelFolderCreate")}
+              icon={<XIcon className="h-4 w-4" aria-hidden="true" />}
+              size="lg"
+              variant="bordered"
               disabled={busy}
               onClick={cancel}
-              className={iconButtonClass}
-            >
-              <XIcon className="h-4 w-4" aria-hidden="true" />
-            </button>
+            />
           </div>
           {validationError && (
             <span
               id="prompt-folder-name-error"
               role="alert"
-              className="text-xs text-destructive"
+              className="text-label text-destructive"
             >
               {t(validationError)}
             </span>

@@ -2,7 +2,6 @@ import type { ReactElement } from "react";
 import { useAppStore, type AppView } from "../../store/appStore";
 import { Sidebar } from "./Sidebar";
 import { PromptLibraryNav } from "../../features/prompts/components/PromptLibraryNav";
-import { Header } from "./Header";
 import { PromptsView } from "../views/PromptsView";
 import { SettingsView } from "../views/SettingsView";
 import { TitleBar } from "../../features/system/components/TitleBar";
@@ -20,8 +19,12 @@ const VIEW_COMPONENTS: Record<AppView, () => ReactElement> = {
 
 /**
  * The application shell layout (Req 22.3): a custom title bar with native window
- * controls (Req 20.1, 20.2) above a navigation sidebar, a header, and a content
- * area that renders the active view. The flex layout with `min-h-0` / `min-w-0`
+ * controls (Req 20.1, 20.2) above a navigation sidebar and a content area that
+ * renders the active view.
+ *
+ * There is deliberately no shell-level header bar: it restated the view name
+ * that the sidebar already highlights, and cost 56px of vertical space on every
+ * screen. Each view now owns its heading (design plan §6.1). The flex layout with `min-h-0` / `min-w-0`
  * and an overflow-scrolled content region keeps every element visible and
  * operable without clipping or overlap across platforms (Req 23.6). The
  * close-confirmation dialog overlays the shell when an `ask`-action close is
@@ -42,7 +45,6 @@ export function AppShell() {
           <PromptLibraryNav />
         </Sidebar>
         <div className="flex min-w-0 flex-1 flex-col">
-          <Header />
           <main className="min-h-0 flex-1 overflow-auto">
             <ActiveView />
           </main>

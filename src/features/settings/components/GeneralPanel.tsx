@@ -9,6 +9,8 @@ import type { PreferenceSaveStatus } from "../settingsStore";
 import type { Settings } from "../types";
 import { PreferenceStatus } from "./PreferenceStatus";
 
+import { Select, SettingRow, Switch } from "../../../components/ui";
+
 interface GeneralPanelProps {
   settings: Settings | null;
   /** Persists a partial settings update through the backend (Req 19.2). */
@@ -34,90 +36,67 @@ export function GeneralPanel({
 }: GeneralPanelProps) {
   const { t } = useTranslation();
 
-  const labelClass = "text-sm font-medium text-foreground";
-  const hintClass = "text-xs text-muted-foreground";
-
   return (
     <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-2">
-        <div className="min-w-0 flex flex-col gap-0.5">
-          <label htmlFor="settings-language" className={labelClass}>
-            {t("settingsView.general.language")}
-          </label>
-          <p id="settings-language-hint" className={hintClass}>
-            {t("settingsView.general.languageHint")}
-          </p>
-        </div>
-        <select
-          id="settings-language"
-          value={isSupportedLocale(settings?.language) ? settings.language : DEFAULT_LOCALE}
-          aria-describedby="settings-language-hint"
-          disabled={settings == null || languageStatus === "saving"}
-          onChange={(event) => onLanguageChange(event.target.value as SupportedLocale)}
-          className="w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {SUPPORTED.map((locale) => (
-            <option key={locale} value={locale}>
-              {t(`settingsView.general.locale.${locale}`)}
-            </option>
-          ))}
-        </select>
-        <PreferenceStatus
-          status={languageStatus}
-          errorKey={languageError}
-          onRetry={onRetryLanguage}
-        />
-      </section>
-
-      {/* Editor: auto-save */}
-      <section className="flex items-center justify-between gap-4">
-        <div className="min-w-0 flex flex-col gap-0.5">
-          <h3 className={labelClass}>{t("settingsView.general.autoSave")}</h3>
-          <p className={hintClass}>{t("settingsView.general.autoSaveHint")}</p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={settings?.autoSave ?? false}
-          aria-label={t("settingsView.general.autoSave")}
-          disabled={settings == null}
-          onClick={() => onUpdate({ autoSave: !(settings?.autoSave ?? false) })}
-          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 ${
-            settings?.autoSave ? "bg-primary" : "bg-input"
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-              settings?.autoSave ? "translate-x-5" : "translate-x-0"
-            }`}
+      <SettingRow
+        title={t("settingsView.general.language")}
+        hint={t("settingsView.general.languageHint")}
+        layout="stacked"
+        footer={
+          <PreferenceStatus
+            status={languageStatus}
+            errorKey={languageError}
+            onRetry={onRetryLanguage}
           />
-        </button>
-      </section>
+        }
+      >
+        {({ titleId, hintId }) => (
+          <Select
+            aria-labelledby={titleId}
+            aria-describedby={hintId}
+            value={isSupportedLocale(settings?.language) ? settings.language : DEFAULT_LOCALE}
+            disabled={settings == null || languageStatus === "saving"}
+            onChange={(event) => onLanguageChange(event.target.value as SupportedLocale)}
+            wrapperClassName="w-full max-w-sm"
+          >
+            {SUPPORTED.map((locale) => (
+              <option key={locale} value={locale}>
+                {t(`settingsView.general.locale.${locale}`)}
+              </option>
+            ))}
+          </Select>
+        )}
+      </SettingRow>
 
-      {/* Startup: launch at startup */}
-      <section className="flex items-center justify-between gap-4">
-        <div className="min-w-0 flex flex-col gap-0.5">
-          <h3 className={labelClass}>{t("settingsView.general.launchAtStartup")}</h3>
-          <p className={hintClass}>{t("settingsView.general.launchAtStartupHint")}</p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={settings?.launchAtStartup ?? false}
-          aria-label={t("settingsView.general.launchAtStartup")}
-          disabled={settings == null}
-          onClick={() => onUpdate({ launchAtStartup: !(settings?.launchAtStartup ?? false) })}
-          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 ${
-            settings?.launchAtStartup ? "bg-primary" : "bg-input"
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-              settings?.launchAtStartup ? "translate-x-5" : "translate-x-0"
-            }`}
+      <SettingRow
+        title={t("settingsView.general.autoSave")}
+        hint={t("settingsView.general.autoSaveHint")}
+      >
+        {({ titleId, hintId }) => (
+          <Switch
+            checked={settings?.autoSave ?? false}
+            onChange={(next) => onUpdate({ autoSave: next })}
+            labelledBy={titleId}
+            describedBy={hintId}
+            disabled={settings == null}
           />
-        </button>
-      </section>
+        )}
+      </SettingRow>
+
+      <SettingRow
+        title={t("settingsView.general.launchAtStartup")}
+        hint={t("settingsView.general.launchAtStartupHint")}
+      >
+        {({ titleId, hintId }) => (
+          <Switch
+            checked={settings?.launchAtStartup ?? false}
+            onChange={(next) => onUpdate({ launchAtStartup: next })}
+            labelledBy={titleId}
+            describedBy={hintId}
+            disabled={settings == null}
+          />
+        )}
+      </SettingRow>
     </div>
   );
 }

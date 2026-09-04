@@ -10,6 +10,8 @@ import type {
   ReferenceList,
 } from "../../types";
 
+import { Select } from "../../../../components/ui";
+
 export interface ReferencesTabProps {
   prompt: Prompt | null;
   prompts: PromptListItem[];
@@ -37,7 +39,7 @@ function OutgoingRow({
   const reason = reasonLabel(t, item.resolution);
   const title = item.targetTitle ?? item.tokenTitle;
   return (
-    <li className="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-sm">
+    <li className="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-body">
       {reason ? (
         <AlertCircleIcon
           className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
@@ -51,8 +53,8 @@ function OutgoingRow({
       )}
       <div className="min-w-0">
         <div className="truncate text-foreground">{title}</div>
-        <div className="text-xs text-muted-foreground">@@{item.tokenTitle}@@</div>
-        {reason && <div className="text-xs text-muted-foreground">{reason}</div>}
+        <div className="text-label text-muted-foreground">@@{item.tokenTitle}@@</div>
+        {reason && <div className="text-label text-muted-foreground">{reason}</div>}
       </div>
     </li>
   );
@@ -60,14 +62,14 @@ function OutgoingRow({
 
 function IncomingRow({ item }: { item: IncomingReference }) {
   return (
-    <li className="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-sm">
+    <li className="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-body">
       <LinkIcon
         className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
         aria-hidden="true"
       />
       <div className="min-w-0">
         <div className="truncate text-foreground">{item.sourceTitle}</div>
-        <div className="text-xs text-muted-foreground">@@{item.tokenTitle}@@</div>
+        <div className="text-label text-muted-foreground">@@{item.tokenTitle}@@</div>
       </div>
     </li>
   );
@@ -103,7 +105,7 @@ export function ReferencesTab({
       <section aria-labelledby="prompt-refs-outgoing">
         <h3
           id="prompt-refs-outgoing"
-          className="text-sm font-semibold text-foreground"
+          className="text-body font-semibold text-foreground"
         >
           {t("promptsView.detail.outgoing")}
         </h3>
@@ -118,7 +120,7 @@ export function ReferencesTab({
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-body text-muted-foreground">
             {t("promptsView.detail.noOutgoing")}
           </p>
         )}
@@ -127,7 +129,7 @@ export function ReferencesTab({
       <section aria-labelledby="prompt-refs-incoming">
         <h3
           id="prompt-refs-incoming"
-          className="text-sm font-semibold text-foreground"
+          className="text-body font-semibold text-foreground"
         >
           {t("promptsView.detail.incoming")}
         </h3>
@@ -141,7 +143,7 @@ export function ReferencesTab({
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-body text-muted-foreground">
             {t("promptsView.detail.noIncoming")}
           </p>
         )}
@@ -150,16 +152,16 @@ export function ReferencesTab({
       <section aria-labelledby="prompt-refs-picker">
         <h3
           id="prompt-refs-picker"
-          className="text-sm font-semibold text-foreground"
+          className="text-body font-semibold text-foreground"
         >
           {t("promptsView.detail.picker")}
         </h3>
         <div className="mt-2 flex flex-wrap gap-2">
-          <select
+          <Select
             aria-label={t("promptsView.detail.pickerPlaceholder")}
             value={pickerId}
             onChange={(event) => setPickerId(event.target.value)}
-            className="min-w-0 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+            wrapperClassName="min-w-0 flex-1"
           >
             <option value="">
               {t("promptsView.detail.pickerPlaceholder")}
@@ -169,7 +171,7 @@ export function ReferencesTab({
                 {item.title}
               </option>
             ))}
-          </select>
+          </Select>
           <button
             type="button"
             disabled={!pickerId}
@@ -179,7 +181,7 @@ export function ReferencesTab({
               onInsert(`@@${target.title}@@`);
               setPickerId("");
             }}
-            className="rounded-md border border-input px-3 py-2 text-sm text-foreground hover:bg-accent disabled:opacity-40"
+            className="rounded-md border border-input px-3 py-2 text-body text-foreground hover:bg-accent disabled:opacity-50"
           >
             {t("promptsView.detail.insertReference")}
           </button>

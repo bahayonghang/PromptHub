@@ -4,6 +4,8 @@ import type { CreateFolderInput, Folder } from "../../../types";
 import type { PromptDraft } from "../promptDraft";
 import { FolderPicker } from "../FolderPicker";
 
+import { IconButton, Input, tagClasses } from "../../../../../components/ui";
+
 export interface OrganizationSectionProps {
   draft: PromptDraft;
   folders: Folder[];
@@ -17,10 +19,7 @@ export interface OrganizationSectionProps {
   onCreateFolder: (input: CreateFolderInput) => Promise<Folder | null>;
 }
 
-const labelClass = "text-xs font-medium text-muted-foreground";
-const inputClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60";
-
+const labelClass = "text-label font-medium text-muted-foreground";
 export function OrganizationSection({
   draft,
   folders,
@@ -42,7 +41,7 @@ export function OrganizationSection({
     >
       <h3
         id="prompt-editor-organization"
-        className="text-sm font-semibold text-foreground"
+        className="text-body font-semibold text-foreground"
       >
         {t("promptsView.editor.sections.organization")}
       </h3>
@@ -65,28 +64,25 @@ export function OrganizationSection({
               {draft.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-foreground"
+                  className={`flex items-center gap-1 rounded-sm border px-1.5 h-5 text-meta ${tagClasses(tag, false)}`}
                 >
                   {tag}
-                  <button
-                    type="button"
-                    aria-label={t("common.cancel")}
+                  <IconButton
+                    label={t("common.cancel")}
+                    icon={<XIcon className="h-3 w-3" aria-hidden="true" />}
                     disabled={readOnly}
                     onClick={() =>
                       onChange({
                         tags: draft.tags.filter((item) => item !== tag),
                       })
                     }
-                    className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
-                  >
-                    <XIcon className="h-3 w-3" aria-hidden="true" />
-                  </button>
+                  />
                 </span>
               ))}
             </div>
           )}
           <div className="prompt-editor__tag-row flex min-w-0 flex-col gap-2">
-            <input
+            <Input
               id="prompt-tag"
               value={tagInput}
               list="known-tags"
@@ -99,7 +95,7 @@ export function OrganizationSection({
                   onAddTag(tagInput);
                 }
               }}
-              className={inputClass}
+              size="lg"
             />
             <datalist id="known-tags">
               {knownTags.map((tag) => (
@@ -110,7 +106,7 @@ export function OrganizationSection({
               type="button"
               disabled={readOnly}
               onClick={() => onAddTag(tagInput)}
-              className="flex min-h-9 shrink-0 items-center justify-center gap-1 rounded-md border border-input px-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
+              className="flex min-h-9 shrink-0 items-center justify-center gap-1 rounded-md border border-input px-3 text-body text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
             >
               <PlusIcon className="h-4 w-4" aria-hidden="true" />
               {t("promptsView.editor.addTag")}

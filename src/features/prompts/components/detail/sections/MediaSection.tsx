@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { MediaRefList } from "../../MediaRefList";
 import type { PromptDraft } from "../promptDraft";
+import { Input, Textarea } from "../../../../../components/ui";
 
 export interface MediaSectionProps {
   draft: PromptDraft;
@@ -8,10 +9,7 @@ export interface MediaSectionProps {
   onChange: (patch: Partial<PromptDraft>) => void;
 }
 
-const labelClass = "text-xs font-medium text-muted-foreground";
-const inputClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60";
-
+const labelClass = "text-label font-medium text-muted-foreground";
 export function MediaSection({
   draft,
   readOnly,
@@ -26,7 +24,7 @@ export function MediaSection({
     >
       <h3
         id="prompt-editor-references"
-        className="text-sm font-semibold text-foreground"
+        className="text-body font-semibold text-foreground"
       >
         {t("promptsView.editor.sections.attachments")}
       </h3>
@@ -47,27 +45,28 @@ export function MediaSection({
           <label className={labelClass} htmlFor="prompt-source">
             {t("promptsView.editor.source")}
           </label>
-          <input
+          <Input
             id="prompt-source"
             value={draft.source}
             placeholder={t("promptsView.editor.sourcePlaceholder")}
             disabled={readOnly}
             onChange={(e) => onChange({ source: e.target.value })}
-            className={inputClass}
+            size="lg"
           />
         </div>
         <div className="flex flex-col gap-1">
           <label className={labelClass} htmlFor="prompt-notes">
             {t("promptsView.editor.notes")}
           </label>
-          <textarea
+          <Textarea
             id="prompt-notes"
             value={draft.notes}
             placeholder={t("promptsView.editor.notesPlaceholder")}
             disabled={readOnly}
             onChange={(e) => onChange({ notes: e.target.value })}
             rows={3}
-            className={`${inputClass} resize-y`}
+            size="lg"
+            resizable
           />
         </div>
       </div>

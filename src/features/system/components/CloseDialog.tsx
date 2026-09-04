@@ -22,32 +22,32 @@ export function CloseDialog() {
       role="dialog"
       aria-modal="true"
       aria-label={t("systemView.close.title")}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/55 p-4 backdrop-blur-[2px]"
     >
       <div className="w-full max-w-sm rounded-lg border border-border bg-card p-5 text-card-foreground shadow-lg">
-        <h2 className="text-base font-semibold">{t("systemView.close.title")}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <h2 className="text-title font-semibold">{t("systemView.close.title")}</h2>
+        <p className="mt-2 text-body text-muted-foreground">
           {t("systemView.close.message")}
         </p>
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <button
             type="button"
             onClick={dismiss}
-            className="rounded-md border border-input px-4 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+            className="rounded-md border border-input px-4 py-2 text-body text-foreground transition-colors duration-fast ease-out hover:bg-accent"
           >
             {t("systemView.close.cancel")}
           </button>
           <button
             type="button"
             onClick={() => void hideToTray()}
-            className="rounded-md border border-input px-4 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+            className="rounded-md border border-input px-4 py-2 text-body text-foreground transition-colors duration-fast ease-out hover:bg-accent"
           >
             {t("systemView.close.minimize")}
           </button>
           <button
             type="button"
             onClick={() => void confirm()}
-            className="rounded-md bg-destructive px-4 py-2 text-sm text-destructive-foreground transition-colors hover:bg-destructive/90"
+            className="rounded-md bg-destructive px-4 py-2 text-body text-destructive-foreground transition-colors duration-fast ease-out hover:bg-destructive/90"
           >
             {t("systemView.close.confirm")}
           </button>

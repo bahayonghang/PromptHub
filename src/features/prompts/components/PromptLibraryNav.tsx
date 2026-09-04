@@ -16,6 +16,8 @@ import type { Folder } from "../types";
 import { FolderTree } from "./FolderTree";
 import { TagManager } from "./TagManager";
 
+import { Tag, useConfirm} from "../../../components/ui";
+
 const SAVED_VIEWS: { view: SavedView; icon: LucideIcon }[] = [
   { view: "all", icon: InboxIcon },
   { view: "favorites", icon: StarIcon },
@@ -27,6 +29,8 @@ const SAVED_VIEWS: { view: SavedView; icon: LucideIcon }[] = [
  * Mounted in the app sidebar slot; it does not live in PromptsView.
  */
 export function PromptLibraryNav() {
+  const { confirm, confirmDialog } = useConfirm();
+
   const { t } = useTranslation();
   const collapsed = useAppStore((state) => state.sidebarCollapsed);
   const setActiveView = useAppStore((state) => state.setActiveView);
@@ -72,8 +76,14 @@ export function PromptLibraryNav() {
     void toggleTagFilter(tag);
   };
 
-  const handleDeleteFolder = (folder: Folder) => {
-    if (window.confirm(t("promptsView.deleteFolderConfirm", { name: folder.name }))) {
+  const handleDeleteFolder = async (folder: Folder) => {
+    if (
+      await confirm({
+        title: t("promptsView.deleteFolderTitle"),
+        message: t("promptsView.deleteFolderConfirm", { name: folder.name }),
+        destructive: true,
+      })
+    ) {
       void deleteFolder(folder.id);
     }
   };
@@ -116,9 +126,9 @@ export function PromptLibraryNav() {
               aria-label={t(`promptsView.library.${view}`)}
               aria-current={current ? "true" : undefined}
               onClick={() => handleSelectView(view)}
-              className={`flex h-10 w-10 flex-col items-center justify-center rounded-lg text-[10px] font-mono ${
+              className={`flex h-10 w-10 flex-col items-center justify-center rounded-lg text-micro font-mono ${
                 current
-                  ? "bg-primary/15 text-foreground"
+                  ? "bg-state-selected text-foreground"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent"
               }`}
             >
@@ -138,7 +148,7 @@ export function PromptLibraryNav() {
       aria-label={t("promptsView.library.nav")}
     >
       <section aria-label={t("promptsView.library.savedViews")}>
-        <h2 className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="px-2 pb-1 text-meta font-semibold uppercase tracking-wide text-muted-foreground">
           {t("promptsView.library.savedViews")}
         </h2>
         <div role="list" className="flex flex-col gap-0.5">
@@ -152,9 +162,9 @@ export function PromptLibraryNav() {
                 role="listitem"
                 aria-current={current ? "true" : undefined}
                 onClick={() => handleSelectView(view)}
-                className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm ${
+                className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-body ${
                   current
-                    ? "bg-primary/15 text-foreground"
+                    ? "bg-state-selected text-foreground"
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 }`}
               >
@@ -164,7 +174,7 @@ export function PromptLibraryNav() {
                 </span>
                 {count != null && (
                   <span
-                    className="font-mono text-xs text-muted-foreground-subtle"
+                    className="font-mono text-label text-muted-foreground-subtle"
                     aria-label={t("promptsView.library.bucketCount", { count })}
                   >
                     {count}
@@ -191,7 +201,7 @@ export function PromptLibraryNav() {
       </section>
 
       <section aria-label={t("promptsView.library.tags")}>
-        <h2 className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="px-2 pb-1 text-meta font-semibold uppercase tracking-wide text-muted-foreground">
           {t("promptsView.library.tags")}
         </h2>
         <div
@@ -205,28 +215,19 @@ export function PromptLibraryNav() {
             const pressed = filters.tags.includes(tag);
             const count = libraryCounts.tags[tag];
             return (
-              <button
+              <Tag
                 key={tag}
-                type="button"
+                name={tag}
                 data-tag-chip=""
-                aria-pressed={pressed}
-                onClick={() => handleToggleTag(tag)}
-                className={`inline-flex max-w-full items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${
-                  pressed
-                    ? "border-primary bg-primary/15 text-foreground"
-                    : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-                }`}
-              >
-                <span className="truncate">{tag}</span>
-                {count != null && (
-                  <span
-                    className="font-mono text-muted-foreground-subtle"
-                    aria-label={t("promptsView.library.bucketCount", { count })}
-                  >
-                    {count}
-                  </span>
-                )}
-              </button>
+                pressed={pressed}
+                onToggle={() => handleToggleTag(tag)}
+                count={count ?? undefined}
+                countLabel={
+                  count != null
+                    ? t("promptsView.library.bucketCount", { count })
+                    : undefined
+                }
+              />
             );
           })}
         </div>
@@ -234,12 +235,21 @@ export function PromptLibraryNav() {
           tags={tags}
           onRename={(old, next) => void renameTag(old, next)}
           onDelete={(tag) => {
-            if (window.confirm(t("promptsView.tags.deleteConfirm", { tag }))) {
-              void deleteTag(tag);
-            }
+            void (async () => {
+              if (
+                await confirm({
+                  title: t("promptsView.tags.deleteTitle"),
+                  message: t("promptsView.tags.deleteConfirm", { tag }),
+                  destructive: true,
+                })
+              ) {
+                void deleteTag(tag);
+              }
+            })();
           }}
         />
       </section>
+      {confirmDialog}
     </nav>
   );
 }

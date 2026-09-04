@@ -28,7 +28,7 @@ export function TitleBar() {
     >
       <span
         data-tauri-drag-region
-        className="truncate text-xs font-medium text-muted-foreground"
+        className="truncate text-label font-medium text-muted-foreground"
       >
         {t("app.name")}
       </span>

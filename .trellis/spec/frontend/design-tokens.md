@@ -42,6 +42,47 @@ Those are not part of the 21 color overrides.
 | `--shadow-lg` | Overlay elevation | `shadow-lg` |
 | `--font-mono` | IBM Plex Mono stack | `font-mono` |
 | `--radius` | Corner radius | `rounded-lg` |
+| `--state-hover` | Hover surface for rows/controls | `bg-state-hover` |
+| `--state-selected` | Selected row/card fill | `bg-state-selected` |
+| `--state-pressed` | Pressed surface | `bg-state-pressed` |
+| `--favorite` | Favourite star (never a second accent) | `text-favorite` |
+| `--tag-1` … `--tag-8` | Global tag palette | `text-tag-3`, `bg-tag-3/15` |
+| `--control-xs\|sm\|md\|lg` | Control heights (24/28/32/36px) | `h-control-md` |
+| `--hairline` | Edge highlight (dark) / bottom inset (light) | `shadow-hairline` |
+| `--shadow-overlay` | Dialog / popover elevation | `shadow-overlay` |
+| `--shadow-panel` | Docked side panel | `shadow-panel` |
+| `--dur-fast` / `--dur-base` | 120ms / 180ms | `duration-fast` |
+| `--ease-out` / `--ease-spring` | Standard easings | `ease-out`, `ease-spring` |
+
+## Type scale
+
+Six steps, each carrying its own line-height and letter-spacing. Use these
+instead of pairing `text-xs`/`text-sm` with a hand-picked `leading-*`, and never
+write an arbitrary value such as `text-[11px]`.
+
+| Utility | Size / line-height | Role |
+| ------- | ------------------ | ---- |
+| `text-micro` | 10 / 14 | Counters, corner badges |
+| `text-meta` | 11 / 16 | Timestamps, column headers, versions |
+| `text-label` | 12 / 16 | Field labels, chips, secondary buttons |
+| `text-body` | 13 / 20 | **Primary interface size** |
+| `text-title` | 15 / 22 | Panel and card headings |
+| `text-display` | 19 / 26 | View titles |
+| `text-hero` | 24 / 32 | Page headers |
+
+## Alpha modifiers
+
+Tailwind's default opacity scale is `0, 5, 10, … 100`. An off-scale modifier
+such as `bg-tag-1/14` is **silently dropped at build time**, leaving the element
+with no fill. Always snap to a multiple of 5.
+
+## Tag colours
+
+Tags are user-authored free text, so hues are derived, not authored:
+`src/components/ui/tagColor.ts` hashes the tag name (FNV-1a) onto one of the
+eight `--tag-*` slots. The mapping is pure and deterministic, so a tag keeps the
+same hue in the sidebar, filter bar, list, cards, and detail panel. Slot classes
+are written as complete literals so Tailwind's scanner retains them.
 
 `--font-display` and `--font-body` default to `var(--font-interface)` so the
 legacy utilities follow the live interface stack.

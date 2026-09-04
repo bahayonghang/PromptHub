@@ -33,7 +33,7 @@ function NavButton({ entry, active, collapsed, onSelect }: NavButtonProps) {
       title={label}
       aria-label={label}
       aria-current={active ? "page" : undefined}
-      className={`flex items-center rounded-lg transition-colors ${
+      className={`flex items-center rounded-lg transition-colors duration-fast ease-out ${
         collapsed ? "h-10 w-10 justify-center" : "w-full justify-start gap-3 px-3 py-2"
       } ${
         active
@@ -42,7 +42,7 @@ function NavButton({ entry, active, collapsed, onSelect }: NavButtonProps) {
       }`}
     >
       <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-      {!collapsed && <span className="min-w-0 flex-1 truncate text-left text-sm">{label}</span>}
+      {!collapsed && <span className="min-w-0 flex-1 truncate text-left text-body">{label}</span>}
     </button>
   );
 }
@@ -84,7 +84,7 @@ export function Sidebar({
 
   return (
     <aside
-      className={`flex shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 ${
+      className={`flex shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-base ease-spring ${
         collapsed ? "w-16" : "w-[264px]"
       }`}
     >
@@ -93,20 +93,23 @@ export function Sidebar({
           collapsed ? "justify-center px-2" : "justify-between gap-2 px-4"
         }`}
       >
-        {!collapsed && (
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{t("app.name")}</p>
-            <p className="truncate font-mono text-[11px] text-muted-foreground-subtle">
-              {t("promptsView.library.productVersion")}
-            </p>
-          </div>
-        )}
+        <div
+          aria-hidden={collapsed}
+          className={`min-w-0 overflow-hidden transition-opacity duration-fast ease-out ${
+            collapsed ? "pointer-events-none w-0 opacity-0" : "opacity-100"
+          }`}
+        >
+          <p className="truncate text-body font-semibold">{t("app.name")}</p>
+          <p className="truncate font-mono text-meta text-muted-foreground-subtle">
+            {t("promptsView.library.productVersion")}
+          </p>
+        </div>
         <button
           type="button"
           onClick={toggleSidebar}
           title={toggleLabel}
           aria-label={toggleLabel}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          className="flex h-control-md w-control-md items-center justify-center rounded-lg text-sidebar-foreground/70 transition-colors duration-fast ease-out hover:bg-sidebar-accent hover:text-sidebar-foreground"
         >
           {collapsed ? (
             <PanelLeftOpenIcon className="h-5 w-5" aria-hidden="true" />
@@ -123,7 +126,7 @@ export function Sidebar({
           title={t("promptsView.library.commandPalette")}
           aria-label={t("promptsView.library.commandPalette")}
           className={`flex items-center rounded-lg border border-border text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground ${
-            collapsed ? "h-10 w-10 justify-center" : "h-9 w-full justify-between px-3 text-sm"
+            collapsed ? "h-10 w-10 justify-center" : "h-9 w-full justify-between px-3 text-body"
           }`}
         >
           <span className="flex items-center gap-2">
@@ -131,7 +134,7 @@ export function Sidebar({
             {!collapsed && t("promptsView.library.commandPalette")}
           </span>
           {!collapsed && (
-            <kbd className="font-mono text-[11px] text-muted-foreground-subtle">
+            <kbd className="font-mono text-meta text-muted-foreground-subtle">
               {formatBinding(
                 SHORTCUT_BINDINGS.find((item) => item.id === "togglePalette")!,
                 platformModifier().symbol,
@@ -149,7 +152,7 @@ export function Sidebar({
           onClick={toggleTheme}
           title={themeLabel}
           aria-label={themeLabel}
-          className={`flex items-center rounded-lg text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground ${
+          className={`flex items-center rounded-lg text-sidebar-foreground/70 transition-colors duration-fast ease-out hover:bg-sidebar-accent hover:text-sidebar-foreground ${
             collapsed ? "h-10 w-10 justify-center" : "h-9 w-full justify-start gap-3 px-3"
           }`}
         >
@@ -158,7 +161,7 @@ export function Sidebar({
           ) : (
             <MoonIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
           )}
-          {!collapsed && <span className="text-sm">{themeLabel}</span>}
+          {!collapsed && <span className="text-body">{themeLabel}</span>}
         </button>
         {FOOTER_NAV.map((entry) => (
           <NavButton

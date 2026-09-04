@@ -4,6 +4,8 @@ import { ImageIcon, LockIcon, PinIcon, StarIcon, VideoIcon } from "lucide-react"
 import type { LibraryItem } from "../libraryItem";
 import { CopyPromptButton } from "./CopyPromptButton";
 
+import { IconButton } from "../../../components/ui";
+
 interface PromptListProps {
   items: LibraryItem[];
   selectedPromptId: string | null;
@@ -55,7 +57,7 @@ export function PromptList({
     <div className="overflow-x-hidden p-2">
       <table className="w-full table-fixed border-separate border-spacing-y-1 text-left">
         <thead>
-          <tr className="text-[11px] font-medium text-muted-foreground-subtle">
+          <tr className="text-meta font-medium text-muted-foreground-subtle">
             {batchMode && <th className="w-8 px-1">{t("promptsView.items.columns.select")}</th>}
             <th className="w-[28%] min-w-0 px-1">{t("promptsView.items.columns.title")}</th>
             <th className="w-[24%] min-w-0 px-1">{t("promptsView.items.columns.description")}</th>
@@ -76,7 +78,7 @@ export function PromptList({
             return (
               <tr
                 key={item.id}
-                className={`text-sm ${selected ? "bg-primary/10" : "hover:bg-accent/60"}`}
+                className={`text-body ${selected ? "bg-state-selected" : "hover:bg-accent/60"}`}
               >
                 {batchMode && (
                   <td className="min-w-0 px-1 align-middle">
@@ -85,7 +87,7 @@ export function PromptList({
                       checked={checked}
                       onChange={() => onToggleSelection(item.id)}
                       aria-label={t("promptsView.batch.selectPrompt", { title: item.title })}
-                      className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
+                      className="h-4 w-4 rounded-sm border-input text-primary"
                     />
                   </td>
                 )}
@@ -109,7 +111,7 @@ export function PromptList({
                       className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 truncate text-left font-medium text-foreground"
                     >
                       {item.isPinned && (
-                        <span className="inline-flex items-center gap-0.5 rounded bg-muted px-1 text-[10px] text-muted-foreground">
+                        <span className="inline-flex items-center gap-0.5 rounded-sm bg-muted px-1 text-micro text-muted-foreground">
                           <PinIcon className="h-3 w-3" aria-hidden="true" />
                           {t("promptsView.items.pinned")}
                         </span>
@@ -121,40 +123,37 @@ export function PromptList({
                     </div>
                   </div>
                 </td>
-                <td className="min-w-0 truncate px-1 align-middle text-xs text-muted-foreground">
+                <td className="min-w-0 truncate px-1 align-middle text-label text-muted-foreground">
                   {item.description}
                 </td>
-                <td className="min-w-0 truncate px-1 align-middle text-[11px] text-muted-foreground">
+                <td className="min-w-0 truncate px-1 align-middle text-meta text-muted-foreground">
                   {item.tags.join(", ")}
                   {item.overflowTagCount > 0
                     ? ` ${t("promptsView.items.moreTags", { count: item.overflowTagCount })}`
                     : ""}
                 </td>
-                <td className="min-w-0 truncate px-1 align-middle text-xs">
+                <td className="min-w-0 truncate px-1 align-middle text-label">
                   <span className="inline-flex items-center gap-1">
                     <TypeBadge kind={item.typeKind} />
                     <span className="truncate">{item.typeLabel}</span>
                   </span>
                 </td>
-                <td className="min-w-0 truncate px-1 align-middle font-mono text-xs tabular-nums text-muted-foreground-subtle">
+                <td className="min-w-0 truncate px-1 align-middle font-mono text-label tabular-nums text-muted-foreground-subtle">
                   {item.usageCount}
                 </td>
-                <td className="min-w-0 truncate px-1 align-middle font-mono text-xs text-muted-foreground-subtle">
+                <td className="min-w-0 truncate px-1 align-middle font-mono text-label tabular-nums text-muted-foreground-subtle">
                   {item.versionLabel}
                 </td>
-                <td className="min-w-0 truncate px-1 align-middle font-mono text-xs text-muted-foreground-subtle">
+                <td className="min-w-0 truncate px-1 align-middle font-mono text-label text-muted-foreground-subtle">
                   {item.updatedLabel}
                 </td>
                 <td className="px-1 align-middle">
-                  <button
-                    type="button"
-                    aria-pressed={item.isFavorite}
-                    aria-label={item.isFavorite ? t("promptsView.unfavorite") : t("promptsView.favorite")}
+                  <IconButton
+                    label={item.isFavorite ? t("promptsView.unfavorite") : t("promptsView.favorite")}
+                    icon={<StarIcon className={`h-3.5 w-3.5 ${item.isFavorite ? "fill-current text-primary" : ""}`} aria-hidden="true" />}
                     onClick={() => onToggleFavorite(item.id, !item.isFavorite)}
-                    className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                  >
-                    <StarIcon className={`h-3.5 w-3.5 ${item.isFavorite ? "fill-current text-primary" : ""}`} aria-hidden="true" />
-                  </button>
+                    aria-pressed={item.isFavorite}
+                  />
                 </td>
               </tr>
             );

@@ -32,7 +32,7 @@ export function WindowControls() {
   if (unavailable) return null;
 
   const buttonClass =
-    "flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground";
+    "flex h-control-md w-control-md items-center justify-center rounded-md text-muted-foreground transition-colors duration-fast ease-out hover:bg-accent hover:text-foreground";
 
   const maximizeLabel = isMaximized
     ? t("systemView.window.restore")
@@ -83,7 +83,7 @@ export function WindowControls() {
         onClick={() => void close()}
         title={t("systemView.window.close")}
         aria-label={t("systemView.window.close")}
-        className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground"
+        className="flex h-control-md w-control-md items-center justify-center rounded-md text-muted-foreground transition-colors duration-fast ease-out hover:bg-destructive hover:text-destructive-foreground"
       >
         <XIcon className="h-4 w-4" aria-hidden="true" />
       </button>

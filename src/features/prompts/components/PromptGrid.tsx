@@ -4,6 +4,8 @@ import { ImageIcon, LockIcon, PinIcon, StarIcon, VideoIcon } from "lucide-react"
 import type { LibraryItem } from "../libraryItem";
 import { CopyPromptButton } from "./CopyPromptButton";
 
+import { IconButton, Tag} from "../../../components/ui";
+
 interface PromptGridProps {
   items: LibraryItem[];
   selectedPromptId: string | null;
@@ -65,7 +67,7 @@ export function PromptGrid({
                     checked={checked}
                     onChange={() => onToggleSelection(item.id)}
                     aria-label={t("promptsView.batch.selectPrompt", { title: item.title })}
-                    className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-ring"
+                    className="mt-1 h-4 w-4 rounded-sm border-input text-primary"
                   />
                 )}
                 <CopyPromptButton
@@ -87,7 +89,7 @@ export function PromptGrid({
                 >
                   <div className="flex items-center gap-1.5">
                     {item.isPinned && (
-                      <span className="inline-flex items-center gap-0.5 rounded bg-muted px-1 text-[10px] text-muted-foreground">
+                      <span className="inline-flex items-center gap-0.5 rounded-sm bg-muted px-1 text-micro text-muted-foreground">
                         <PinIcon className="h-3 w-3" aria-hidden="true" />
                         {t("promptsView.items.pinned")}
                       </span>
@@ -95,42 +97,37 @@ export function PromptGrid({
                     {item.isPrivate && (
                       <LockIcon className="h-3.5 w-3.5 shrink-0" aria-label={t("promptsView.privatePrompt")} />
                     )}
-                    <h3 className="min-w-0 truncate text-sm font-medium text-foreground">{item.title}</h3>
+                    <h3 className="min-w-0 truncate text-body font-medium text-foreground">{item.title}</h3>
                   </div>
-                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
+                  <p className="mt-1 line-clamp-2 text-label text-muted-foreground">{item.description}</p>
                 </div>
-                <button
-                  type="button"
-                  aria-pressed={item.isFavorite}
-                  aria-label={item.isFavorite ? t("promptsView.unfavorite") : t("promptsView.favorite")}
+                <IconButton
+                  label={item.isFavorite ? t("promptsView.unfavorite") : t("promptsView.favorite")}
+                  icon={<StarIcon className={`h-4 w-4 ${item.isFavorite ? "fill-current text-primary" : ""}`} aria-hidden="true" />}
                   onClick={() => onToggleFavorite(item.id, !item.isFavorite)}
-                  className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                >
-                  <StarIcon className={`h-4 w-4 ${item.isFavorite ? "fill-current text-primary" : ""}`} aria-hidden="true" />
-                </button>
+                  aria-pressed={item.isFavorite}
+                />
               </div>
               {(item.tags.length > 0 || item.overflowTagCount > 0) && (
                 <div className="flex flex-wrap gap-1">
                   {item.tags.map((tag) => (
-                    <span key={tag} className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                      {tag}
-                    </span>
+                    <Tag key={tag} name={tag} />
                   ))}
                   {item.overflowTagCount > 0 && (
-                    <span className="text-[10px] text-muted-foreground-subtle">
+                    <span className="text-micro text-muted-foreground-subtle">
                       {t("promptsView.items.moreTags", { count: item.overflowTagCount })}
                     </span>
                   )}
                 </div>
               )}
-              <div className="mt-auto flex items-center gap-2 font-mono text-[11px] text-muted-foreground-subtle">
+              <div className="mt-auto flex items-center gap-2 font-mono text-meta text-muted-foreground-subtle">
                 <span className="inline-flex min-w-0 items-center gap-1 truncate">
                   <TypeBadge kind={item.typeKind} />
                   {item.typeLabel}
                 </span>
                 <span className="tabular-nums">{item.usageCount}</span>
                 <span>{item.updatedLabel}</span>
-                <span>{item.versionLabel}</span>
+                <span className="font-mono tabular-nums">{item.versionLabel}</span>
               </div>
             </article>
           </li>

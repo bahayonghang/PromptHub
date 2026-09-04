@@ -3,6 +3,8 @@ import { LayoutGridIcon, LayoutListIcon, SearchIcon } from "lucide-react";
 import { usePromptStore, type LibraryViewMode } from "../promptStore";
 import type { SortField, SortOrder } from "../types";
 
+import { IconButton, Select} from "../../../components/ui";
+
 const SORT_FIELDS: { value: SortField; labelKey: string }[] = [
   { value: "updatedAt", labelKey: "promptsView.sortUpdated" },
   { value: "createdAt", labelKey: "promptsView.sortCreated" },
@@ -41,68 +43,62 @@ export function LibraryToolbar() {
             onChange={(event) => setKeyword(event.target.value)}
             placeholder={t("promptsView.searchPlaceholder")}
             aria-label={t("promptsView.searchPlaceholder")}
-            className="h-8 w-full rounded-md border border-input bg-background py-1 pl-7 pr-16 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="h-control-md w-full rounded-md border border-input bg-background py-1 pl-7 pr-16 text-body text-foreground outline-none"
           />
           <span
-            className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[11px] text-muted-foreground-subtle"
+            className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 font-mono text-meta tabular-nums text-muted-foreground-subtle"
             aria-live="polite"
           >
             {countLabel}
           </span>
         </label>
-        <select
+        <Select
           value={filters.sortBy}
           aria-label={t("promptsView.sortBy")}
           onChange={(event) => void setFilters({ sortBy: event.target.value as SortField })}
-          className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
         >
           {SORT_FIELDS.map((field) => (
             <option key={field.value} value={field.value}>
               {t(field.labelKey)}
             </option>
           ))}
-        </select>
-        <select
+        </Select>
+        <Select
           value={filters.sortOrder}
           aria-label={t("promptsView.sortDirection")}
           onChange={(event) => void setFilters({ sortOrder: event.target.value as SortOrder })}
-          className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
         >
           <option value="desc">{t("promptsView.sortDesc")}</option>
           <option value="asc">{t("promptsView.sortAsc")}</option>
-        </select>
+        </Select>
         <div className="inline-flex rounded-md border border-input p-0.5" role="group" aria-label={t("promptsView.chrome.viewMode")}>
-          <button
-            type="button"
-            aria-pressed={viewMode === "list"}
-            aria-label={t("promptsView.chrome.viewList")}
+          <IconButton
+            label={t("promptsView.chrome.viewList")}
+            icon={<LayoutListIcon className="h-3.5 w-3.5" aria-hidden="true" />}
             onClick={() => setMode("list")}
-            className={`flex h-7 w-7 items-center justify-center rounded ${
-              viewMode === "list" ? "bg-primary/15 text-foreground" : "text-muted-foreground hover:bg-accent"
+            aria-pressed={viewMode === "list"}
+            className={`flex h-control-sm w-control-sm items-center justify-center rounded-sm ${
+              viewMode === "list" ? "bg-state-selected text-foreground" : "text-muted-foreground hover:bg-accent"
             }`}
-          >
-            <LayoutListIcon className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            aria-pressed={viewMode === "grid"}
-            aria-label={t("promptsView.chrome.viewGrid")}
+          />
+          <IconButton
+            label={t("promptsView.chrome.viewGrid")}
+            icon={<LayoutGridIcon className="h-3.5 w-3.5" aria-hidden="true" />}
             onClick={() => setMode("grid")}
-            className={`flex h-7 w-7 items-center justify-center rounded ${
-              viewMode === "grid" ? "bg-primary/15 text-foreground" : "text-muted-foreground hover:bg-accent"
+            aria-pressed={viewMode === "grid"}
+            className={`flex h-control-sm w-control-sm items-center justify-center rounded-sm ${
+              viewMode === "grid" ? "bg-state-selected text-foreground" : "text-muted-foreground hover:bg-accent"
             }`}
-          >
-            <LayoutGridIcon className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
+          />
         </div>
         <button
           type="button"
           aria-pressed={batchMode}
           aria-label={t("promptsView.chrome.batchToggle")}
           onClick={() => setBatchMode(!batchMode)}
-          className={`h-8 rounded-md border px-2 text-xs ${
+          className={`h-control-md rounded-md border px-2 text-label ${
             batchMode
-              ? "border-primary bg-primary/15 text-foreground"
+              ? "border-primary bg-state-selected text-foreground"
               : "border-input text-muted-foreground hover:bg-accent hover:text-foreground"
           }`}
         >

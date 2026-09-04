@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { BellIcon } from "lucide-react";
 import { useSystemStore } from "../systemStore";
 
+
+import { Button, Input, Textarea } from "../../../components/ui";
 /** Backend notification length limits (Req 20.7), mirrored for client guarding. */
 const MAX_TITLE = 256;
 const MAX_BODY = 1000;
@@ -23,11 +25,8 @@ export function NotificationsPanel() {
   const [body, setBody] = useState("");
   const [sent, setSent] = useState(false);
 
-  const labelClass = "text-sm font-medium text-foreground";
-  const hintClass = "text-xs text-muted-foreground";
-  const fieldClass =
-    "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring";
-
+  const labelClass = "text-body font-medium text-foreground";
+  const hintClass = "text-label text-muted-foreground";
   const canSend = title.trim() !== "" || body.trim() !== "";
 
   const send = async () => {
@@ -45,42 +44,42 @@ export function NotificationsPanel() {
 
       <label className="flex flex-col gap-1">
         <span className={hintClass}>{t("systemView.notifications.titleLabel")}</span>
-        <input
+        <Input
           type="text"
           value={title}
           maxLength={MAX_TITLE}
+          size="lg"
           onChange={(e) => {
             setTitle(e.target.value);
             setSent(false);
           }}
-          className={fieldClass}
         />
       </label>
 
       <label className="flex flex-col gap-1">
         <span className={hintClass}>{t("systemView.notifications.bodyLabel")}</span>
-        <textarea
+        <Textarea
           value={body}
           maxLength={MAX_BODY}
           rows={3}
+          size="lg"
+          resizable
           onChange={(e) => {
             setBody(e.target.value);
             setSent(false);
           }}
-          className={`${fieldClass} resize-y`}
         />
       </label>
 
       <div className="flex items-center gap-3">
-        <button
-          type="button"
+        <Button
+          size="lg"
           onClick={() => void send()}
           disabled={!canSend}
-          className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <BellIcon className="h-4 w-4" aria-hidden="true" />
           {t("systemView.notifications.send")}
-        </button>
+        </Button>
         {sent && (
           <span className={hintClass} role="status">
             {t("systemView.notifications.sent")}

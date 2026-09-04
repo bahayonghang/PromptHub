@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { VARIABLE_TYPES, type Variable, type VariableType } from "../types";
 
+import { Select } from "../../../components/ui";
+
 interface VariableEditorProps {
   /** Variables derived from the prompt text's `{{name}}` placeholders. */
   variables: Variable[];
@@ -19,15 +21,15 @@ export function VariableEditor({ variables, onChange }: VariableEditorProps) {
   const patch = (name: string, change: Partial<Variable>) =>
     onChange(variables.map((v) => (v.name === name ? { ...v, ...change } : v)));
 
-  const labelClass = "text-xs font-medium text-muted-foreground";
+  const labelClass = "text-label font-medium text-muted-foreground";
   const cellClass =
-    "rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground outline-none focus:ring-1 focus:ring-ring";
+    "rounded-md border border-input bg-background px-2 py-1 text-label text-foreground outline-none";
 
   return (
     <div className="flex flex-col gap-1.5">
       <span className={labelClass}>{t("promptsView.editor.variables")}</span>
       {variables.length === 0 ? (
-        <span className="text-xs text-muted-foreground">
+        <span className="text-label text-muted-foreground">
           {t("promptsView.editor.noVariables")}
         </span>
       ) : (
@@ -37,23 +39,23 @@ export function VariableEditor({ variables, onChange }: VariableEditorProps) {
               key={variable.name}
               className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-2"
             >
-              <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">
+              <code className="rounded-sm bg-muted px-1.5 py-0.5 text-label text-foreground">
                 {`{{${variable.name}}}`}
               </code>
-              <select
+              <Select
                 aria-label={t("promptsView.editor.variableType")}
                 value={variable.type}
                 onChange={(e) =>
                   patch(variable.name, { type: e.target.value as VariableType })
                 }
-                className={cellClass}
+                wrapperClassName={cellClass}
               >
                 {VARIABLE_TYPES.map((type) => (
                   <option key={type} value={type}>
                     {type}
                   </option>
                 ))}
-              </select>
+              </Select>
               <input
                 aria-label={t("promptsView.editor.variableLabel")}
                 value={variable.label ?? ""}
@@ -70,7 +72,7 @@ export function VariableEditor({ variables, onChange }: VariableEditorProps) {
                 }
                 className={`${cellClass} min-w-0 flex-1`}
               />
-              <label className="flex items-center gap-1 text-xs text-foreground">
+              <label className="flex items-center gap-1 text-label text-foreground">
                 <input
                   type="checkbox"
                   checked={variable.required}
