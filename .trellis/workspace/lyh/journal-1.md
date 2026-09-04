@@ -477,3 +477,24 @@ Added deterministic paging, immutable revisions, portable bundles, private promp
 ### Next Steps
 
 - 未在打包 Tauri 窗口做真实点击验收
+
+
+## Session 16: 关闭常驻托盘
+
+**Date**: 2026-09-04
+**Task**: 关闭常驻托盘
+**Branch**: `dev`
+
+### Summary
+
+实现 ask/minimize/exit 关闭行为落盘、系统托盘显示/退出、单实例唤起，以及 window.quit/window.hide 与询问对话框。质量门禁已通过。记录关闭/托盘跨层合同后提交并归档 09-04-close-to-tray。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f00f10f` | (see git log) |
+
+### Status
+
+[OK] **Completed**

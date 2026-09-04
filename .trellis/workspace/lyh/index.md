@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 15
-- **Last Active**: 2026-09-03
+- **Total Sessions**: 16
+- **Last Active**: 2026-09-04
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~479 | Active |
+| `journal-1.md` | ~500 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 16 | 2026-09-04 | 关闭常驻托盘 | `f00f10f` | `dev` |
 | 15 | 2026-09-03 | 前置复制按钮并累计使用次数 | `055a6de`, `84c9637`, `8234a59` | `dev` |
 | 14 | 2026-09-03 | 补充核心业务测试覆盖 | `50806df`, `95e1757`, `af0bc9e` | `dev` |
 | 13 | 2026-09-02 | 新建 Prompt 创建后关闭弹窗 | `857aee1`, `8af4a27`, `85c3101` | `dev` |
