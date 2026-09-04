@@ -59,6 +59,7 @@ export default {
         // Interaction states: one token per state instead of ad-hoc
         // `bg-primary/10` / `bg-primary/15` / `hover:bg-accent`.
         "state-hover": "hsl(var(--state-hover))",
+        scrim: "hsl(var(--scrim))",
         "state-selected": "hsl(var(--state-selected))",
         "state-pressed": "hsl(var(--state-pressed))",
         favorite: "hsl(var(--favorite))",

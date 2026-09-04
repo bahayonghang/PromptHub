@@ -118,6 +118,14 @@
      */
     --state-hover: 224 24% 92%;
     --state-selected: 247 60% 94%;
+
+    /*
+     * Modal scrim. Deliberately a fixed near-black rather than `--background`:
+     * on the light themes a white-tinted wash reads as fog sitting *in front of*
+     * the page, whereas a neutral dark scrim reads as depth behind the dialog.
+     * Same value in both modes so the sense of elevation is identical.
+     */
+    --scrim: 220 25% 4%;
     --state-pressed: 224 24% 88%;
 
     /* Favorite is its own semantic role, never the second accent. */
@@ -221,6 +229,7 @@
     /* Interaction states (mirror of `:root`). */
     --state-hover: 224 22% 15%;
     --state-selected: 246 34% 20%;
+    --scrim: 220 25% 4%;
     --state-pressed: 224 22% 19%;
 
     --favorite: 42 96% 58%;

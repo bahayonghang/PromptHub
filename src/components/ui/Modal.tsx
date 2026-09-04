@@ -127,7 +127,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className={`fixed inset-0 z-40 flex items-center justify-center bg-background/70 p-4 backdrop-blur-sm ${scrimClassName}`}
+      className={`fixed inset-0 z-40 flex items-center justify-center bg-scrim/55 p-4 backdrop-blur-[2px] ${scrimClassName}`}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}

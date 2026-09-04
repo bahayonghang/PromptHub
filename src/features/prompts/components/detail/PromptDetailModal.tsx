@@ -66,7 +66,8 @@ import {
 import { platformModifier } from "../../../../shortcuts/platform";
 import { useToastStore } from "../../../notifications/toastStore";
 
-import { IconButton } from "../../../../components/ui";
+import { Button, IconButton, Kbd } from "../../../../components/ui";
+import { cn } from "../../../../components/ui/cn";
 
 export type DetailTab = "content" | "versions" | "run" | "references";
 
@@ -494,7 +495,7 @@ export function PromptDetailModal({
             role="tablist"
             aria-label={t("promptsView.detail.content")}
             onKeyDown={onTabKeyDown}
-            className="flex shrink-0 gap-1 border-b border-border px-4"
+            className="flex shrink-0 items-center gap-1 border-b border-border px-4"
           >
             {TABS.map((item) => {
               const disabled =
@@ -520,11 +521,14 @@ export function PromptDetailModal({
                   disabled={disabled}
                   title={disabled ? t("promptsView.detail.lockedTabsHint") : label}
                   onClick={() => setTab(item)}
-                  className={`min-h-9 px-3 text-body disabled:opacity-50 ${
+                  className={cn(
+                    "-mb-px min-h-9 border-b-2 px-3 text-body",
+                    "transition-colors duration-fast ease-out",
+                    "disabled:opacity-50",
                     tab === item
-                      ? "border-b-2 border-primary text-foreground"
-                      : "text-muted-foreground"
-                  }`}
+                      ? "border-primary font-medium text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground",
+                  )}
                 >
                   {label}
                   {count}
@@ -556,12 +560,7 @@ export function PromptDetailModal({
                 }}
               >
                 <div className="prompt-editor__body min-h-0 flex-1 overflow-y-auto px-4 py-5">
-                  <div className="flex w-full flex-col gap-6">
-                    <p className="text-label text-muted-foreground">
-                      {t("promptsView.detail.characterCount", {
-                        count: bodyText.length,
-                      })}
-                    </p>
+                  <div className="mx-auto flex w-full max-w-[68ch] flex-col gap-7">
                     <IdentitySection
                       draft={draft}
                       titleValid={titleIsValid(draft)}
@@ -584,13 +583,13 @@ export function PromptDetailModal({
                       onPreviewValuesChange={setPreviewValues}
                     />
                     {draft.variables.length > 0 && (
-                      <button
-                        type="button"
+                      <Button
+                        size="lg"
+                        className="w-fit"
                         onClick={() => void copyFilled()}
-                        className="w-fit rounded-md border border-input px-3 py-2 text-body text-foreground hover:bg-accent"
                       >
                         {t("promptsView.detail.fillAndCopy")}
-                      </button>
+                      </Button>
                     )}
                     <OrganizationSection
                       draft={draft}
@@ -631,30 +630,34 @@ export function PromptDetailModal({
             )}
           </div>
 
-          <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3">
-            <span className="text-label text-muted-foreground">
-              {t("promptsView.detail.saveHint", { mod: modifier })}
-              {" · "}
-              {t("promptsView.detail.copyHint", { mod: modifier })}
-            </span>
+          <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="flex items-center gap-1 text-label text-muted-foreground">
+                <Kbd>{t("promptsView.detail.saveHint", { mod: modifier })}</Kbd>
+                <Kbd>{t("promptsView.detail.copyHint", { mod: modifier })}</Kbd>
+              </span>
+              {tab === "content" && !locked && (
+                <span className="text-label tabular-nums text-muted-foreground-subtle">
+                  {t("promptsView.detail.characterCount", {
+                    count: bodyText.length,
+                  })}
+                </span>
+              )}
+            </div>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={requestClose}
-                className="rounded-md border border-input px-4 py-2 text-body text-muted-foreground hover:bg-accent hover:text-foreground"
-              >
+              <Button size="lg" variant="ghost" onClick={requestClose}>
                 {t("promptsView.detail.close")}
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                size="lg"
+                variant="primary"
                 disabled={!canSubmitDraft(draft) || readOnly || locked}
                 onClick={() => void save()}
-                className="rounded-md bg-primary px-4 py-2 text-body font-medium text-primary-foreground disabled:opacity-50"
               >
                 {creating
                   ? t("promptsView.editor.create")
                   : t("promptsView.editor.save")}
-              </button>
+              </Button>
             </div>
           </footer>
         </div>
@@ -670,21 +673,13 @@ export function PromptDetailModal({
           <p className="text-body text-muted-foreground">
             {t("promptsView.detail.dirtyMessage")}
           </p>
-          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              onClick={() => resolvePending("cancel")}
-              className="rounded-md border border-input px-3 py-2 text-body hover:bg-accent"
-            >
-              {t("promptsView.detail.keepEditing")}
-            </button>
-            <button
-              type="button"
-              onClick={finishProceed}
-              className="rounded-md border border-input px-3 py-2 text-body hover:bg-accent"
-            >
-              {t("promptsView.detail.discardAndClose")}
-            </button>
+          {/*
+            Three destinations with different weight, so they get different
+            weight: discarding is the only irreversible one and is marked as
+            such, keeping is the quiet escape hatch, saving is the default.
+            Reverse order on desktop puts the primary action nearest the corner.
+          */}
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row-reverse sm:justify-start">
             <button
               type="button"
               onClick={() => {
@@ -702,10 +697,21 @@ export function PromptDetailModal({
                   finishProceed();
                 });
               }}
-              className="rounded-md bg-primary px-3 py-2 text-body text-primary-foreground"
+              className="rounded-md bg-primary px-3 py-2 text-body font-medium text-primary-foreground transition-colors duration-fast ease-out hover:bg-primary/90"
             >
               {t("promptsView.detail.saveAndClose")}
             </button>
+            <Button size="lg" variant="ghost" onClick={() => resolvePending("cancel")}>
+              {t("promptsView.detail.keepEditing")}
+            </Button>
+            <Button
+              size="lg"
+              variant="ghost"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={finishProceed}
+            >
+              {t("promptsView.detail.discardAndClose")}
+            </Button>
           </div>
         </div>
       </Modal>
