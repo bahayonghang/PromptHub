@@ -1884,12 +1884,84 @@
     "retry": "重試失敗儲存格"
   },
   "systemView": {
+    "window": {
+      "minimize": "最小化",
+      "maximize": "最大化",
+      "restore": "還原",
+      "close": "關閉",
+      "enterFullscreen": "進入全螢幕",
+      "exitFullscreen": "退出全螢幕",
+      "closeActionTitle": "關閉視窗時",
+      "closeActionHint": "選擇點擊關閉按鈕時的行為。",
+      "closeAction": {
+        "ask": "每次詢問",
+        "minimize": "最小化到系統匣",
+        "exit": "結束應用程式"
+      },
+      "autoLaunch": "開機時啟動",
+      "autoLaunchHint": "登入電腦時自動啟動 PromptHub。"
+    },
     "close": {
       "title": "關閉 PromptHub？",
       "message": "可以繼續執行、最小化到系統匣，或結束應用程式。",
       "cancel": "繼續執行",
       "minimize": "最小化到系統匣",
       "confirm": "結束"
+    },
+    "shortcuts": {
+      "title": "鍵盤快捷鍵",
+      "hint": "最多可註冊 {{max}} 個快捷鍵。全域快捷鍵在任何位置生效；本機快捷鍵僅在 PromptHub 處於前景時生效。",
+      "empty": "還沒有快捷鍵。新增一個開始使用。",
+      "action": "動作",
+      "actionPlaceholder": "動作 id，例如 toggle-window",
+      "accelerator": "快捷鍵",
+      "acceleratorPlaceholder": "例如 CmdOrCtrl+Shift+K",
+      "mode": "模式",
+      "modeGlobal": "全域",
+      "modeLocal": "本機",
+      "add": "新增快捷鍵",
+      "remove": "移除快捷鍵",
+      "save": "儲存快捷鍵",
+      "lastTriggered": "最近觸發：{{action}}"
+    },
+    "notifications": {
+      "title": "通知",
+      "hint": "傳送系統通知。標題最多 256 個字元，內文最多 1000 個字元。",
+      "titleLabel": "標題",
+      "bodyLabel": "內文",
+      "send": "傳送測試通知",
+      "sent": "通知已傳送。"
+    },
+    "updater": {
+      "title": "更新",
+      "hint": "檢查、下載並安裝應用程式更新。",
+      "currentVersion": "目前版本",
+      "check": "檢查更新",
+      "checking": "正在檢查…",
+      "upToDate": "已是最新版本。",
+      "available": "有新版本 {{version}} 可用。",
+      "download": "下載更新",
+      "downloading": "正在下載…",
+      "downloadingPercent": "正在下載… {{percent}}%",
+      "downloadingBytes": "正在下載… {{downloaded}}",
+      "downloaded": "下載完成。安裝後將在下次重新啟動時生效。",
+      "install": "安裝並重新啟動",
+      "installing": "正在安裝…",
+      "unavailable": "目前執行環境不支援更新。"
+    },
+    "paths": {
+      "title": "執行路徑",
+      "platform": "平台",
+      "data": "資料目錄",
+      "database": "資料庫檔案",
+      "media": "媒體目錄",
+      "rule": "規則目錄",
+      "backup": "備份目錄",
+      "log": "日誌目錄",
+      "open": "在檔案管理員中開啟",
+      "cache": "快取",
+      "clearCache": "清除快取",
+      "unavailable": "目前執行環境不提供視窗控制項。"
     }
   }
 }

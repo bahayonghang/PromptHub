@@ -1880,12 +1880,84 @@
     "retry": "Retry failed cells"
   },
   "systemView": {
+    "window": {
+      "minimize": "Minimizar",
+      "maximize": "Maximizar",
+      "restore": "Restaurar",
+      "close": "Cerrar",
+      "enterFullscreen": "Pantalla completa",
+      "exitFullscreen": "Salir de pantalla completa",
+      "closeActionTitle": "Al cerrar la ventana",
+      "closeActionHint": "Elige qué hace el botón de cerrar.",
+      "closeAction": {
+        "ask": "Preguntar cada vez",
+        "minimize": "Minimizar a la bandeja",
+        "exit": "Salir de la aplicación"
+      },
+      "autoLaunch": "Iniciar al iniciar sesión",
+      "autoLaunchHint": "Ejecutar PromptHub automáticamente al iniciar sesión en el equipo."
+    },
     "close": {
       "title": "¿Cerrar PromptHub?",
       "message": "Puedes seguir ejecutando, minimizar a la bandeja o salir.",
       "cancel": "Seguir ejecutando",
       "minimize": "Minimizar a la bandeja",
       "confirm": "Salir"
+    },
+    "shortcuts": {
+      "title": "Atajos de teclado",
+      "hint": "Registra hasta {{max}} atajos. Los globales funcionan en cualquier sitio; los locales solo cuando PromptHub tiene el foco.",
+      "empty": "Aún no hay atajos. Añade uno para empezar.",
+      "action": "Acción",
+      "actionPlaceholder": "Id de acción, p. ej. toggle-window",
+      "accelerator": "Atajo",
+      "acceleratorPlaceholder": "p. ej. CmdOrCtrl+Shift+K",
+      "mode": "Modo",
+      "modeGlobal": "Global",
+      "modeLocal": "Local",
+      "add": "Añadir atajo",
+      "remove": "Quitar atajo",
+      "save": "Guardar atajos",
+      "lastTriggered": "Último activado: {{action}}"
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "hint": "Enviar una notificación del sistema. Título hasta 256 caracteres, cuerpo hasta 1000.",
+      "titleLabel": "Título",
+      "bodyLabel": "Cuerpo",
+      "send": "Enviar notificación de prueba",
+      "sent": "Notificación enviada."
+    },
+    "updater": {
+      "title": "Actualizaciones",
+      "hint": "Buscar, descargar e instalar actualizaciones.",
+      "currentVersion": "Versión actual",
+      "check": "Buscar actualizaciones",
+      "checking": "Buscando…",
+      "upToDate": "Ya tienes la última versión.",
+      "available": "La versión {{version}} está disponible.",
+      "download": "Descargar actualización",
+      "downloading": "Descargando…",
+      "downloadingPercent": "Descargando… {{percent}} %",
+      "downloadingBytes": "Descargando… {{downloaded}}",
+      "downloaded": "Descarga completa. La instalación se aplicará en el próximo reinicio.",
+      "install": "Instalar y reiniciar",
+      "installing": "Instalando…",
+      "unavailable": "Las actualizaciones no están disponibles en este entorno."
+    },
+    "paths": {
+      "title": "Rutas de ejecución",
+      "platform": "Plataforma",
+      "data": "Directorio de datos",
+      "database": "Archivo de base de datos",
+      "media": "Directorio de medios",
+      "rule": "Directorio de reglas",
+      "backup": "Directorio de copias",
+      "log": "Directorio de registros",
+      "open": "Abrir en el explorador",
+      "cache": "Caché",
+      "clearCache": "Vaciar caché",
+      "unavailable": "Los controles de ventana no están disponibles en este entorno."
     }
   }
 }

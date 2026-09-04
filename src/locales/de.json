@@ -1879,12 +1879,84 @@
     "retry": "Retry failed cells"
   },
   "systemView": {
+    "window": {
+      "minimize": "Minimieren",
+      "maximize": "Maximieren",
+      "restore": "Wiederherstellen",
+      "close": "Schließen",
+      "enterFullscreen": "Vollbild",
+      "exitFullscreen": "Vollbild beenden",
+      "closeActionTitle": "Beim Schließen des Fensters",
+      "closeActionHint": "Legen Sie fest, was der Schließen-Button tut.",
+      "closeAction": {
+        "ask": "Jedes Mal fragen",
+        "minimize": "Ins Tray minimieren",
+        "exit": "App beenden"
+      },
+      "autoLaunch": "Beim Anmelden starten",
+      "autoLaunchHint": "PromptHub automatisch starten, wenn Sie sich am Computer anmelden."
+    },
     "close": {
       "title": "PromptHub schließen?",
       "message": "Sie können das Fenster offen lassen, ins Tray minimieren oder beenden.",
       "cancel": "Weiter ausführen",
       "minimize": "Ins Tray minimieren",
       "confirm": "Beenden"
+    },
+    "shortcuts": {
+      "title": "Tastenkürzel",
+      "hint": "Registrieren Sie bis zu {{max}} Kürzel. Globale gelten überall; lokale nur, wenn PromptHub den Fokus hat.",
+      "empty": "Noch keine Kürzel. Fügen Sie eines hinzu.",
+      "action": "Aktion",
+      "actionPlaceholder": "Aktions-ID, z. B. toggle-window",
+      "accelerator": "Kürzel",
+      "acceleratorPlaceholder": "z. B. CmdOrCtrl+Shift+K",
+      "mode": "Modus",
+      "modeGlobal": "Global",
+      "modeLocal": "Lokal",
+      "add": "Kürzel hinzufügen",
+      "remove": "Kürzel entfernen",
+      "save": "Kürzel speichern",
+      "lastTriggered": "Zuletzt ausgelöst: {{action}}"
+    },
+    "notifications": {
+      "title": "Benachrichtigungen",
+      "hint": "Systembenachrichtigung senden. Titel bis 256 Zeichen, Text bis 1000.",
+      "titleLabel": "Titel",
+      "bodyLabel": "Text",
+      "send": "Testbenachrichtigung senden",
+      "sent": "Benachrichtigung gesendet."
+    },
+    "updater": {
+      "title": "Updates",
+      "hint": "Updates prüfen, herunterladen und installieren.",
+      "currentVersion": "Aktuelle Version",
+      "check": "Nach Updates suchen",
+      "checking": "Prüfe…",
+      "upToDate": "Sie haben die neueste Version.",
+      "available": "Version {{version}} ist verfügbar.",
+      "download": "Update herunterladen",
+      "downloading": "Wird heruntergeladen…",
+      "downloadingPercent": "Wird heruntergeladen… {{percent}} %",
+      "downloadingBytes": "Wird heruntergeladen… {{downloaded}}",
+      "downloaded": "Download abgeschlossen. Die Installation gilt nach dem nächsten Neustart.",
+      "install": "Installieren und neu starten",
+      "installing": "Wird installiert…",
+      "unavailable": "Updates sind in dieser Laufzeitumgebung nicht verfügbar."
+    },
+    "paths": {
+      "title": "Laufzeitpfade",
+      "platform": "Plattform",
+      "data": "Datenverzeichnis",
+      "database": "Datenbankdatei",
+      "media": "Medienverzeichnis",
+      "rule": "Regelverzeichnis",
+      "backup": "Backup-Verzeichnis",
+      "log": "Protokollverzeichnis",
+      "open": "Im Dateimanager öffnen",
+      "cache": "Cache",
+      "clearCache": "Cache leeren",
+      "unavailable": "Fenstersteuerungen sind in dieser Laufzeitumgebung nicht verfügbar."
     }
   }
 }

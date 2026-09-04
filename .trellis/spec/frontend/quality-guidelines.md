@@ -92,7 +92,9 @@ When adding UI text:
 
 1. Add dot-notation keys to all seven locale bundles in `src/locales/`.
 2. Use `const { t } = useTranslation();` in the component.
-3. Add the rendered keys to the feature's `i18nKeys.test.ts`.
+3. Add the rendered keys to the feature's `i18nKeys.test.ts`, and assert
+   every key in **all seven** locale bundles. Checking only English lets
+   missing translations fall back to `en` in the UI.
 4. Prefer accessible queries in component tests so missing labels are caught.
 
 Current locale bundles: `en`, `zh`, `zh-TW`, `ja`, `fr`, `de`, and `es`.

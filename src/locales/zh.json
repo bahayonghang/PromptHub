@@ -1918,12 +1918,84 @@
     "retry": "重试失败单元格"
   },
   "systemView": {
+    "window": {
+      "minimize": "最小化",
+      "maximize": "最大化",
+      "restore": "还原",
+      "close": "关闭",
+      "enterFullscreen": "进入全屏",
+      "exitFullscreen": "退出全屏",
+      "closeActionTitle": "关闭窗口时",
+      "closeActionHint": "选择点击关闭按钮时的行为。",
+      "closeAction": {
+        "ask": "每次询问",
+        "minimize": "最小化到托盘",
+        "exit": "退出应用"
+      },
+      "autoLaunch": "开机自启动",
+      "autoLaunchHint": "登录电脑时自动启动 PromptHub。"
+    },
     "close": {
       "title": "关闭 PromptHub？",
       "message": "可以继续运行、最小化到托盘，或退出应用。",
       "cancel": "继续运行",
       "minimize": "最小化到托盘",
       "confirm": "退出"
+    },
+    "shortcuts": {
+      "title": "键盘快捷键",
+      "hint": "最多可注册 {{max}} 个快捷键。全局快捷键在任何位置生效；本地快捷键仅在 PromptHub 处于前台时生效。",
+      "empty": "还没有快捷键。添加一个开始使用。",
+      "action": "动作",
+      "actionPlaceholder": "动作 id，例如 toggle-window",
+      "accelerator": "快捷键",
+      "acceleratorPlaceholder": "例如 CmdOrCtrl+Shift+K",
+      "mode": "模式",
+      "modeGlobal": "全局",
+      "modeLocal": "本地",
+      "add": "添加快捷键",
+      "remove": "移除快捷键",
+      "save": "保存快捷键",
+      "lastTriggered": "最近触发：{{action}}"
+    },
+    "notifications": {
+      "title": "通知",
+      "hint": "发送系统通知。标题最多 256 个字符，正文最多 1000 个字符。",
+      "titleLabel": "标题",
+      "bodyLabel": "正文",
+      "send": "发送测试通知",
+      "sent": "通知已发送。"
+    },
+    "updater": {
+      "title": "更新",
+      "hint": "检查、下载并安装应用更新。",
+      "currentVersion": "当前版本",
+      "check": "检查更新",
+      "checking": "正在检查…",
+      "upToDate": "已是最新版本。",
+      "available": "有新版本 {{version}} 可用。",
+      "download": "下载更新",
+      "downloading": "正在下载…",
+      "downloadingPercent": "正在下载… {{percent}}%",
+      "downloadingBytes": "正在下载… {{downloaded}}",
+      "downloaded": "下载完成。安装后将在下次重启时生效。",
+      "install": "安装并重启",
+      "installing": "正在安装…",
+      "unavailable": "当前运行环境不支持更新。"
+    },
+    "paths": {
+      "title": "运行路径",
+      "platform": "平台",
+      "data": "数据目录",
+      "database": "数据库文件",
+      "media": "媒体目录",
+      "rule": "规则目录",
+      "backup": "备份目录",
+      "log": "日志目录",
+      "open": "在文件管理器中打开",
+      "cache": "缓存",
+      "clearCache": "清除缓存",
+      "unavailable": "当前运行环境不提供窗口控件。"
     }
   }
 }

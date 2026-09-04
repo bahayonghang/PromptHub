@@ -102,30 +102,12 @@ const KEYS = [
   "systemView.paths.unavailable",
 ];
 
-describe("system view i18n keys (Req 21.3)", () => {
-  it("resolves every rendered key to a non-empty string in the English bundle", () => {
-    for (const key of KEYS) {
-      const value = lookup(en, key);
-      expect(typeof value, `missing key: ${key}`).toBe("string");
-      expect((value as string).length, `empty key: ${key}`).toBeGreaterThan(0);
-    }
-  });
-});
-
-const CLOSE_KEYS = [
-  "systemView.close.title",
-  "systemView.close.message",
-  "systemView.close.cancel",
-  "systemView.close.minimize",
-  "systemView.close.confirm",
-];
-
 const BUNDLES: Record<string, unknown> = { en, zh, "zh-TW": zhTW, ja, fr, de, es };
 
-describe("close dialog i18n keys in all locales (Req 21.3)", () => {
+describe("system view i18n keys (Req 21.3)", () => {
   for (const [locale, bundle] of Object.entries(BUNDLES)) {
-    it(`resolves systemView.close.* in the ${locale} bundle`, () => {
-      for (const key of CLOSE_KEYS) {
+    it(`resolves every rendered key to a non-empty string in the ${locale} bundle`, () => {
+      for (const key of KEYS) {
         const value = lookup(bundle, key);
         expect(typeof value, `[${locale}] missing key: ${key}`).toBe("string");
         expect((value as string).length, `[${locale}] empty key: ${key}`).toBeGreaterThan(0);
