@@ -34,8 +34,6 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const BASE =
   "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md font-medium " +
   "whitespace-nowrap transition-colors duration-fast ease-out " +
-  " " +
-  " " +
   "disabled:pointer-events-none disabled:opacity-50";
 
 const VARIANTS: Record<ButtonVariant, string> = {

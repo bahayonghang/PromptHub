@@ -37,7 +37,7 @@ import { useSettingsStore, type PreferenceKey, type PreferenceValue } from "../s
 import { PreferenceStatus } from "./PreferenceStatus";
 import { SpecimenCard } from "./SpecimenCard";
 
-import { IconButton, Select} from "../../../components/ui";
+import { Button, IconButton, Select} from "../../../components/ui";
 
 const labelClass = "text-body font-medium text-foreground";
 const selectClass =
@@ -311,15 +311,14 @@ export function AppearancePanel() {
             );
           })}
         </ol>
-        <button
-          type="button"
+        <Button
+          size="lg"
           disabled={fontStack.length >= MAX_INTERFACE_FONT_FAMILIES || nextUnusedFont == null || saving("interfaceFontStack")}
           onClick={() => nextUnusedFont && save("interfaceFontStack", [...fontStack, nextUnusedFont])}
-          className="inline-flex w-fit items-center gap-1.5 rounded-md border border-input px-3 py-2 text-body text-foreground transition-colors duration-fast ease-out hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <PlusIcon className="h-4 w-4" aria-hidden="true" />
           {t("settingsView.appearance.addFallback")}
-        </button>
+        </Button>
         {systemFontsStatus === "loading" && (
           <div role="status" className="h-4 w-40 animate-pulse rounded-sm bg-muted" aria-label={t("settingsView.appearance.systemFontsLoading")} />
         )}

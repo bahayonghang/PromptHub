@@ -4,7 +4,7 @@ import { PlusIcon, Trash2Icon } from "lucide-react";
 import { MAX_SHORTCUTS, type Shortcut, type ShortcutMode } from "../types";
 import { useSystemStore } from "../systemStore";
 
-import { IconButton, Select} from "../../../components/ui";
+import { Button, IconButton, Select} from "../../../components/ui";
 /** A blank shortcut row used when adding a new entry. */
 const EMPTY_SHORTCUT: Shortcut = { action: "", accelerator: "", mode: "global" };
 
@@ -104,15 +104,14 @@ export function ShortcutsPanel() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
+        <Button
+          size="lg"
           onClick={addRow}
           disabled={draft.length >= MAX_SHORTCUTS}
-          className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-body text-foreground transition-colors duration-fast ease-out hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <PlusIcon className="h-4 w-4" aria-hidden="true" />
           {t("systemView.shortcuts.add")}
-        </button>
+        </Button>
         <button
           type="button"
           onClick={save}

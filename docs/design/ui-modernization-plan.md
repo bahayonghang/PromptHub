@@ -518,23 +518,57 @@ Token 层是干净的（语义命名、HSL 通道、双主题齐备）。`DESIGN
 
 ---
 
+### 实施状态（本次已完成 1／2／3／4／6）
+
+| 阶段 | 状态 | 说明 |
+|---|---|---|
+| 1 Token 层 | ✅ | 字号阶梯、控件高度、交互态、标签色板、材质、动效 token |
+| 2 基元组件 | ✅ | 11 个基元 + `useConfirm`；`TypeIcon`/`VersionBadge`/`Chip`/`Toolbar`/`Tooltip`/`Textarea` 未做（无迫切调用方） |
+| 3 全局替换 | ✅ | 见第 9 节指标表，全部归零 |
+| 4 布局重构 | ◐ | 已删外壳页头、统一控件高度；侧栏与列表/网格的重排未做 |
+| 5 深水区 | ✗ | 详情弹窗 → 停靠面板、设置页、`EvaluationWorkbench` 拆分 |
+| 6 打磨 | ◐ | 动效与焦点环已统一；空状态、骨架屏、主题走查未做 |
+
+**与原清单的偏差（已按实际实现回写）：**
+
+- 未新增 `--primary-hi` 与 `--focus-ring`：焦点色直接复用 `--ring`，
+  多一个近义 token 只会增加漂移面。
+- 标签色 token 由语义命名（`--tag-eng` 等）改为编号槽位 `--tag-1..8`
+  加哈希映射。标签是用户自由输入的文本，语义命名无法覆盖，
+  且在 7 种语言下不成立。
+- 新 token **未**纳入 `FLAVOR_OVERRIDES`：四个主题家族共用同一套
+  交互态与标签色，仅在 `globals.css` 的 `:root` / `.dark` 两个 scope 声明。
+
+---
+
 ## 9. 验收标准
 
 可自动化检查的硬指标：
 
-| 指标 | 现状 | 目标 |
-|---|---|---|
-| 裸 `rounded` 类（绕过 token） | 69 | 0 |
-| 任意值字号 `text-[Npx]` | 18 | 0 |
-| `iconButtonClass` 重复定义 | 6 | 0 |
-| `window.confirm` | 9 | 0 |
-| 原生 `<select>` | 22 | 0 |
-| `disabled:opacity-*` 取值种类 | 5 | 1 |
-| 选中态 `bg-primary/*` 取值种类 | 3 | 1（走 `--state-selected`） |
-| 可交互元素缺 `focus-visible` | ~50% | 0 |
-| 单行 className > 200 字符 | 若干 | 0 |
-| 顶部 chrome 总高（Prompts 视图） | ~240px | ≤ 112px |
-| 密度 token 引用次数 | 2 | ≥ 20（基元内部） |
+| 指标 | 改造前 | 目标 | 当前 |
+|---|---|---|---|
+| 裸 `rounded` 类（绕过 token） | 69 | 0 | **0** ✅ |
+| 任意值字号 `text-[Npx]` | 18 | 0 | **0** ✅ |
+| 原生 `text-xs` / `text-sm` | 285 | 0 | **0** ✅ |
+| `iconButtonClass` 重复定义 | 6 | 0 | **0** ✅ |
+| `window.confirm` | 9 | 0 | **0** ✅ |
+| 原生 `<select>` | 22 | 0 | **0** ✅ |
+| `disabled:opacity-*` 取值种类 | 5 | 1 | **1** ✅ |
+| 选中态 `bg-primary/*` 取值种类 | 3 | 1（走 `--state-selected`） | **1** ✅ |
+| 逐组件 `focus-visible:ring` | 131 | 0（收敛到基础层单条规则） | **0** ✅ |
+| 单行 className > 200 字符 | 4 | 0 | **0** ✅ |
+| 未绑定时长 token 的 `transition-*` | 38 | 0 | **0** ✅ |
+| 顶部 chrome 总高（Prompts 视图） | ~240px | ≤ 112px | **~124px** ⚠️ |
+
+> chrome 未达到 112px：`LibraryHeader`（标题+统计）与 `LibraryToolbar`
+> （搜索+排序+视图切换）承载的是不同职责，强行合并成一行会在窄窗口下
+> 挤压搜索框。124px 已删掉全部纯重复的层级，进一步压缩需要重新设计
+> 信息架构（阶段 5 的停靠面板改造），不适合放在本次机械替换里。
+
+**以上指标已全部固化为可执行断言**：`src/theme/style-conventions.test.ts`
+（12 条）与 `src/components/layout/chrome.test.ts`（3 条）。这些断言做过
+反向验证——注入违规代码后会转红。手工清理完的指标若没有守护，
+下一个 PR 就会重新引入。
 
 人工走查：
 

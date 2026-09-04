@@ -131,6 +131,37 @@ describe("style conventions", () => {
     expect(bad).toEqual([]);
   });
 
+  it("keeps class strings short enough to read", () => {
+    // A 200-char className is a component that should have been a primitive.
+    const bad: string[] = [];
+    for (const file of TSX) {
+      read(file)
+        .split("\n")
+        .forEach((line: string, i: number) => {
+          for (const m of line.matchAll(/className="([^"]{200,})"/g)) {
+            void m;
+            bad.push(`${file}:${i + 1}`);
+          }
+        });
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it("binds every transition to the motion tokens", () => {
+    // A bare `transition-colors` silently uses Tailwind's 150ms default,
+    // which is unrelated to --dur-fast/--dur-base.
+    const bad: string[] = [];
+    for (const file of TSX) {
+      read(file)
+        .split("\n")
+        .forEach((line: string, i: number) => {
+          if (!/\btransition-(?:colors|opacity|transform|\[)/.test(line)) return;
+          if (!/\bduration-(?:fast|base)\b/.test(line)) bad.push(`${file}:${i + 1}`);
+        });
+    }
+    expect(bad).toEqual([]);
+  });
+
   it("only uses alpha modifiers that exist on Tailwind's opacity scale", () => {
     // Off-scale values such as `/14` are silently dropped at build time,
     // leaving the element with no colour at all.

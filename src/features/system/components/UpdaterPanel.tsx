@@ -2,6 +2,8 @@ import { useTranslation } from "react-i18next";
 import { DownloadIcon, RefreshCwIcon, RotateCwIcon } from "lucide-react";
 import { downloadProgressPercent, useSystemStore } from "../systemStore";
 
+
+import { Button } from "../../../components/ui";
 /** Formats a byte count as a compact human-readable string (e.g. "1.2 MB"). */
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -58,17 +60,16 @@ export function UpdaterPanel() {
       ) : (
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
+            <Button
+              size="lg"
               onClick={() => void checkUpdate()}
               disabled={phase === "checking" || phase === "downloading" || phase === "installing"}
-              className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-body text-foreground transition-colors duration-fast ease-out hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
               <RefreshCwIcon className="h-4 w-4" aria-hidden="true" />
               {phase === "checking"
                 ? t("systemView.updater.checking")
                 : t("systemView.updater.check")}
-            </button>
+            </Button>
 
             {phase === "available" && (
               <button

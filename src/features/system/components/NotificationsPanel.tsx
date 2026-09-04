@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { BellIcon } from "lucide-react";
 import { useSystemStore } from "../systemStore";
 
+
+import { Button } from "../../../components/ui";
 /** Backend notification length limits (Req 20.7), mirrored for client guarding. */
 const MAX_TITLE = 256;
 const MAX_BODY = 1000;
@@ -72,15 +74,14 @@ export function NotificationsPanel() {
       </label>
 
       <div className="flex items-center gap-3">
-        <button
-          type="button"
+        <Button
+          size="lg"
           onClick={() => void send()}
           disabled={!canSend}
-          className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-body text-foreground transition-colors duration-fast ease-out hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <BellIcon className="h-4 w-4" aria-hidden="true" />
           {t("systemView.notifications.send")}
-        </button>
+        </Button>
         {sent && (
           <span className={hintClass} role="status">
             {t("systemView.notifications.sent")}
