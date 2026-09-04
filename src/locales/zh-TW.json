@@ -1882,5 +1882,14 @@
     "duration": "耗時",
     "matrixRuns": "矩阵執行",
     "retry": "重試失敗儲存格"
+  },
+  "systemView": {
+    "close": {
+      "title": "關閉 PromptHub？",
+      "message": "可以繼續執行、最小化到系統匣，或結束應用程式。",
+      "cancel": "繼續執行",
+      "minimize": "最小化到系統匣",
+      "confirm": "結束"
+    }
   }
 }

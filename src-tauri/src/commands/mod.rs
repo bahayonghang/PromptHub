@@ -34,6 +34,8 @@ use crate::state::AppState;
 pub struct CommandRuntimeState {
     pub export_cancel: AtomicBool,
     pub close_action: Mutex<CloseAction>,
+    /// True once the system tray icon was created successfully (Req 20, 23.5).
+    pub tray_available: AtomicBool,
     pub shortcuts: Mutex<ShortcutRegistry>,
     pub selected_media_paths: Mutex<HashSet<PathBuf>>,
     pub update_bytes: Mutex<Option<Vec<u8>>>,
@@ -45,6 +47,7 @@ impl Default for CommandRuntimeState {
         Self {
             export_cancel: AtomicBool::new(false),
             close_action: Mutex::new(CloseAction::Ask),
+            tray_available: AtomicBool::new(false),
             shortcuts: Mutex::new(ShortcutRegistry::new()),
             selected_media_paths: Mutex::new(HashSet::new()),
             update_bytes: Mutex::new(None),

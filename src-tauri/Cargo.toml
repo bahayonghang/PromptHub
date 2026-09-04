@@ -18,16 +18,20 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon"] }
 # Window_Manager (Requirement 20): the OS-integration plugins behind the
 # window/shortcut/notification glue. `tauri-plugin-global-shortcut` registers the
 # global/local keyboard shortcuts and reports when one fires (20.6);
 # `tauri-plugin-autostart` sets the launch-on-login state (20.5); and
 # `tauri-plugin-notification` displays system notifications and surfaces a
-# permission denial (20.7, 20.13). All are version 2, matching the tauri 2.x core.
+# permission denial (20.7, 20.13). `tray-icon` on `tauri` plus the builders in
+# `lib.rs` create the always-on tray (20.4). `tauri-plugin-single-instance`
+# focuses the existing `main` window on a second launch, including when hidden
+# to the tray. All are version 2, matching the tauri 2.x core.
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-notification = "2"
+tauri-plugin-single-instance = "2"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

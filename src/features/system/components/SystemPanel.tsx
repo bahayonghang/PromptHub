@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { isCloseAction } from "../types";
 import { useSystemStore } from "../systemStore";
 import { WindowBehaviorPanel } from "./WindowBehaviorPanel";
 import { ShortcutsPanel } from "./ShortcutsPanel";
@@ -9,6 +10,8 @@ import { RuntimeInfoPanel } from "./RuntimeInfoPanel";
 interface SystemPanelProps {
   /** The persisted launch-at-startup preference, used to seed the toggle (Req 20.5). */
   launchAtStartup?: boolean | null;
+  /** The persisted close action, used to seed the three-way control (Req 20.4). */
+  closeAction?: string | null;
 }
 
 /**
@@ -16,12 +19,13 @@ interface SystemPanelProps {
  * (close action + auto-launch), keyboard-shortcut, notification, updater, and
  * runtime-info / cache panels. On mount it loads version / platform / runtime
  * paths / cache size through the system store (Req 3.1) and seeds the
- * auto-launch toggle from the persisted setting so the control reflects saved
- * state before the user changes it (Req 20.5).
+ * auto-launch toggle and close action from persisted settings so the controls
+ * reflect saved state before the user changes them (Req 20.4, 20.5).
  */
-export function SystemPanel({ launchAtStartup }: SystemPanelProps) {
+export function SystemPanel({ launchAtStartup, closeAction }: SystemPanelProps) {
   const loadInfo = useSystemStore((s) => s.loadInfo);
   const setAutoLaunchLocal = useSystemStore((s) => s.setAutoLaunchLocal);
+  const setCloseActionLocal = useSystemStore((s) => s.setCloseActionLocal);
   const error = useSystemStore((s) => s.error);
 
   useEffect(() => {
@@ -31,6 +35,10 @@ export function SystemPanel({ launchAtStartup }: SystemPanelProps) {
   useEffect(() => {
     if (launchAtStartup != null) setAutoLaunchLocal(launchAtStartup);
   }, [launchAtStartup, setAutoLaunchLocal]);
+
+  useEffect(() => {
+    if (isCloseAction(closeAction)) setCloseActionLocal(closeAction);
+  }, [closeAction, setCloseActionLocal]);
 
   return (
     <div className="flex flex-col gap-8">

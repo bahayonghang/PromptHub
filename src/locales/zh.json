@@ -1916,5 +1916,14 @@
     "duration": "耗时",
     "matrixRuns": "矩阵运行",
     "retry": "重试失败单元格"
+  },
+  "systemView": {
+    "close": {
+      "title": "关闭 PromptHub？",
+      "message": "可以继续运行、最小化到托盘，或退出应用。",
+      "cancel": "继续运行",
+      "minimize": "最小化到托盘",
+      "confirm": "退出"
+    }
   }
 }

@@ -1877,5 +1877,14 @@
     "duration": "Duration",
     "matrixRuns": "Matrix runs",
     "retry": "Retry failed cells"
+  },
+  "systemView": {
+    "close": {
+      "title": "PromptHub schließen?",
+      "message": "Sie können das Fenster offen lassen, ins Tray minimieren oder beenden.",
+      "cancel": "Weiter ausführen",
+      "minimize": "Ins Tray minimieren",
+      "confirm": "Beenden"
+    }
   }
 }

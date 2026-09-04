@@ -17,7 +17,7 @@ pub mod storage;
 
 use tauri::{Emitter, Manager};
 
-use crate::services::window::{self, CapabilityDegradation};
+use crate::services::window::{self, CapabilityDegradation, CloseDecision, PlatformFeature};
 use crate::state::{AppState, RuntimePaths};
 
 /// Tauri event emitted to the Frontend when the startup sequence fails fatally,
@@ -73,6 +73,9 @@ fn announce_capability_degradations<R: tauri::Runtime>(
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            commands::window::show_main_window(app);
+        }))
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
@@ -94,18 +97,57 @@ pub fn run() {
             app.manage(state);
             app.manage(commands::CommandRuntimeState::default());
 
-            let state = app.state::<AppState>();
-            if let Err(error) = commands::startup::run_startup(&state) {
-                eprintln!("PromptHub startup failed: {error}");
-                let _ = app.emit(EVENT_INIT_FAILED, error.to_string());
+            let mut tray_language = String::from("en");
+            let mut stored_close_action: Option<String> = None;
+            {
+                let state = app.state::<AppState>();
+                if let Err(error) = commands::startup::run_startup(&state) {
+                    eprintln!("PromptHub startup failed: {error}");
+                    let _ = app.emit(EVENT_INIT_FAILED, error.to_string());
+                } else if let Ok(settings) =
+                    commands::conn(&state).and_then(|conn| crate::services::settings::get(&conn))
+                {
+                    tray_language = settings.language;
+                    stored_close_action = settings.close_action;
+                }
+            }
+            {
+                let runtime = app.state::<commands::CommandRuntimeState>();
+                commands::window::seed_close_action_from_settings(
+                    &runtime,
+                    stored_close_action.as_deref(),
+                );
             }
 
             // Probe platform-integration features and surface a non-fatal
             // indication for any unsupported on this Target_Platform; the app
             // keeps running and the supported features are applied on demand by
             // the Command_Layer (Requirements 23.4, 23.5).
-            announce_capability_degradations(app.handle());
+            let capabilities = announce_capability_degradations(app.handle());
+            if capabilities.tray {
+                if let Err(error) = commands::window::setup_tray(app.handle(), &tray_language) {
+                    eprintln!("PromptHub tray setup failed: {error}");
+                    let _ = app.emit::<CapabilityDegradation>(
+                        EVENT_CAPABILITY_DEGRADED,
+                        CapabilityDegradation::new(PlatformFeature::Tray),
+                    );
+                }
+            }
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if window.label() != "main" {
+                return;
+            }
+            let tauri::WindowEvent::CloseRequested { api, .. } = event else {
+                return;
+            };
+            let app = window.app_handle();
+            let runtime = app.state::<commands::CommandRuntimeState>();
+            match commands::window::apply_close(app, &runtime) {
+                Ok(CloseDecision::Terminate) => {}
+                _ => api.prevent_close(),
+            }
         })
         .invoke_handler(tauri::generate_handler![
             commands::app_status,
@@ -215,6 +257,8 @@ pub fn run() {
             commands::window::window_maximize,
             commands::window::window_restore,
             commands::window::window_close,
+            commands::window::window_quit,
+            commands::window::window_hide,
             commands::window::window_toggle_visibility,
             commands::window::window_enter_fullscreen,
             commands::window::window_exit_fullscreen,

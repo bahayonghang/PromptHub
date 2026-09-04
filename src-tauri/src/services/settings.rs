@@ -217,6 +217,10 @@ pub fn update(
 }
 
 fn validate(settings: &Settings) -> Result<(), AppError> {
+    if let Some(raw) = settings.close_action.as_deref() {
+        crate::services::window::parse_close_action(raw)?;
+    }
+
     let Some(families) = settings.interface_font_stack.as_ref() else {
         return Ok(());
     };
@@ -293,6 +297,27 @@ mod tests {
         assert_eq!(settings.language, "en");
         assert!(settings.auto_save);
         assert!(settings.sync.is_none());
+        assert_eq!(settings.close_action, None);
+    }
+
+    #[test]
+    fn update_persists_close_action_minimize() {
+        let conn = conn();
+        let result = update(&conn, &enc(), &json!({ "closeAction": "minimize" })).unwrap();
+        assert_eq!(result.close_action.as_deref(), Some("minimize"));
+        assert_eq!(
+            get(&conn).unwrap().close_action.as_deref(),
+            Some("minimize")
+        );
+    }
+
+    #[test]
+    fn update_rejects_unknown_close_action_without_mutating() {
+        let conn = conn();
+        update(&conn, &enc(), &json!({ "closeAction": "ask" })).unwrap();
+        let err = update(&conn, &enc(), &json!({ "closeAction": "quit" })).unwrap_err();
+        assert_eq!(err.code_str(), "VALIDATION");
+        assert_eq!(get(&conn).unwrap().close_action.as_deref(), Some("ask"));
     }
 
     #[test]

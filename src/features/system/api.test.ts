@@ -27,6 +27,8 @@ describe("createSystemApi command contract (Req 3.1)", () => {
     await api.maximizeWindow();
     await api.restoreWindow();
     await api.closeWindow();
+    await api.quitWindow();
+    await api.hideWindow();
     await api.toggleVisibility();
     await api.enterFullscreen();
     await api.exitFullscreen();
@@ -37,6 +39,8 @@ describe("createSystemApi command contract (Req 3.1)", () => {
     expect(invoke).toHaveBeenCalledWith("window.maximize");
     expect(invoke).toHaveBeenCalledWith("window.restore");
     expect(invoke).toHaveBeenCalledWith("window.close");
+    expect(invoke).toHaveBeenCalledWith("window.quit");
+    expect(invoke).toHaveBeenCalledWith("window.hide");
     expect(invoke).toHaveBeenCalledWith("window.toggleVisibility");
     expect(invoke).toHaveBeenCalledWith("window.enterFullscreen");
     expect(invoke).toHaveBeenCalledWith("window.exitFullscreen");

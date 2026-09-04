@@ -366,6 +366,7 @@ fn settings_strategy() -> impl Strategy<Value = Settings> {
         proptest::option::of(any::<bool>()),
         opt_text(),
         proptest::option::of(security_settings()),
+        proptest::option::of(prop_oneof![Just("ask"), Just("minimize"), Just("exit")]),
     );
 
     (g1, g2, g3).prop_map(
@@ -378,7 +379,15 @@ fn settings_strategy() -> impl Strategy<Value = Settings> {
                 last_manual_backup_at,
                 last_manual_backup_version,
             ),
-            (sync, update_channel, launch_at_startup, minimize_on_launch, github_token, security),
+            (
+                sync,
+                update_channel,
+                launch_at_startup,
+                minimize_on_launch,
+                github_token,
+                security,
+                close_action,
+            ),
         )| Settings {
             theme: theme.to_string(),
             language: language.to_string(),
@@ -397,6 +406,7 @@ fn settings_strategy() -> impl Strategy<Value = Settings> {
             minimize_on_launch,
             github_token,
             security,
+            close_action: close_action.map(String::from),
             // Appearance fields are not exercised by this round-trip; default them.
             ..Default::default()
         },

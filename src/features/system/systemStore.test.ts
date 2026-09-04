@@ -11,6 +11,8 @@ function makeApi(overrides: Partial<SystemApi> = {}): SystemApi {
     maximizeWindow: vi.fn(async () => undefined),
     restoreWindow: vi.fn(async () => undefined),
     closeWindow: vi.fn(async () => undefined),
+    quitWindow: vi.fn(async () => undefined),
+    hideWindow: vi.fn(async () => undefined),
     toggleVisibility: vi.fn(async () => undefined),
     enterFullscreen: vi.fn(async () => undefined),
     exitFullscreen: vi.fn(async () => undefined),
@@ -135,15 +137,38 @@ describe("system store (Req 3.1, 20, 24)", () => {
   });
 
   // --- close dialog flow (Req 20.4) -------------------------------------
-  it("confirmClose() closes the window and dismisses the dialog (Req 20.4)", async () => {
+  it("confirmClose() quits the process and dismisses the dialog (Req 20.4)", async () => {
     const api = makeApi();
     resetStore(api);
     useSystemStore.setState({ closeDialogOpen: true });
 
     await useSystemStore.getState().confirmClose();
 
-    expect(api.closeWindow).toHaveBeenCalled();
+    expect(api.quitWindow).toHaveBeenCalled();
+    expect(api.closeWindow).not.toHaveBeenCalled();
     expect(useSystemStore.getState().closeDialogOpen).toBe(false);
+  });
+
+  it("hideToTray() hides via window.hide and dismisses the dialog (Req 20.4)", async () => {
+    const api = makeApi();
+    resetStore(api);
+    useSystemStore.setState({ closeDialogOpen: true });
+
+    await useSystemStore.getState().hideToTray();
+
+    expect(api.hideWindow).toHaveBeenCalled();
+    expect(api.toggleVisibility).not.toHaveBeenCalled();
+    expect(useSystemStore.getState().closeDialogOpen).toBe(false);
+  });
+
+  it("setCloseActionLocal() seeds the close action without a backend call", () => {
+    const api = makeApi();
+    resetStore(api);
+
+    useSystemStore.getState().setCloseActionLocal("minimize");
+
+    expect(api.setCloseAction).not.toHaveBeenCalled();
+    expect(useSystemStore.getState().closeAction).toBe("minimize");
   });
 
   // --- shortcuts (Req 20.6, 20.11) --------------------------------------

@@ -22,6 +22,8 @@
 //!   body ≤ 1000 characters, else `VALIDATION` (Req 20.7).
 //! - **Close-action decision** ([`CloseAction`] / [`CloseDecision`]): `ask` emits
 //!   a close-requested event, `minimize` hides, `exit` terminates (Req 20.4).
+//! - **Tray menu labels** ([`tray_menu_labels`]): Show / Exit strings for the
+//!   seven shipped locales, falling back to English.
 //! - **Runtime-paths report** ([`get_runtime_paths`]): the resolved data, database,
 //!   media, rule, backup, and log paths (Req 20.9).
 //! - **Cache size / clear** ([`get_cache_size`], [`clear_cache`]) over a directory
@@ -155,6 +157,15 @@ impl CloseAction {
             CloseAction::Exit => CloseDecision::Terminate,
         }
     }
+
+    /// Canonical persisted / wire form (`ask` | `minimize` | `exit`).
+    pub fn as_str(self) -> &'static str {
+        match self {
+            CloseAction::Ask => "ask",
+            CloseAction::Minimize => "minimize",
+            CloseAction::Exit => "exit",
+        }
+    }
 }
 
 /// Parses a close-action string (`ask` | `minimize` | `exit`) into a
@@ -167,6 +178,22 @@ pub fn parse_close_action(raw: &str) -> Result<CloseAction, AppError> {
         other => Err(AppError::validation(format!(
             "unknown close action `{other}`; expected ask, minimize, or exit"
         ))),
+    }
+}
+
+/// Native tray menu labels for Show / Exit, keyed by `settings.language`.
+///
+/// Unknown codes fall back to English. The Command_Layer rebuilds the live
+/// tray menu from these strings; this lookup stays Tauri-free (Req 20, 21.1).
+pub fn tray_menu_labels(language: &str) -> (&'static str, &'static str) {
+    match language {
+        "zh" => ("显示 PromptHub", "退出"),
+        "zh-TW" => ("顯示 PromptHub", "結束"),
+        "ja" => ("PromptHub を表示", "終了"),
+        "fr" => ("Afficher PromptHub", "Quitter"),
+        "de" => ("PromptHub anzeigen", "Beenden"),
+        "es" => ("Mostrar PromptHub", "Salir"),
+        _ => ("Show PromptHub", "Exit"),
     }
 }
 
@@ -762,6 +789,19 @@ mod tests {
         );
         assert_eq!(CloseAction::Minimize.decision(), CloseDecision::Hide);
         assert_eq!(CloseAction::Exit.decision(), CloseDecision::Terminate);
+    }
+
+    #[test]
+    fn tray_menu_labels_cover_shipped_locales_and_fall_back_to_english() {
+        assert_eq!(tray_menu_labels("en"), ("Show PromptHub", "Exit"));
+        assert_eq!(tray_menu_labels("zh"), ("显示 PromptHub", "退出"));
+        assert_eq!(tray_menu_labels("zh-TW"), ("顯示 PromptHub", "結束"));
+        assert_eq!(tray_menu_labels("ja"), ("PromptHub を表示", "終了"));
+        assert_eq!(tray_menu_labels("fr"), ("Afficher PromptHub", "Quitter"));
+        assert_eq!(tray_menu_labels("de"), ("PromptHub anzeigen", "Beenden"));
+        assert_eq!(tray_menu_labels("es"), ("Mostrar PromptHub", "Salir"));
+        assert_eq!(tray_menu_labels("pt"), ("Show PromptHub", "Exit"));
+        assert_eq!(tray_menu_labels(""), ("Show PromptHub", "Exit"));
     }
 
     // --- accelerator normalization ---

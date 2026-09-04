@@ -51,6 +51,8 @@ export interface Settings {
   updateChannel?: string | null;
   launchAtStartup?: boolean | null;
   minimizeOnLaunch?: boolean | null;
+  /** Close-window behavior: `ask` | `minimize` | `exit` (Req 20.4). */
+  closeAction?: string | null;
   /**
    * When true, AI and sync HTTP may target private, loopback, or link-local
    * addresses. Absent or false keeps the public-only pin.

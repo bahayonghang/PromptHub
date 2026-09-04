@@ -1866,8 +1866,9 @@
     },
     "close": {
       "title": "Close PromptHub?",
-      "message": "Do you want to exit the application?",
+      "message": "Keep the window open, hide PromptHub to the tray, or exit the application.",
       "cancel": "Keep running",
+      "minimize": "Minimize to tray",
       "confirm": "Exit"
     },
     "shortcuts": {

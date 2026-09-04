@@ -36,6 +36,8 @@ These guides help you **ask the right questions before coding**.
 - [ ] You're not sure where to put some logic
 - [ ] You are adding an event kind, JSONL record, RPC payload, or config field
 - [ ] UI / command code starts casting raw payload fields directly
+- [ ] Window close, hide-to-tray, and quit might use different helpers
+      → Read [Window Close and Tray](../cross-layer/window-close-tray.md)
 
 → Read [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md)
 

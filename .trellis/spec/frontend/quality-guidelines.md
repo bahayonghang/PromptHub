@@ -130,3 +130,7 @@ Review frontend changes for:
   `createRuntimeBridge(deps)` or store `api` fields.
 - Treating all backend failures the same when a capability-gated path should
   degrade gracefully.
+- Calling `window.close` from the ask-close confirm path. CloseAction is still
+  `ask`, so that re-emits `window:close-requested`. Use `window.quit`. Hide
+  from that dialog must use `window.hide` (tray-aware), not
+  `window.toggleVisibility`. See `.trellis/spec/cross-layer/window-close-tray.md`.

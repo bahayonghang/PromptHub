@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
 import en from "../../locales/en.json";
+import zh from "../../locales/zh.json";
+import zhTW from "../../locales/zh-TW.json";
+import ja from "../../locales/ja.json";
+import fr from "../../locales/fr.json";
+import de from "../../locales/de.json";
+import es from "../../locales/es.json";
 
 /** Resolves a dotted i18n key against a bundle, returning undefined if absent. */
 function lookup(bundle: unknown, key: string): unknown {
@@ -37,6 +43,7 @@ const KEYS = [
   "systemView.close.title",
   "systemView.close.message",
   "systemView.close.cancel",
+  "systemView.close.minimize",
   "systemView.close.confirm",
 
   // Shortcuts (Req 20.6, 20.11)
@@ -103,4 +110,26 @@ describe("system view i18n keys (Req 21.3)", () => {
       expect((value as string).length, `empty key: ${key}`).toBeGreaterThan(0);
     }
   });
+});
+
+const CLOSE_KEYS = [
+  "systemView.close.title",
+  "systemView.close.message",
+  "systemView.close.cancel",
+  "systemView.close.minimize",
+  "systemView.close.confirm",
+];
+
+const BUNDLES: Record<string, unknown> = { en, zh, "zh-TW": zhTW, ja, fr, de, es };
+
+describe("close dialog i18n keys in all locales (Req 21.3)", () => {
+  for (const [locale, bundle] of Object.entries(BUNDLES)) {
+    it(`resolves systemView.close.* in the ${locale} bundle`, () => {
+      for (const key of CLOSE_KEYS) {
+        const value = lookup(bundle, key);
+        expect(typeof value, `[${locale}] missing key: ${key}`).toBe("string");
+        expect((value as string).length, `[${locale}] empty key: ${key}`).toBeGreaterThan(0);
+      }
+    });
+  }
 });

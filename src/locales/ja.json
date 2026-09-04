@@ -1883,5 +1883,14 @@
     "duration": "Duration",
     "matrixRuns": "Matrix runs",
     "retry": "Retry failed cells"
+  },
+  "systemView": {
+    "close": {
+      "title": "PromptHub を閉じますか？",
+      "message": "このまま実行、トレイに最小化、または終了できます。",
+      "cancel": "実行を続ける",
+      "minimize": "トレイに最小化",
+      "confirm": "終了"
+    }
   }
 }

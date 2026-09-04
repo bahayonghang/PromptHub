@@ -1878,5 +1878,14 @@
     "duration": "Duration",
     "matrixRuns": "Matrix runs",
     "retry": "Retry failed cells"
+  },
+  "systemView": {
+    "close": {
+      "title": "¿Cerrar PromptHub?",
+      "message": "Puedes seguir ejecutando, minimizar a la bandeja o salir.",
+      "cancel": "Seguir ejecutando",
+      "minimize": "Minimizar a la bandeja",
+      "confirm": "Salir"
+    }
   }
 }

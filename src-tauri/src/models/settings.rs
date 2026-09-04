@@ -81,6 +81,10 @@ pub struct Settings {
     /// Whether the app minimizes on launch.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub minimize_on_launch: Option<bool>,
+    /// Close-window behavior: `ask` | `minimize` | `exit` (Req 20.4).
+    /// Absent means the runtime default `ask`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub close_action: Option<String>,
     /// When true, AI and sync HTTP may target private, loopback, or
     /// link-local addresses. Absent or false keeps the public-only pin.
     #[serde(default, skip_serializing_if = "Option::is_none")]

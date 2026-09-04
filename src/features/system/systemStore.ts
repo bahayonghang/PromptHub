@@ -128,13 +128,17 @@ interface SystemStoreState {
   // Close action / auto-launch (Req 20.4, 20.5) -------------------------
   /** Sets the close action through the Window_Manager and tracks it (Req 20.4). */
   setCloseAction: (action: CloseAction) => Promise<boolean>;
+  /** Seeds the close-action control from persisted settings without a backend call. */
+  setCloseActionLocal: (action: CloseAction) => void;
   /** Sets launch-on-login through the Window_Manager and tracks it (Req 20.5). */
   setAutoLaunch: (enabled: boolean) => Promise<boolean>;
   /** Seeds the auto-launch toggle from persisted settings without a backend call. */
   setAutoLaunchLocal: (enabled: boolean) => void;
   /** Dismisses the ask-close dialog without exiting (Req 20.4). */
   dismissCloseDialog: () => void;
-  /** Confirms an ask-close by terminating the window (Req 20.4). */
+  /** Hides to tray from the ask-close dialog using the same Hide path as minimize (Req 20.4). */
+  hideToTray: () => Promise<void>;
+  /** Confirms an ask-close by terminating the process (Req 20.4). */
   confirmClose: () => Promise<void>;
 
   // Shortcuts (Req 20.6, 20.11) -----------------------------------------
@@ -284,6 +288,8 @@ export const useSystemStore = create<SystemStoreState>((set, get) => ({
     }
   },
 
+  setCloseActionLocal: (action) => set({ closeAction: action }),
+
   setAutoLaunch: async (enabled) => {
     const { api } = get();
     set({ error: null });
@@ -301,9 +307,24 @@ export const useSystemStore = create<SystemStoreState>((set, get) => ({
 
   dismissCloseDialog: () => set({ closeDialogOpen: false }),
 
-  confirmClose: async () => {
+  hideToTray: async () => {
+    const { api } = get();
     set({ closeDialogOpen: false });
-    await get().close();
+    try {
+      await api.hideWindow();
+    } catch (err) {
+      handleWindowError(set, err);
+    }
+  },
+
+  confirmClose: async () => {
+    const { api } = get();
+    set({ closeDialogOpen: false });
+    try {
+      await api.quitWindow();
+    } catch (err) {
+      handleWindowError(set, err);
+    }
   },
 
   registerShortcuts: async (shortcuts) => {
