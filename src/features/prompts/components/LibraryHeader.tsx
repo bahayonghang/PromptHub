@@ -2,11 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DownloadIcon, PlusIcon, UploadIcon } from "lucide-react";
 import { resolveLibraryScope, usePromptStore } from "../promptStore";
-import { useSystemStore } from "../../system/systemStore";
 import { useToastStore } from "../../notifications/toastStore";
 import type { BundlePreview, ImportConflictPolicy } from "../types";
-
-
 import { Button, IconButton, Select } from "../../../components/ui";
 
 interface LibraryHeaderProps {
@@ -33,7 +30,6 @@ export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
   const exportBundle = usePromptStore((state) => state.exportBundle);
   const previewBundle = usePromptStore((state) => state.previewBundle);
   const importBundle = usePromptStore((state) => state.importBundle);
-  const dataPath = useSystemStore((state) => state.runtimePaths?.data ?? null);
 
   const [showImport, setShowImport] = useState(false);
   const [bundlePath, setBundlePath] = useState("");
@@ -41,14 +37,17 @@ export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
   const [bundlePreview, setBundlePreview] = useState<BundlePreview | null>(null);
 
   const title = libraryScopeTitle(t, { activeView, filters, folders });
-  const subtitle =
-    dataPath == null
-      ? t("promptsView.chrome.subtitleCount", { count: total })
-      : t("promptsView.chrome.subtitleWithPath", { count: total, path: dataPath });
+  const subtitle = t("promptsView.chrome.subtitleCount", { count: total });
 
   return (
-    <div className="flex flex-col gap-2 border-b border-border px-3 py-2">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col border-b border-border">
+      {/*
+        Resting chrome budget (design plan §6.1 / §9): TitleBar 36 + this 36 +
+        toolbar 40 = 112px. The import panel below is an explicit mode and is
+        not part of the resting stack. The filesystem path used to live in the
+        subtitle; that is debug information and belongs in Settings → Data path.
+      */}
+      <div className="flex h-9 shrink-0 items-center gap-2 px-3">
         <div className="flex min-w-0 flex-1 items-baseline gap-2">
           <h1 className="truncate text-title font-semibold text-foreground">{title}</h1>
           <p className="truncate font-mono text-meta tabular-nums text-muted-foreground-subtle">
@@ -57,6 +56,7 @@ export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <IconButton
+            size="sm"
             label={t("promptsView.bundle.export")}
             icon={<DownloadIcon className="h-4 w-4" aria-hidden="true" />}
             onClick={() =>
@@ -73,6 +73,7 @@ export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
             }
           />
           <IconButton
+            size="sm"
             label={t("promptsView.bundle.import")}
             icon={<UploadIcon className="h-4 w-4" aria-hidden="true" />}
             onClick={() => setShowImport((open) => !open)}
@@ -85,7 +86,7 @@ export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
         </div>
       </div>
       {showImport && (
-        <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3">
+        <div className="flex flex-col gap-2 border-t border-border bg-muted/30 p-3">
           <input
             value={bundlePath}
             onChange={(event) => {

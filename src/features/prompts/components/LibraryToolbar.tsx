@@ -30,8 +30,7 @@ export function LibraryToolbar() {
   const setMode = (next: LibraryViewMode) => setViewMode(next);
 
   return (
-    <div className="flex flex-col gap-2 border-b border-border px-3 py-2">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-3">
         <label className="relative min-w-0 flex-1">
           <SearchIcon
             className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
@@ -107,7 +106,6 @@ export function LibraryToolbar() {
         <span className="sr-only" aria-live="polite">
           {batchMode ? t("promptsView.chrome.batchOn") : t("promptsView.chrome.batchOff")}
         </span>
-      </div>
     </div>
   );
 }

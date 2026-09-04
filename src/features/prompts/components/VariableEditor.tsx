@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { VARIABLE_TYPES, type Variable, type VariableType } from "../types";
 
-import { Select } from "../../../components/ui";
+import { EmptyHint, Select } from "../../../components/ui";
 
 interface VariableEditorProps {
   /** Variables derived from the prompt text's `{{name}}` placeholders. */
@@ -29,9 +29,7 @@ export function VariableEditor({ variables, onChange }: VariableEditorProps) {
     <div className="flex flex-col gap-1.5">
       <span className={labelClass}>{t("promptsView.editor.variables")}</span>
       {variables.length === 0 ? (
-        <span className="text-label text-muted-foreground">
-          {t("promptsView.editor.noVariables")}
-        </span>
+        <EmptyHint>{t("promptsView.editor.noVariables")}</EmptyHint>
       ) : (
         <ul className="flex flex-col gap-2">
           {variables.map((variable) => (

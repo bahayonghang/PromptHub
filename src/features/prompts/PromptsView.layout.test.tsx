@@ -95,7 +95,7 @@ describe("PromptsView responsive workspace", () => {
   it("shows the empty state only when loading is false", () => {
     usePromptStore.setState({ loading: true, prompts: [], total: 0 });
     const { rerender } = render(<PromptsView />);
-    expect(screen.getByText("Loading...")).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Loading..." })).toBeTruthy();
     expect(screen.queryByText("No prompts found")).toBeNull();
 
     usePromptStore.setState({ loading: false, prompts: [], total: 0 });

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { PlayIcon, PlusIcon, SquareIcon } from "lucide-react";
-import { Button, Input, Select, Textarea } from "../../../components/ui";
+import { Button, EmptyHint, Input, Select, Textarea } from "../../../components/ui";
 import { Field, PanelHeading } from "./Field";
 import type { ExecutionProfileInput, ExecutionProfileRevision } from "../types";
 import type { PromptVersion } from "../../prompts/types";
@@ -190,9 +190,7 @@ export function PlaygroundPanel({
           </Field>
         ))}
         {activeVersion?.variables.length === 0 && (
-          <span className="text-label text-muted-foreground">
-            {t("evaluation.noVariables")}
-          </span>
+          <EmptyHint>{t("evaluation.noVariables")}</EmptyHint>
         )}
       </div>
 

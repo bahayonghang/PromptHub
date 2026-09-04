@@ -37,7 +37,7 @@ import { useSettingsStore, type PreferenceKey, type PreferenceValue } from "../s
 import { PreferenceStatus } from "./PreferenceStatus";
 import { SpecimenCard } from "./SpecimenCard";
 
-import { Button, IconButton, Select } from "../../../components/ui";
+import { Button, EmptyHint, IconButton, Select, Skeleton } from "../../../components/ui";
 import { cn } from "../../../components/ui/cn";
 
 const labelClass = "text-body font-medium text-foreground";
@@ -340,9 +340,13 @@ export function AppearancePanel() {
           {t("settingsView.appearance.addFallback")}
         </Button>
         {systemFontsStatus === "loading" && (
-          <div role="status" className="h-4 w-40 animate-pulse rounded-sm bg-muted" aria-label={t("settingsView.appearance.systemFontsLoading")} />
+          <div role="status" aria-label={t("settingsView.appearance.systemFontsLoading")}>
+            <Skeleton className="h-4 w-40" />
+          </div>
         )}
-        {systemFontsStatus === "empty" && <p className="text-label text-muted-foreground">{t("settingsView.appearance.systemFontsEmpty")}</p>}
+        {systemFontsStatus === "empty" && (
+          <EmptyHint>{t("settingsView.appearance.systemFontsEmpty")}</EmptyHint>
+        )}
         {systemFontsStatus === "error" && (
           <div role="alert" className="flex flex-wrap items-center gap-2 text-label text-destructive">
             <span>{t("settingsView.appearance.systemFontsError")}</span>

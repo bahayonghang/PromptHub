@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Input } from "../../../components/ui";
+import { EmptyHint, Input } from "../../../components/ui";
 import {
   AlertTriangleIcon,
   FolderInputIcon,
@@ -242,9 +242,7 @@ export function DataPathPanel({
           </ul>
         ) : (
           scanned && (
-            <p className="text-label text-muted-foreground">
-              {t("settingsView.dataPath.recoveryEmpty")}
-            </p>
+            <EmptyHint>{t("settingsView.dataPath.recoveryEmpty")}</EmptyHint>
           )
         )}
       </section>

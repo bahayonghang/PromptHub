@@ -10,7 +10,7 @@ import {
 import type { Prompt, PromptTypeDefinition, PromptVersion } from "../types";
 import { diffPromptRevision } from "../versionDiff";
 
-import { IconButton, Textarea } from "../../../components/ui";
+import { EmptyHint, EmptyState, IconButton, Textarea } from "../../../components/ui";
 /** The 1,000-character note limit enforced by `version.create` (Req 7.8). */
 const NOTE_MAX = 1000;
 
@@ -83,18 +83,14 @@ export function VersionHistory({
         </button>
       </div>
 
+      {ordered.length === 0 ? (
+        <EmptyState
+          title={t("promptsView.history.empty")}
+          description={t("promptsView.history.emptyHint")}
+        />
+      ) : (
       <ul className="flex-1 overflow-y-auto p-2">
-        {ordered.length === 0 ? (
-          <li className="flex flex-col items-center gap-1 px-2 py-6 text-center">
-            <p className="text-label font-medium text-foreground">
-              {t("promptsView.history.empty")}
-            </p>
-            <p className="text-label text-muted-foreground">
-              {t("promptsView.history.emptyHint")}
-            </p>
-          </li>
-        ) : (
-          ordered.map((version) => {
+        {ordered.map((version) => {
             const diff = diffPromptRevision(
               prompt,
               version,
@@ -140,9 +136,7 @@ export function VersionHistory({
               {expanded && (
                 <div className="mt-2 border-l border-border pl-2">
                   {diff.length === 0 ? (
-                    <p className="text-label text-muted-foreground">
-                      {t("promptsView.history.noDiff")}
-                    </p>
+                    <EmptyHint>{t("promptsView.history.noDiff")}</EmptyHint>
                   ) : (
                     <dl className="space-y-2">
                       {diff.map((entry) => (
@@ -164,9 +158,9 @@ export function VersionHistory({
               )}
             </li>
             );
-          })
-        )}
+          })}
       </ul>
+      )}
     </div>
   );
 }

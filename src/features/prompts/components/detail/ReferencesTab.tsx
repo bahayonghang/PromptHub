@@ -10,7 +10,7 @@ import type {
   ReferenceList,
 } from "../../types";
 
-import { Select } from "../../../../components/ui";
+import { EmptyHint, Select } from "../../../../components/ui";
 
 export interface ReferencesTabProps {
   prompt: Prompt | null;
@@ -120,9 +120,7 @@ export function ReferencesTab({
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-body text-muted-foreground">
-            {t("promptsView.detail.noOutgoing")}
-          </p>
+          <EmptyHint className="mt-2">{t("promptsView.detail.noOutgoing")}</EmptyHint>
         )}
       </section>
 
@@ -143,9 +141,7 @@ export function ReferencesTab({
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-body text-muted-foreground">
-            {t("promptsView.detail.noIncoming")}
-          </p>
+          <EmptyHint className="mt-2">{t("promptsView.detail.noIncoming")}</EmptyHint>
         )}
       </section>
 

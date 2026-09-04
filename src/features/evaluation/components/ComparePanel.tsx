@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { CheckIcon, TagIcon, XIcon } from "lucide-react";
-import { Button } from "../../../components/ui";
+import { Button, EmptyHint } from "../../../components/ui";
 import { cn } from "../../../components/ui/cn";
 import { PanelHeading } from "./Field";
 import { StatusDot } from "./StatusDot";
@@ -36,7 +36,7 @@ export function ComparePanel({
     <aside className="min-w-0 overflow-y-auto border-t border-border p-3 lg:border-l lg:border-t-0">
       <PanelHeading>{t("evaluation.compare")}</PanelHeading>
       {cells.length === 0 && (
-        <p className="mt-2 text-label text-muted-foreground">{t("evaluation.compareEmpty")}</p>
+        <EmptyHint className="mt-2">{t("evaluation.compareEmpty")}</EmptyHint>
       )}
 
       <div className={`mt-2 grid gap-3 ${cells.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
@@ -124,9 +124,9 @@ export function ComparePanel({
           </div>
         ))}
         {labels.length === 0 && (
-          <p className="mt-1 text-label text-muted-foreground">
+          <EmptyHint className="mt-1">
             {prompt.title}: {t("evaluation.noLabels")}
-          </p>
+          </EmptyHint>
         )}
 
         {labelHistory.slice(0, 5).map((item) => (

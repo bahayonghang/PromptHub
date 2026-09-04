@@ -190,6 +190,39 @@ describe("style conventions", () => {
     expect(offenders(TSX, /fixed inset-0[^"`]*bg-background\//)).toEqual([]);
   });
 
+  it("renders empty-copy keys through EmptyState or EmptyHint", () => {
+    // EmptyState sat unused because nothing stopped a new view from hand-rolling
+    // a grey <p>. The sites split into two shapes on purpose (full-region vs
+    // inline), so the guard accepts either primitive rather than forcing one.
+    const key =
+      /t\(\s*["'][^"']*(?:[Ee]mpty|emptyFolders|noPrompts|noRuns|noOutgoing|noIncoming|noVariables|noLabels|noDiff)[^"']*["']/;
+    const bad: string[] = [];
+    for (const file of FEATURE) {
+      const lines = read(file).split("\n");
+      lines.forEach((line: string, i: number) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("*") || trimmed.startsWith("//")) return;
+        if (!key.test(line)) return;
+        // A <select> placeholder option is a choice, not an empty region.
+        if (/<option\b/.test(line) || /placeholder=/.test(line)) return;
+        const window = lines.slice(Math.max(0, i - 8), i + 9).join("\n");
+        if (!/\b(?:EmptyState|EmptyHint)\b/.test(window)) {
+          bad.push(`${file}:${i + 1}`);
+        }
+      });
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it("routes loading placeholders through the Skeleton primitive", () => {
+    // `animate-pulse` + `bg-muted` is the skeleton recipe. StatusDot and the
+    // streaming output pip pulse a primary dot as a live indicator, which is
+    // not a placeholder and is allowed to keep its own markup.
+    expect(
+      offenders(FEATURE, /animate-pulse[^"'`\n]*bg-muted|bg-muted[^"'`\n]*animate-pulse/),
+    ).toEqual([]);
+  });
+
   it("only uses alpha modifiers that exist on Tailwind's opacity scale", () => {
     // Off-scale values such as `/14` are silently dropped at build time,
     // leaving the element with no colour at all.

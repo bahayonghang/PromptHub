@@ -1,4 +1,4 @@
-import { useMemo, type KeyboardEvent } from "react";
+import { useMemo, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ClockIcon,
@@ -16,13 +16,30 @@ import type { Folder } from "../types";
 import { FolderTree } from "./FolderTree";
 import { TagManager } from "./TagManager";
 
-import { Tag, useConfirm} from "../../../components/ui";
+import { Tag, useConfirm } from "../../../components/ui";
+import { cn } from "../../../components/ui/cn";
 
 const SAVED_VIEWS: { view: SavedView; icon: LucideIcon }[] = [
   { view: "all", icon: InboxIcon },
   { view: "favorites", icon: StarIcon },
   { view: "recent", icon: ClockIcon },
 ];
+
+/** How many tag chips to show before the cloud collapses (plan §6.4). */
+export const TAG_CLOUD_PREVIEW = 8;
+
+const NAV_ROW =
+  "relative flex h-control-md w-full items-center gap-2 rounded-md px-2 text-left text-body transition-colors duration-fast ease-out";
+
+function SelectionAccent({ active }: { active: boolean }) {
+  if (!active) return null;
+  return (
+    <span
+      aria-hidden="true"
+      className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-primary"
+    />
+  );
+}
 
 /**
  * Feature-owned library rail: saved views, folder tree, and tag cloud.
@@ -50,6 +67,8 @@ export function PromptLibraryNav() {
   const renameTag = usePromptStore((state) => state.renameTag);
   const deleteTag = usePromptStore((state) => state.deleteTag);
 
+  const [tagsExpanded, setTagsExpanded] = useState(false);
+
   const scope = resolveLibraryScope({ activeView, filters, folders });
   const sortedTags = useMemo(() => {
     return [...tags].sort((left, right) => {
@@ -58,6 +77,11 @@ export function PromptLibraryNav() {
       return byCount !== 0 ? byCount : left.localeCompare(right);
     });
   }, [tags, libraryCounts.tags]);
+  const visibleTags =
+    tagsExpanded || sortedTags.length <= TAG_CLOUD_PREVIEW
+      ? sortedTags
+      : sortedTags.slice(0, TAG_CLOUD_PREVIEW);
+  const hiddenTagCount = Math.max(0, sortedTags.length - TAG_CLOUD_PREVIEW);
 
   const openLibrary = () => setActiveView("prompts");
 
@@ -126,12 +150,14 @@ export function PromptLibraryNav() {
               aria-label={t(`promptsView.library.${view}`)}
               aria-current={current ? "true" : undefined}
               onClick={() => handleSelectView(view)}
-              className={`flex h-10 w-10 flex-col items-center justify-center rounded-lg text-micro font-mono ${
+              className={cn(
+                "relative flex h-10 w-10 flex-col items-center justify-center rounded-lg text-micro font-mono",
                 current
                   ? "bg-state-selected text-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent"
-              }`}
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent",
+              )}
             >
+              <SelectionAccent active={current} />
               <Icon className="h-4 w-4" aria-hidden="true" />
               {count != null && <span aria-hidden="true">{count}</span>}
             </button>
@@ -148,7 +174,7 @@ export function PromptLibraryNav() {
       aria-label={t("promptsView.library.nav")}
     >
       <section aria-label={t("promptsView.library.savedViews")}>
-        <h2 className="px-2 pb-1 text-meta font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="px-2 pb-1 text-meta font-medium text-muted-foreground-subtle">
           {t("promptsView.library.savedViews")}
         </h2>
         <div role="list" className="flex flex-col gap-0.5">
@@ -162,19 +188,21 @@ export function PromptLibraryNav() {
                 role="listitem"
                 aria-current={current ? "true" : undefined}
                 onClick={() => handleSelectView(view)}
-                className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-body ${
+                className={cn(
+                  NAV_ROW,
                   current
                     ? "bg-state-selected text-foreground"
-                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                }`}
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                )}
               >
+                <SelectionAccent active={current} />
                 <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
                 <span className="min-w-0 flex-1 truncate">
                   {t(`promptsView.library.${view}`)}
                 </span>
                 {count != null && (
                   <span
-                    className="font-mono text-label text-muted-foreground-subtle"
+                    className="text-meta tabular-nums text-muted-foreground-subtle"
                     aria-label={t("promptsView.library.bucketCount", { count })}
                   >
                     {count}
@@ -201,7 +229,7 @@ export function PromptLibraryNav() {
       </section>
 
       <section aria-label={t("promptsView.library.tags")}>
-        <h2 className="px-2 pb-1 text-meta font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="px-2 pb-1 text-meta font-medium text-muted-foreground-subtle">
           {t("promptsView.library.tags")}
         </h2>
         <div
@@ -211,7 +239,7 @@ export function PromptLibraryNav() {
           onKeyDown={handleTagKeyDown}
           className="flex flex-wrap gap-1 px-1"
         >
-          {sortedTags.map((tag) => {
+          {visibleTags.map((tag) => {
             const pressed = filters.tags.includes(tag);
             const count = libraryCounts.tags[tag];
             return (
@@ -231,6 +259,17 @@ export function PromptLibraryNav() {
             );
           })}
         </div>
+        {hiddenTagCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setTagsExpanded((open) => !open)}
+            className="mt-1 px-2 text-meta text-muted-foreground transition-colors duration-fast ease-out hover:text-foreground"
+          >
+            {tagsExpanded
+              ? t("promptsView.library.showFewerTags")
+              : t("promptsView.library.showMoreTags", { count: hiddenTagCount })}
+          </button>
+        )}
         <TagManager
           tags={tags}
           onRename={(old, next) => void renameTag(old, next)}

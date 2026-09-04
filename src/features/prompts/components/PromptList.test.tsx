@@ -48,6 +48,22 @@ beforeEach(async () => {
 afterEach(cleanup);
 
 describe("PromptList preview", () => {
+  it("renders a labelled busy skeleton instead of rows while loading", () => {
+    render(
+      <PromptList
+        items={[]}
+        loading
+        selectedPromptId={null}
+        selectedPromptIds={[]}
+        onSelect={vi.fn()}
+        onToggleSelection={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("status", { name: "Loading..." })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Steelman" })).toBeNull();
+  });
+
   it("shows the description instead of the prompt body", () => {
     render(
       <PromptList
@@ -69,6 +85,35 @@ describe("PromptList preview", () => {
     expect(
       screen.queryByText("This body must not appear in the list"),
     ).toBeNull();
+  });
+
+  it("folds description, usage, and version into the title cell", () => {
+    render(
+      <PromptList
+        items={itemsFrom([
+          makePrompt({
+            description: "A short card summary",
+            usageCount: 12,
+            currentVersion: 5,
+          }),
+        ])}
+        selectedPromptId="prompt-1"
+        selectedPromptIds={[]}
+        onSelect={vi.fn()}
+        onToggleSelection={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("columnheader", { name: "Description" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Uses" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Version" })).toBeNull();
+    expect(screen.getByRole("columnheader", { name: "Title" })).toBeTruthy();
+    expect(screen.getByText("A short card summary")).toBeTruthy();
+    expect(screen.getByText("v5")).toBeTruthy();
+    const titleCell = screen.getByRole("button", { name: "Steelman" }).closest("td");
+    expect(titleCell?.className).toContain("relative");
+    expect(titleCell?.querySelector(".bg-primary")).toBeTruthy();
   });
 
   it("shows a placeholder when the description is empty", () => {

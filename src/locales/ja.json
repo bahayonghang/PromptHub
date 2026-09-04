@@ -1622,6 +1622,8 @@
       "themeToLight": "ライトモードに切り替え",
       "themeToDark": "ダークモードに切り替え",
       "bucketCount": "このグループは {{count}} 件",
+      "showMoreTags": "他 {{count}} 件",
+      "showFewerTags": "閉じる",
       "productVersion": "1.0.0"
     },
     "chrome": {
@@ -1645,6 +1647,7 @@
     "items": {
       "pinned": "ピン留め",
       "moreTags": "+{{count}}",
+      "usageCount": "使用回数：{{count}}",
       "columns": {
         "select": "選択",
         "title": "タイトル",

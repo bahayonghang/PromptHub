@@ -94,6 +94,25 @@ describe("PromptGrid", () => {
     expect(incrementUsage).toHaveBeenCalledWith("prompt-1");
   });
 
+  it("selects with a ring instead of a primary border so the card does not shift", () => {
+    const { container } = render(
+      <PromptGrid
+        items={itemsFrom([makePrompt()])}
+        selectedPromptId="prompt-1"
+        selectedPromptIds={[]}
+        onSelect={vi.fn()}
+        onToggleSelection={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />,
+    );
+    const article = container.querySelector("article");
+    expect(article?.className).toContain("ring-2");
+    expect(article?.className).toContain("ring-primary/60");
+    expect(article?.className).not.toContain("border-primary");
+    expect(container.querySelector(".mt-auto")?.textContent).toContain("·");
+    expect(container.querySelector(".min-h-10")).toBeTruthy();
+  });
+
   it("hides body-derived preview text on a locked card", () => {
     render(
       <PromptGrid

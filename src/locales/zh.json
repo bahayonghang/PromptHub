@@ -1655,6 +1655,8 @@
       "themeToLight": "切换到浅色模式",
       "themeToDark": "切换到深色模式",
       "bucketCount": "此分组共 {{count}} 条",
+      "showMoreTags": "还有 {{count}} 个",
+      "showFewerTags": "收起",
       "productVersion": "1.0.0"
     },
     "chrome": {
@@ -1678,6 +1680,7 @@
     "items": {
       "pinned": "置顶",
       "moreTags": "+{{count}}",
+      "usageCount": "使用次数：{{count}}",
       "columns": {
         "select": "选择",
         "title": "标题",
