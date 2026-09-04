@@ -153,12 +153,18 @@ export function FolderTree({
             handleDrop(node);
           }}
           style={{ paddingLeft: `${node.depth * 12 + 8}px` }}
-          className={`group flex items-center gap-1 rounded-md py-1.5 pr-2 text-body transition-colors duration-fast ease-out ${
+          className={`group relative flex h-control-md items-center gap-1 rounded-md pr-2 text-body transition-colors duration-fast ease-out ${
             isSelected
               ? "bg-state-selected text-foreground"
-              : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              : "text-muted-foreground hover:bg-state-hover hover:text-foreground"
           } ${isDropTarget ? "ring-1 ring-primary" : ""}`}
         >
+          {isSelected && (
+            <span
+              aria-hidden="true"
+              className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-primary"
+            />
+          )}
           <button
             type="button"
             aria-label={isExpanded ? t("common.collapse") : t("common.expand")}
@@ -208,7 +214,7 @@ export function FolderTree({
                 <span className="truncate">{node.name}</span>
                 {counts?.[node.id] != null && (
                   <span
-                    className="ml-auto font-mono text-label text-muted-foreground-subtle"
+                    className="ml-auto text-meta tabular-nums text-muted-foreground-subtle"
                     title={t("promptsView.library.bucketCount", {
                       count: counts[node.id],
                     })}
@@ -285,7 +291,7 @@ export function FolderTree({
       }}
     >
       <div className="flex items-center justify-between px-2 py-1">
-        <span className="text-label font-semibold uppercase tracking-wide text-muted-foreground">
+        <span className="text-meta font-medium text-muted-foreground-subtle">
           {t("promptsView.folders")}
         </span>
         <IconButton
@@ -301,12 +307,18 @@ export function FolderTree({
       <button
         type="button"
         onClick={() => onSelectFolder(null)}
-        className={`mx-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-body transition-colors duration-fast ease-out ${
+        className={`relative mx-1 flex h-control-md items-center gap-2 rounded-md px-2 text-left text-body transition-colors duration-fast ease-out ${
           selectedFolderId == null
             ? "bg-state-selected text-foreground"
-            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+            : "text-muted-foreground hover:bg-state-hover hover:text-foreground"
         }`}
       >
+        {selectedFolderId == null && (
+          <span
+            aria-hidden="true"
+            className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-primary"
+          />
+        )}
         <FilesIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span className="truncate">{t("promptsView.allFolders")}</span>
       </button>

@@ -92,4 +92,27 @@ describe("PromptLibraryNav", () => {
     render(<PromptLibraryNav />);
     expect(screen.getByText("Manage tags")).toBeTruthy();
   });
+
+  it("drops uppercase group titles and collapses the tag cloud", () => {
+    usePromptStore.setState({
+      tags: ["t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9"],
+      libraryCounts: {
+        views: { all: 20, favorites: 4 },
+        folders: { f1: 12 },
+        tags: {},
+      },
+    });
+    const { container } = render(<PromptLibraryNav />);
+    const headings = [...container.querySelectorAll("h2")];
+    expect(headings.length).toBeGreaterThan(0);
+    for (const heading of headings) {
+      expect(heading.className).not.toContain("uppercase");
+    }
+    expect(screen.getByRole("button", { name: /t1/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^t9/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "1 more" }));
+    expect(screen.getByRole("button", { name: /^t9/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Show fewer" }));
+    expect(screen.queryByRole("button", { name: /^t9/ })).toBeNull();
+  });
 });

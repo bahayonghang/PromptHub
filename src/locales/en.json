@@ -1412,6 +1412,8 @@
       "themeToLight": "Switch to light mode",
       "themeToDark": "Switch to dark mode",
       "bucketCount": "{{count}} in this group",
+      "showMoreTags": "{{count}} more",
+      "showFewerTags": "Show fewer",
       "productVersion": "1.0.0"
     },
     "chrome": {
@@ -1435,6 +1437,7 @@
     "items": {
       "pinned": "Pinned",
       "moreTags": "+{{count}}",
+      "usageCount": "Usage: {{count}}",
       "columns": {
         "select": "Select",
         "title": "Title",

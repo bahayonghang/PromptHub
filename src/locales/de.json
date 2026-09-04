@@ -1616,6 +1616,8 @@
       "themeToLight": "Zum hellen Modus wechseln",
       "themeToDark": "Zum dunklen Modus wechseln",
       "bucketCount": "{{count}} in dieser Gruppe",
+      "showMoreTags": "{{count}} weitere",
+      "showFewerTags": "Weniger anzeigen",
       "productVersion": "1.0.0"
     },
     "chrome": {
@@ -1639,6 +1641,7 @@
     "items": {
       "pinned": "Angeheftet",
       "moreTags": "+{{count}}",
+      "usageCount": "Verwendungen: {{count}}",
       "columns": {
         "select": "Auswahlen",
         "title": "Titel",

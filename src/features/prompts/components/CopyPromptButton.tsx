@@ -11,6 +11,7 @@ import {
   formatCopiedPrompt,
   type PromptCopySource,
 } from "../promptText";
+import { cn } from "../../../components/ui/cn";
 
 export const PROMPT_COPY_TOAST_GROUP = "prompt-copy";
 
@@ -23,6 +24,7 @@ interface CopyPromptButtonProps {
   locked?: boolean;
   writeText?: (text: string) => Promise<void>;
   incrementUsage?: (id: string) => Promise<unknown>;
+  className?: string;
 }
 
 type CopyStatus = "idle" | "busy" | "copied" | "failed";
@@ -85,6 +87,7 @@ export function CopyPromptButton({
   locked = false,
   writeText = defaultWriteText,
   incrementUsage = defaultIncrementUsage,
+  className = "",
 }: CopyPromptButtonProps) {
   const { t } = useTranslation();
   const [status, setStatus] = useState<CopyStatus>("idle");
@@ -149,9 +152,14 @@ export function CopyPromptButton({
         event.stopPropagation();
         void copy();
       }}
-      className={`flex h-control-lg w-control-lg shrink-0 items-center justify-center rounded-md transition-[transform,color,background-color] duration-base ease-spring hover:bg-accent hover:text-foreground active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50 ${
-        status === "copied" ? "text-primary" : "text-muted-foreground"
-      }`}
+      className={cn(
+        "flex h-control-lg w-control-lg shrink-0 items-center justify-center rounded-md",
+        "transition-[transform,color,background-color,opacity] duration-base ease-spring",
+        "hover:bg-accent hover:text-foreground active:scale-[0.96]",
+        "disabled:pointer-events-none disabled:opacity-50",
+        status === "copied" ? "text-primary" : "text-muted-foreground",
+        className,
+      )}
     >
       {status === "copied" ? (
         <CheckIcon className="h-5 w-5" aria-hidden="true" />

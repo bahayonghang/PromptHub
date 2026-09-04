@@ -1619,6 +1619,8 @@
       "themeToLight": "Passer en mode clair",
       "themeToDark": "Passer en mode sombre",
       "bucketCount": "{{count}} dans ce groupe",
+      "showMoreTags": "{{count}} de plus",
+      "showFewerTags": "Afficher moins",
       "productVersion": "1.0.0"
     },
     "chrome": {
@@ -1642,6 +1644,7 @@
     "items": {
       "pinned": "Epingle",
       "moreTags": "+{{count}}",
+      "usageCount": "Utilisations : {{count}}",
       "columns": {
         "select": "Selectionner",
         "title": "Titre",

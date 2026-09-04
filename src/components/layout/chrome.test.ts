@@ -45,6 +45,12 @@ describe("application chrome", () => {
     expect(toolbar).toContain("h-control-");
   });
 
+  it("keeps the expanded sidebar at 236px", () => {
+    const sidebar = read("src/components/layout/Sidebar.tsx");
+    expect(sidebar).toContain("w-[236px]");
+    expect(sidebar).not.toContain("w-[264px]");
+  });
+
   it("keeps resting Prompts chrome at 112px", () => {
     // TitleBar 36 + LibraryHeader 36 + LibraryToolbar 40. Filter chips and the
     // import panel are opt-in and must not pad the resting stack.

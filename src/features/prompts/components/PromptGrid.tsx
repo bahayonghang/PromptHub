@@ -5,6 +5,7 @@ import type { LibraryItem } from "../libraryItem";
 import { CopyPromptButton } from "./CopyPromptButton";
 
 import { IconButton, Skeleton, Tag } from "../../../components/ui";
+import { cn } from "../../../components/ui/cn";
 
 interface PromptGridProps {
   items: LibraryItem[];
@@ -39,6 +40,10 @@ function activateSelect(
   }
 }
 
+/**
+ * Card grid of library items. Cards share Panel's surface (card fill + hairline)
+ * and select with a ring so a 1px border change never shifts neighbours.
+ */
 export function PromptGrid({
   items,
   selectedPromptId,
@@ -55,7 +60,7 @@ export function PromptGrid({
 
   return (
     <ul
-      className="grid grid-cols-[repeat(auto-fill,minmax(272px,1fr))] gap-4 p-3"
+      className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3 p-3"
       role={loading ? "status" : undefined}
       aria-label={loading ? t("promptsView.loading") : undefined}
       aria-busy={loading || undefined}
@@ -63,7 +68,7 @@ export function PromptGrid({
       {loading
         ? Array.from({ length: SKELETON_CARDS }, (_, index) => (
             <li key={index}>
-              <article className="flex h-full flex-col gap-2 rounded-lg border border-border p-3">
+              <article className="flex h-full flex-col gap-2 rounded-lg border border-border bg-card p-3 shadow-hairline">
                 <Skeleton className="h-4 w-2/3" />
                 <Skeleton className="h-3 w-full" />
                 <Skeleton className="h-3 w-4/5" />
@@ -81,9 +86,13 @@ export function PromptGrid({
         return (
           <li key={item.id}>
             <article
-              className={`flex h-full flex-col gap-2 rounded-lg border p-3 ${
-                selected ? "border-primary ring-1 ring-primary" : "border-border"
-              }`}
+              className={cn(
+                "flex h-full flex-col gap-2 rounded-lg border bg-card p-3 shadow-hairline",
+                "transition-colors duration-fast ease-out",
+                selected
+                  ? "border-transparent ring-2 ring-primary/60 ring-offset-2 ring-offset-background"
+                  : "border-border hover:border-border-strong hover:bg-state-hover",
+              )}
             >
               <div className="flex items-start gap-2">
                 {batchMode && (
@@ -124,15 +133,20 @@ export function PromptGrid({
                     )}
                     <h3 className="min-w-0 truncate text-body font-medium text-foreground">{item.title}</h3>
                   </div>
-                  <p className="mt-1 line-clamp-2 text-label text-muted-foreground">{item.description}</p>
                 </div>
                 <IconButton
                   label={item.isFavorite ? t("promptsView.unfavorite") : t("promptsView.favorite")}
-                  icon={<StarIcon className={`h-4 w-4 ${item.isFavorite ? "fill-current text-primary" : ""}`} aria-hidden="true" />}
+                  icon={
+                    <StarIcon
+                      className={cn("h-4 w-4", item.isFavorite && "fill-current text-favorite")}
+                      aria-hidden="true"
+                    />
+                  }
                   onClick={() => onToggleFavorite(item.id, !item.isFavorite)}
                   aria-pressed={item.isFavorite}
                 />
               </div>
+              <p className="min-h-10 line-clamp-2 text-label text-muted-foreground">{item.description}</p>
               {(item.tags.length > 0 || item.overflowTagCount > 0) && (
                 <div className="flex flex-wrap gap-1">
                   {item.tags.map((tag) => (
@@ -145,14 +159,18 @@ export function PromptGrid({
                   )}
                 </div>
               )}
-              <div className="mt-auto flex items-center gap-2 font-mono text-meta text-muted-foreground-subtle">
+              <div className="mt-auto flex items-center gap-1.5 text-meta text-muted-foreground-subtle">
                 <span className="inline-flex min-w-0 items-center gap-1 truncate">
                   <TypeBadge kind={item.typeKind} />
                   {item.typeLabel}
                 </span>
+                <span aria-hidden="true">·</span>
                 <span className="tabular-nums">{item.usageCount}</span>
+                <span aria-hidden="true">·</span>
                 <span>{item.updatedLabel}</span>
-                <span className="font-mono tabular-nums">{item.versionLabel}</span>
+                <span className="ml-auto rounded-sm bg-muted px-1.5 py-0.5 font-mono tabular-nums text-foreground">
+                  {item.versionLabel}
+                </span>
               </div>
             </article>
           </li>
