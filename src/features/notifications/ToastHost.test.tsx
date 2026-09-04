@@ -40,7 +40,7 @@ describe("ToastHost", () => {
     });
     expect(screen.getByRole("status").textContent).toContain("Copied Steelman");
     const item = document.querySelector(".toast-item");
-    expect(item?.className).toContain("border-success/40");
+    expect(item?.querySelector(".bg-success")).toBeTruthy();
     expect(item?.querySelector(".text-success")).toBeTruthy();
   });
 

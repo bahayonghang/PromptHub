@@ -355,8 +355,23 @@
   animation: prompt-detail-enter 160ms ease-out;
 }
 
+/*
+ * Toasts are anchored to the right edge, so they slide in from it. Reusing the
+ * modal's rise-from-below read as the toast growing out of the window chrome.
+ */
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translateX(0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 .toast-item {
-  animation: prompt-detail-enter 160ms ease-out;
+  animation: toast-enter var(--dur-base) var(--ease-spring);
 }
 
 @container prompt-editor (min-width: 32rem) {
