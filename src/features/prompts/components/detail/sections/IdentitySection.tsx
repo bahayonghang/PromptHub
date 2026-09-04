@@ -6,6 +6,7 @@ import type {
 } from "../../../types";
 import type { PromptDraft } from "../promptDraft";
 import { PromptTypePicker } from "../PromptTypePicker";
+import { Input } from "../../../../../components/ui";
 
 export interface IdentitySectionProps {
   draft: PromptDraft;
@@ -19,9 +20,6 @@ export interface IdentitySectionProps {
 }
 
 const labelClass = "text-label font-medium text-muted-foreground";
-const inputClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-body text-foreground outline-none disabled:opacity-50";
-
 export function IdentitySection({
   draft,
   titleValid,
@@ -45,13 +43,13 @@ export function IdentitySection({
           <label className={labelClass} htmlFor="prompt-title">
             {t("promptsView.editor.title")}
           </label>
-          <input
+          <Input
             id="prompt-title"
             value={draft.title}
             placeholder={t("promptsView.editor.titlePlaceholder")}
             disabled={readOnly}
             onChange={(e) => onChange({ title: e.target.value })}
-            className={inputClass}
+            size="lg"
           />
           {!titleValid && (
             <span className="text-label text-destructive">
@@ -64,13 +62,13 @@ export function IdentitySection({
           <label className={labelClass} htmlFor="prompt-description">
             {t("promptsView.editor.description")}
           </label>
-          <input
+          <Input
             id="prompt-description"
             value={draft.description}
             placeholder={t("promptsView.editor.descriptionPlaceholder")}
             disabled={readOnly}
             onChange={(e) => onChange({ description: e.target.value })}
-            className={inputClass}
+            size="lg"
           />
         </div>
 
@@ -86,7 +84,7 @@ export function IdentitySection({
         />
 
         <label className="flex items-center gap-2 self-end py-2 text-body text-foreground">
-          <input
+          <Input
             type="checkbox"
             checked={draft.isPrivate}
             disabled={readOnly}

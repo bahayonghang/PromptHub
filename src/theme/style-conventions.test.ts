@@ -162,6 +162,18 @@ describe("style conventions", () => {
     expect(bad).toEqual([]);
   });
 
+  it("routes multi-line fields through the Textarea primitive", () => {
+    // Six call sites each re-declared the same border/padding/background
+    // string; one of them rendered a too-long note with no invalid styling.
+    expect(offenders(FEATURE, /<textarea/)).toEqual([]);
+  });
+
+  it("does not re-declare a shared input class constant", () => {
+    // `inputClass` / `fieldClass` locals are how the duplication crept back in
+    // after the primitives landed.
+    expect(offenders(FEATURE, /\b(?:inputClass|fieldClass)\s*=/)).toEqual([]);
+  });
+
   it("routes toggle switches through the Switch primitive", () => {
     // Three panels had hand-rolled `role="switch"` markup that drifted apart
     // (different knob sizes, a hardcoded white knob that glared on dark themes).

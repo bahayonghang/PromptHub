@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { CheckIcon, FolderPlusIcon, LoaderCircleIcon, XIcon } from "lucide-react";
 import type { CreateFolderInput, Folder } from "../../types";
 
-import { IconButton, Select} from "../../../../components/ui";
+import { IconButton, Input, Select } from "../../../../components/ui";
 
 export interface FolderPickerProps {
   folders: Folder[];
@@ -65,9 +65,6 @@ export function FolderPicker({
     selectRef.current?.focus();
   };
 
-  const inputClass =
-    "min-w-0 w-full rounded-md border border-input bg-background px-3 py-2 text-body text-foreground outline-none";
-
   return (
     <div className="flex flex-col gap-1.5">
       <label
@@ -83,7 +80,7 @@ export function FolderPicker({
           value={value ?? ""}
           disabled={disabled}
           onChange={(event) => onChange(event.target.value || null)}
-          wrapperClassName={inputClass}
+          block
         >
           <option value="">{t("promptsView.editor.noFolder")}</option>
           {folders.map((folder) => (
@@ -109,7 +106,7 @@ export function FolderPicker({
       {creating && (
         <div className="flex flex-col gap-1">
           <div className="grid grid-cols-[minmax(0,1fr)_2.25rem_2.25rem] gap-2">
-            <input
+            <Input
               ref={inputRef}
               value={name}
               aria-label={t("promptsView.editor.folderName")}
@@ -133,7 +130,7 @@ export function FolderPicker({
                   cancel();
                 }
               }}
-              className={inputClass}
+              size="lg"
             />
             <IconButton
               label={

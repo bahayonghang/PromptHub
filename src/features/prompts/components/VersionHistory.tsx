@@ -10,7 +10,7 @@ import {
 import type { Prompt, PromptTypeDefinition, PromptVersion } from "../types";
 import { diffPromptRevision } from "../versionDiff";
 
-import { IconButton } from "../../../components/ui";
+import { IconButton, Textarea } from "../../../components/ui";
 /** The 1,000-character note limit enforced by `version.create` (Req 7.8). */
 const NOTE_MAX = 1000;
 
@@ -59,12 +59,13 @@ export function VersionHistory({
       </div>
 
       <div className="flex flex-col gap-1.5 border-b border-border p-3">
-        <textarea
+        <Textarea
           value={note}
           placeholder={t("promptsView.history.notePlaceholder")}
           onChange={(e) => setNote(e.target.value)}
           rows={2}
-          className="w-full resize-y rounded-md border border-input bg-background px-2 py-1 text-label text-foreground outline-none"
+          resizable
+          invalid={noteTooLong}
         />
         {noteTooLong && (
           <span className="text-label text-destructive">

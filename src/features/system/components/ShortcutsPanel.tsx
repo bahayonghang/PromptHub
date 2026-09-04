@@ -4,7 +4,7 @@ import { PlusIcon, Trash2Icon } from "lucide-react";
 import { MAX_SHORTCUTS, type Shortcut, type ShortcutMode } from "../types";
 import { useSystemStore } from "../systemStore";
 
-import { Button, IconButton, Select} from "../../../components/ui";
+import { Button, IconButton, Input, Select } from "../../../components/ui";
 /** A blank shortcut row used when adding a new entry. */
 const EMPTY_SHORTCUT: Shortcut = { action: "", accelerator: "", mode: "global" };
 
@@ -29,9 +29,6 @@ export function ShortcutsPanel() {
 
   const labelClass = "text-body font-medium text-foreground";
   const hintClass = "text-label text-muted-foreground";
-  const inputClass =
-    "rounded-md border border-input bg-background px-3 py-2 text-body text-foreground outline-none";
-
   const updateRow = (index: number, patch: Partial<Shortcut>) => {
     setDraft((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   };
@@ -67,27 +64,29 @@ export function ShortcutsPanel() {
         )}
         {draft.map((row, index) => (
           <div key={index} className="flex flex-wrap items-center gap-2">
-            <input
+            <Input
               type="text"
               value={row.action}
               onChange={(e) => updateRow(index, { action: e.target.value })}
               placeholder={t("systemView.shortcuts.actionPlaceholder")}
               aria-label={t("systemView.shortcuts.action")}
-              className={`${inputClass} min-w-0 flex-1`}
+              size="lg"
+              wrapperClassName="min-w-0 flex-1"
             />
-            <input
+            <Input
               type="text"
               value={row.accelerator}
               onChange={(e) => updateRow(index, { accelerator: e.target.value })}
               placeholder={t("systemView.shortcuts.acceleratorPlaceholder")}
               aria-label={t("systemView.shortcuts.accelerator")}
-              className={`${inputClass} min-w-0 flex-1`}
+              size="lg"
+              wrapperClassName="min-w-0 flex-1"
             />
             <Select
               value={row.mode}
               onChange={(e) => updateRow(index, { mode: e.target.value as ShortcutMode })}
               aria-label={t("systemView.shortcuts.mode")}
-              wrapperClassName={inputClass}
+              block
             >
               <option value="global">{t("systemView.shortcuts.modeGlobal")}</option>
               <option value="local">{t("systemView.shortcuts.modeLocal")}</option>

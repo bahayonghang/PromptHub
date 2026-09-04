@@ -4,7 +4,7 @@ import type { CreateFolderInput, Folder } from "../../../types";
 import type { PromptDraft } from "../promptDraft";
 import { FolderPicker } from "../FolderPicker";
 
-import { IconButton, tagClasses} from "../../../../../components/ui";
+import { IconButton, Input, tagClasses } from "../../../../../components/ui";
 
 export interface OrganizationSectionProps {
   draft: PromptDraft;
@@ -20,9 +20,6 @@ export interface OrganizationSectionProps {
 }
 
 const labelClass = "text-label font-medium text-muted-foreground";
-const inputClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-body text-foreground outline-none disabled:opacity-50";
-
 export function OrganizationSection({
   draft,
   folders,
@@ -85,7 +82,7 @@ export function OrganizationSection({
             </div>
           )}
           <div className="prompt-editor__tag-row flex min-w-0 flex-col gap-2">
-            <input
+            <Input
               id="prompt-tag"
               value={tagInput}
               list="known-tags"
@@ -98,7 +95,7 @@ export function OrganizationSection({
                   onAddTag(tagInput);
                 }
               }}
-              className={inputClass}
+              size="lg"
             />
             <datalist id="known-tags">
               {knownTags.map((tag) => (

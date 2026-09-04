@@ -18,7 +18,7 @@ import type {
 } from "../types";
 import { validateS3Config, validateWebDavConfig } from "../validation";
 
-import { IconButton } from "../../../components/ui";
+import { IconButton, Input } from "../../../components/ui";
 
 interface SyncPanelProps {
   settings: Settings | null;
@@ -31,8 +31,6 @@ interface SyncPanelProps {
   onDeleteBackup: (id: string) => void;
 }
 
-const inputClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-body text-foreground outline-none";
 const labelClass = "text-label font-medium text-muted-foreground";
 
 /** The selectable export categories with their i18n label keys (Req 17.5). */
@@ -163,12 +161,12 @@ export function SyncPanel({
             <label className={labelClass} htmlFor="webdav-url">
               {t("settingsView.sync.webdav.url")}
             </label>
-            <input
+            <Input
               id="webdav-url"
               value={webdav.url}
               placeholder="https://dav.example.com/remote.php/dav"
               onChange={(e) => setWebdav((c) => ({ ...c, url: e.target.value }))}
-              className={inputClass}
+              size="lg"
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -176,25 +174,25 @@ export function SyncPanel({
               <label className={labelClass} htmlFor="webdav-username">
                 {t("settingsView.sync.webdav.username")}
               </label>
-              <input
+              <Input
                 id="webdav-username"
                 value={webdav.username}
                 autoComplete="username"
                 onChange={(e) => setWebdav((c) => ({ ...c, username: e.target.value }))}
-                className={inputClass}
+                size="lg"
               />
             </div>
             <div className="flex flex-col gap-1">
               <label className={labelClass} htmlFor="webdav-password">
                 {t("settingsView.sync.webdav.password")}
               </label>
-              <input
+              <Input
                 id="webdav-password"
                 type="password"
                 autoComplete="current-password"
                 value={webdav.password}
                 onChange={(e) => setWebdav((c) => ({ ...c, password: e.target.value }))}
-                className={inputClass}
+                size="lg"
               />
             </div>
           </div>
@@ -227,24 +225,24 @@ export function SyncPanel({
               <label className={labelClass} htmlFor="s3-endpoint">
                 {t("settingsView.sync.s3.endpoint")}
               </label>
-              <input
+              <Input
                 id="s3-endpoint"
                 value={s3.endpoint}
                 placeholder="https://s3.amazonaws.com"
                 onChange={(e) => setS3((c) => ({ ...c, endpoint: e.target.value }))}
-                className={inputClass}
+                size="lg"
               />
             </div>
             <div className="flex flex-col gap-1">
               <label className={labelClass} htmlFor="s3-region">
                 {t("settingsView.sync.s3.region")}
               </label>
-              <input
+              <Input
                 id="s3-region"
                 value={s3.region}
                 placeholder="us-east-1"
                 onChange={(e) => setS3((c) => ({ ...c, region: e.target.value }))}
-                className={inputClass}
+                size="lg"
               />
             </div>
           </div>
@@ -252,11 +250,11 @@ export function SyncPanel({
             <label className={labelClass} htmlFor="s3-bucket">
               {t("settingsView.sync.s3.bucket")}
             </label>
-            <input
+            <Input
               id="s3-bucket"
               value={s3.bucket}
               onChange={(e) => setS3((c) => ({ ...c, bucket: e.target.value }))}
-              className={inputClass}
+              size="lg"
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -264,25 +262,25 @@ export function SyncPanel({
               <label className={labelClass} htmlFor="s3-access-key">
                 {t("settingsView.sync.s3.accessKey")}
               </label>
-              <input
+              <Input
                 id="s3-access-key"
                 value={s3.accessKeyId}
                 autoComplete="off"
                 onChange={(e) => setS3((c) => ({ ...c, accessKeyId: e.target.value }))}
-                className={inputClass}
+                size="lg"
               />
             </div>
             <div className="flex flex-col gap-1">
               <label className={labelClass} htmlFor="s3-secret-key">
                 {t("settingsView.sync.s3.secretKey")}
               </label>
-              <input
+              <Input
                 id="s3-secret-key"
                 type="password"
                 autoComplete="off"
                 value={s3.secretAccessKey}
                 onChange={(e) => setS3((c) => ({ ...c, secretAccessKey: e.target.value }))}
-                className={inputClass}
+                size="lg"
               />
             </div>
           </div>
@@ -314,7 +312,7 @@ export function SyncPanel({
         <div className="flex flex-wrap gap-3">
           {EXPORT_CATEGORIES.map(({ key, labelKey }) => (
             <label key={key} className="flex items-center gap-2 text-body text-foreground">
-              <input
+              <Input
                 type="checkbox"
                 checked={scope[key]}
                 onChange={(e) => setScope((s) => ({ ...s, [key]: e.target.checked }))}

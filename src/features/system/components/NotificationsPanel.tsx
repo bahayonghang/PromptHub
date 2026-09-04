@@ -4,7 +4,7 @@ import { BellIcon } from "lucide-react";
 import { useSystemStore } from "../systemStore";
 
 
-import { Button } from "../../../components/ui";
+import { Button, Input, Textarea } from "../../../components/ui";
 /** Backend notification length limits (Req 20.7), mirrored for client guarding. */
 const MAX_TITLE = 256;
 const MAX_BODY = 1000;
@@ -27,9 +27,6 @@ export function NotificationsPanel() {
 
   const labelClass = "text-body font-medium text-foreground";
   const hintClass = "text-label text-muted-foreground";
-  const fieldClass =
-    "w-full rounded-md border border-input bg-background px-3 py-2 text-body text-foreground outline-none";
-
   const canSend = title.trim() !== "" || body.trim() !== "";
 
   const send = async () => {
@@ -47,29 +44,30 @@ export function NotificationsPanel() {
 
       <label className="flex flex-col gap-1">
         <span className={hintClass}>{t("systemView.notifications.titleLabel")}</span>
-        <input
+        <Input
           type="text"
           value={title}
           maxLength={MAX_TITLE}
+          size="lg"
           onChange={(e) => {
             setTitle(e.target.value);
             setSent(false);
           }}
-          className={fieldClass}
         />
       </label>
 
       <label className="flex flex-col gap-1">
         <span className={hintClass}>{t("systemView.notifications.bodyLabel")}</span>
-        <textarea
+        <Textarea
           value={body}
           maxLength={MAX_BODY}
           rows={3}
+          size="lg"
+          resizable
           onChange={(e) => {
             setBody(e.target.value);
             setSent(false);
           }}
-          className={`${fieldClass} resize-y`}
         />
       </label>
 

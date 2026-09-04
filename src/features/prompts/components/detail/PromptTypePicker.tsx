@@ -8,7 +8,7 @@ import {
   type PromptTypeDefinition,
 } from "../../types";
 
-import { IconButton, Select} from "../../../../components/ui";
+import { IconButton, Input, Select } from "../../../../components/ui";
 
 export interface PromptTypePickerProps {
   definitions: PromptTypeDefinition[];
@@ -76,8 +76,6 @@ export function PromptTypePicker({
     selectRef.current?.focus();
   };
 
-  const inputClass =
-    "min-w-0 w-full rounded-md border border-input bg-background px-3 py-2 text-body text-foreground outline-none";
   const value = definitionId ? `custom:${definitionId}` : `base:${baseKind}`;
 
   return (
@@ -105,7 +103,7 @@ export function PromptTypePicker({
             );
             if (definition) onChange(definition.baseKind, definition.id);
           }}
-          wrapperClassName={inputClass}
+          block
         >
           <optgroup label={t("promptsView.editor.builtInTypes")}>
             {PROMPT_TYPES.map((type) => (
@@ -144,7 +142,7 @@ export function PromptTypePicker({
       {creating && (
         <div className="flex flex-col gap-1">
           <div className="grid grid-cols-[minmax(0,1fr)_minmax(7rem,0.6fr)_2.25rem_2.25rem] gap-2">
-            <input
+            <Input
               ref={inputRef}
               value={name}
               aria-label={t("promptsView.editor.typeName")}
@@ -168,7 +166,7 @@ export function PromptTypePicker({
                   cancel();
                 }
               }}
-              className={inputClass}
+              size="lg"
             />
             <Select
               value={newBaseKind}
@@ -177,7 +175,7 @@ export function PromptTypePicker({
               onChange={(event) =>
                 setNewBaseKind(event.target.value as PromptType)
               }
-              wrapperClassName={inputClass}
+              block
             >
               {PROMPT_TYPES.map((type) => (
                 <option key={type} value={type}>

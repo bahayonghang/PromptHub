@@ -14,7 +14,8 @@ import { CopyPromptButton } from "../../CopyPromptButton";
 import { VariableEditor } from "../../VariableEditor";
 import type { PromptDraft } from "../promptDraft";
 
-import { Select } from "../../../../../components/ui";
+import { Select, Textarea } from "../../../../../components/ui";
+import { cn } from "../../../../../components/ui/cn";
 
 export interface DefinitionSectionProps {
   draft: PromptDraft;
@@ -32,9 +33,6 @@ export interface DefinitionSectionProps {
 }
 
 const labelClass = "text-label font-medium text-muted-foreground";
-const inputClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-body text-foreground outline-none disabled:opacity-50";
-
 export function DefinitionSection({
   draft,
   prompt,
@@ -156,7 +154,7 @@ export function DefinitionSection({
                     {t("evaluation.roleAssistant")}
                   </option>
                 </Select>
-                <textarea
+                <Textarea
                   value={message.content}
                   aria-label={t("evaluation.messageContent", {
                     index: index + 1,
@@ -171,11 +169,14 @@ export function DefinitionSection({
                     onUpdateMessages(next);
                   }}
                   rows={draft.messages.length > 1 ? 8 : 16}
-                  className={`${inputClass} prompt-editor__message-body resize-y font-mono ${
-                    draft.messages.length > 1
-                      ? "prompt-editor__message-body--compact"
-                      : ""
-                  }`}
+                  size="lg"
+                  mono
+                  resizable
+                  className={cn(
+                    "prompt-editor__message-body",
+                    draft.messages.length > 1 &&
+                      "prompt-editor__message-body--compact",
+                  )}
                 />
                 <div className="prompt-editor__message-actions flex gap-1">
                   {[ArrowUpIcon, ArrowDownIcon, Trash2Icon].map(
@@ -246,28 +247,31 @@ export function DefinitionSection({
               <label className={labelClass} htmlFor="prompt-system">
                 {t("promptsView.editor.systemPrompt")}
               </label>
-              <textarea
+              <Textarea
                 id="prompt-system"
                 value={draft.systemPrompt}
                 placeholder={t("promptsView.editor.systemPromptPlaceholder")}
                 disabled={readOnly}
                 onChange={(e) => onUpdateText("systemPrompt", e.target.value)}
                 rows={4}
-                className={`${inputClass} resize-y`}
+                size="lg"
+                resizable
               />
             </div>
             <div className="flex flex-col gap-1">
               <label className={labelClass} htmlFor="prompt-user">
                 {t("promptsView.editor.userPrompt")}
               </label>
-              <textarea
+              <Textarea
                 id="prompt-user"
                 value={draft.userPrompt}
                 placeholder={t("promptsView.editor.userPromptPlaceholder")}
                 disabled={readOnly}
                 onChange={(e) => onUpdateText("userPrompt", e.target.value)}
                 rows={8}
-                className={`${inputClass} resize-y font-mono`}
+                size="lg"
+                mono
+                resizable
               />
             </div>
           </>

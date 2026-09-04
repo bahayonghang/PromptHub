@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Input } from "../../../components/ui";
 import {
   AlertTriangleIcon,
   FolderInputIcon,
@@ -24,9 +25,6 @@ interface DataPathPanelProps {
   onRecoveryScan: () => void;
   onRecoveryApply: (sourcePath: string) => void;
 }
-
-const inputClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-body text-foreground outline-none";
 
 /**
  * Data-path panel (Req 19.3-19.10). Shows the active data directory and, when a
@@ -110,7 +108,7 @@ export function DataPathPanel({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <input
+          <Input
             value={target}
             placeholder={t("settingsView.dataPath.targetPlaceholder")}
             aria-label={t("settingsView.dataPath.targetPlaceholder")}
@@ -118,7 +116,7 @@ export function DataPathPanel({
               setTarget(e.target.value);
               if (preview) onClearPreview();
             }}
-            className={inputClass}
+            size="lg"
           />
           <button
             type="button"

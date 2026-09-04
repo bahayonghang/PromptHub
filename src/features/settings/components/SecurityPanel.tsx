@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import type { SecurityStatus } from "../types";
 import { validateNewPassword, validatePasswordLength } from "../validation";
+import { Input } from "../../../components/ui";
 
 interface SecurityPanelProps {
   status: SecurityStatus | null;
@@ -20,8 +21,6 @@ interface SecurityPanelProps {
   onLock: () => void;
 }
 
-const inputClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-body text-foreground outline-none";
 const labelClass = "text-label font-medium text-muted-foreground";
 
 /**
@@ -154,26 +153,26 @@ export function SecurityPanel({
             <label className={labelClass} htmlFor="set-master-pw">
               {t("settingsView.security.newPassword")}
             </label>
-            <input
+            <Input
               id="set-master-pw"
               type="password"
               autoComplete="new-password"
               value={newPw}
               onChange={(e) => setNewPw(e.target.value)}
-              className={inputClass}
+              size="lg"
             />
           </div>
           <div className="flex flex-col gap-1">
             <label className={labelClass} htmlFor="set-master-pw-confirm">
               {t("settingsView.security.confirmPassword")}
             </label>
-            <input
+            <Input
               id="set-master-pw-confirm"
               type="password"
               autoComplete="new-password"
               value={confirmPw}
               onChange={(e) => setConfirmPw(e.target.value)}
-              className={inputClass}
+              size="lg"
             />
           </div>
           <button
@@ -195,7 +194,7 @@ export function SecurityPanel({
             <label className={labelClass} htmlFor="unlock-pw">
               {t("settingsView.security.password")}
             </label>
-            <input
+            <Input
               id="unlock-pw"
               type="password"
               autoComplete="current-password"
@@ -204,7 +203,7 @@ export function SecurityPanel({
               onKeyDown={(e) => {
                 if (e.key === "Enter") void submitUnlock();
               }}
-              className={inputClass}
+              size="lg"
             />
           </div>
           <button
@@ -250,39 +249,39 @@ export function SecurityPanel({
                 <label className={labelClass} htmlFor="change-current-pw">
                   {t("settingsView.security.currentPassword")}
                 </label>
-                <input
+                <Input
                   id="change-current-pw"
                   type="password"
                   autoComplete="current-password"
                   value={currentPw}
                   onChange={(e) => setCurrentPw(e.target.value)}
-                  className={inputClass}
+                  size="lg"
                 />
               </div>
               <div className="flex flex-col gap-1">
                 <label className={labelClass} htmlFor="change-new-pw">
                   {t("settingsView.security.newPassword")}
                 </label>
-                <input
+                <Input
                   id="change-new-pw"
                   type="password"
                   autoComplete="new-password"
                   value={changeNewPw}
                   onChange={(e) => setChangeNewPw(e.target.value)}
-                  className={inputClass}
+                  size="lg"
                 />
               </div>
               <div className="flex flex-col gap-1">
                 <label className={labelClass} htmlFor="change-confirm-pw">
                   {t("settingsView.security.confirmPassword")}
                 </label>
-                <input
+                <Input
                   id="change-confirm-pw"
                   type="password"
                   autoComplete="new-password"
                   value={changeConfirmPw}
                   onChange={(e) => setChangeConfirmPw(e.target.value)}
-                  className={inputClass}
+                  size="lg"
                 />
               </div>
               <div className="flex items-center gap-2">
