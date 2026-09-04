@@ -4,6 +4,7 @@ import { PlusIcon, Trash2Icon } from "lucide-react";
 import { MAX_SHORTCUTS, type Shortcut, type ShortcutMode } from "../types";
 import { useSystemStore } from "../systemStore";
 
+import { Select } from "../../../components/ui";
 /** A blank shortcut row used when adding a new entry. */
 const EMPTY_SHORTCUT: Shortcut = { action: "", accelerator: "", mode: "global" };
 
@@ -82,15 +83,15 @@ export function ShortcutsPanel() {
               aria-label={t("systemView.shortcuts.accelerator")}
               className={`${inputClass} min-w-0 flex-1`}
             />
-            <select
+            <Select
               value={row.mode}
               onChange={(e) => updateRow(index, { mode: e.target.value as ShortcutMode })}
               aria-label={t("systemView.shortcuts.mode")}
-              className={inputClass}
+              wrapperClassName={inputClass}
             >
               <option value="global">{t("systemView.shortcuts.modeGlobal")}</option>
               <option value="local">{t("systemView.shortcuts.modeLocal")}</option>
-            </select>
+            </Select>
             <button
               type="button"
               onClick={() => removeRow(index)}

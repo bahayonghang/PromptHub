@@ -21,6 +21,7 @@ import type {
   TestCaseInput,
 } from "./types";
 
+import { Select } from "../../components/ui";
 interface EvaluationWorkbenchProps {
   prompt: Prompt;
   versions: PromptVersion[];
@@ -196,20 +197,28 @@ export function EvaluationWorkbench({ prompt, versions }: EvaluationWorkbenchPro
             <div className="grid grid-cols-2 gap-3">
               <label className="flex flex-col gap-1 text-xs text-muted-foreground">
                 {t("evaluation.revision")}
-                <select value={revisionId} onChange={(event) => setRevisionId(event.target.value)} className={inputClass}>
+                <Select
+                  value={revisionId}
+                  onChange={(event) => setRevisionId(event.target.value)}
+                  wrapperClassName={inputClass}
+                >
                   {versions.map((version) => (
                     <option key={version.id} value={version.id}>v{version.version}</option>
                   ))}
-                </select>
+                </Select>
               </label>
               <label className="flex flex-col gap-1 text-xs text-muted-foreground">
                 {t("evaluation.profile")}
-                <select value={profileId} onChange={(event) => setProfileId(event.target.value)} className={inputClass}>
+                <Select
+                  value={profileId}
+                  onChange={(event) => setProfileId(event.target.value)}
+                  wrapperClassName={inputClass}
+                >
                   <option value="">{t("evaluation.noProfile")}</option>
                   {profiles.map((profile) => (
                     <option key={profile.id} value={profile.id}>{profile.name} r{profile.revision}</option>
                   ))}
-                </select>
+                </Select>
               </label>
             </div>
             <button
@@ -224,10 +233,15 @@ export function EvaluationWorkbench({ prompt, versions }: EvaluationWorkbenchPro
               <div className="mt-3 grid gap-2 border-y border-border py-3">
                 <input value={profileDraft.name} onChange={(event) => setProfileDraft({ ...profileDraft, name: event.target.value })} placeholder={t("evaluation.profileName")} aria-label={t("evaluation.profileName")} className={inputClass} />
                 <div className="grid grid-cols-2 gap-2">
-                  <select value={profileDraft.provider} onChange={(event) => setProfileDraft({ ...profileDraft, provider: event.target.value as ExecutionProfileInput["provider"] })} aria-label={t("evaluation.provider")} className={inputClass}>
+                  <Select
+                    value={profileDraft.provider}
+                    onChange={(event) => setProfileDraft({ ...profileDraft, provider: event.target.value as ExecutionProfileInput["provider"] })}
+                    aria-label={t("evaluation.provider")}
+                    wrapperClassName={inputClass}
+                  >
                     <option value="mock">mock</option>
                     <option value="openai-compatible">openai-compatible</option>
-                  </select>
+                  </Select>
                   <input value={profileDraft.model} onChange={(event) => setProfileDraft({ ...profileDraft, model: event.target.value })} placeholder={t("evaluation.model")} aria-label={t("evaluation.model")} className={inputClass} />
                 </div>
                 {profileDraft.provider === "openai-compatible" && (
@@ -307,10 +321,15 @@ export function EvaluationWorkbench({ prompt, versions }: EvaluationWorkbenchPro
               </div>
               <div className="mt-2 flex gap-1">
                 <button type="button" disabled={!testSetName.trim() || testCases.length === 0} onClick={() => void saveTestSet({ name: testSetName, cases: testCases }).then((saved) => saved && setTestSetId(saved.id))} className="rounded-sm bg-primary px-2 py-1 text-xs text-primary-foreground disabled:opacity-50">{t("common.save")}</button>
-                <select value={testSetId} onChange={(event) => setTestSetId(event.target.value)} aria-label={t("evaluation.testSet")} className={`${inputClass} min-w-0`}>
+                <Select
+                  value={testSetId}
+                  onChange={(event) => setTestSetId(event.target.value)}
+                  aria-label={t("evaluation.testSet")}
+                  wrapperClassName={`${inputClass} min-w-0`}
+                >
                   <option value="">{t("evaluation.selectTestSet")}</option>
                   {testSets.map((set) => <option key={set.id} value={set.id}>{set.name} ({set.cases.length})</option>)}
-                </select>
+                </Select>
               </div>
               <textarea value={testSetJson} onChange={(event) => setTestSetJson(event.target.value)} placeholder={t("evaluation.testSetJson")} aria-label={t("evaluation.testSetJson")} rows={2} className={`${inputClass} mt-2 font-mono`} />
               <div className="mt-1 flex gap-1">
@@ -330,9 +349,14 @@ export function EvaluationWorkbench({ prompt, versions }: EvaluationWorkbenchPro
               </div>
               <div className="mt-2 grid grid-cols-1 gap-1 xl:grid-cols-2">
                 <input value={evaluatorDraft.name} onChange={(event) => setEvaluatorDraft({ ...evaluatorDraft, name: event.target.value })} placeholder={t("evaluation.evaluatorName")} aria-label={t("evaluation.evaluatorName")} className={inputClass} />
-                <select value={evaluatorDraft.kind} onChange={(event) => setEvaluatorDraft({ ...evaluatorDraft, kind: event.target.value as EvaluatorInput["kind"] })} aria-label={t("evaluation.evaluatorKind")} className={inputClass}>
+                <Select
+                  value={evaluatorDraft.kind}
+                  onChange={(event) => setEvaluatorDraft({ ...evaluatorDraft, kind: event.target.value as EvaluatorInput["kind"] })}
+                  aria-label={t("evaluation.evaluatorKind")}
+                  wrapperClassName={inputClass}
+                >
                   {(["manual", "exact", "contains", "regex", "numeric"] as const).map((kind) => <option key={kind} value={kind}>{kind}</option>)}
-                </select>
+                </Select>
               </div>
               <textarea value={evaluatorConfigJson} onChange={(event) => setEvaluatorConfigJson(event.target.value)} aria-label={t("evaluation.evaluatorConfig")} rows={2} className={`${inputClass} mt-1 font-mono`} />
               <button type="button" disabled={!evaluatorDraft.name.trim() || !parseObject(evaluatorConfigJson)} onClick={() => { const config = parseObject(evaluatorConfigJson); if (config) void createEvaluator({ ...evaluatorDraft, config }).then((saved) => saved && setSelectedEvaluators((ids) => [...ids, saved.id])); }} className="mt-1 rounded-sm border border-input px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-50">{t("evaluation.addEvaluator")}</button>
@@ -383,9 +407,24 @@ export function EvaluationWorkbench({ prompt, versions }: EvaluationWorkbenchPro
       {tab === "history" && (
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="grid shrink-0 grid-cols-1 gap-2 border-b border-border p-3 sm:grid-cols-2 lg:grid-cols-4">
-            <select value={historyStatus} onChange={(event) => setHistoryStatus(event.target.value)} aria-label={t("evaluation.status")} className={inputClass}><option value="">{t("evaluation.allStatuses")}</option>{["success", "error", "cancelled"].map((status) => <option key={status}>{status}</option>)}</select>
-            <select value={historyProfile} onChange={(event) => setHistoryProfile(event.target.value)} aria-label={t("evaluation.profile")} className={inputClass}><option value="">{t("evaluation.allProfiles")}</option>{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</select>
-            <select value={historyRevision} onChange={(event) => setHistoryRevision(event.target.value)} aria-label={t("evaluation.revision")} className={inputClass}><option value="">{t("evaluation.allRevisions")}</option>{versions.map((version) => <option key={version.id} value={version.id}>v{version.version}</option>)}</select>
+            <Select
+              value={historyStatus}
+              onChange={(event) => setHistoryStatus(event.target.value)}
+              aria-label={t("evaluation.status")}
+              wrapperClassName={inputClass}
+            ><option value="">{t("evaluation.allStatuses")}</option>{["success", "error", "cancelled"].map((status) => <option key={status}>{status}</option>)}            </Select>
+            <Select
+              value={historyProfile}
+              onChange={(event) => setHistoryProfile(event.target.value)}
+              aria-label={t("evaluation.profile")}
+              wrapperClassName={inputClass}
+            ><option value="">{t("evaluation.allProfiles")}</option>{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}            </Select>
+            <Select
+              value={historyRevision}
+              onChange={(event) => setHistoryRevision(event.target.value)}
+              aria-label={t("evaluation.revision")}
+              wrapperClassName={inputClass}
+            ><option value="">{t("evaluation.allRevisions")}</option>{versions.map((version) => <option key={version.id} value={version.id}>v{version.version}</option>)}            </Select>
             <input type="date" value={historyDate} onChange={(event) => setHistoryDate(event.target.value)} aria-label={t("evaluation.date")} className={inputClass} />
           </div>
           <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_18rem] lg:overflow-hidden">

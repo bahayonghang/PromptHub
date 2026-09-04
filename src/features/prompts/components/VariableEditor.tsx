@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { VARIABLE_TYPES, type Variable, type VariableType } from "../types";
 
+import { Select } from "../../../components/ui";
 interface VariableEditorProps {
   /** Variables derived from the prompt text's `{{name}}` placeholders. */
   variables: Variable[];
@@ -40,20 +41,20 @@ export function VariableEditor({ variables, onChange }: VariableEditorProps) {
               <code className="rounded-sm bg-muted px-1.5 py-0.5 text-xs text-foreground">
                 {`{{${variable.name}}}`}
               </code>
-              <select
+              <Select
                 aria-label={t("promptsView.editor.variableType")}
                 value={variable.type}
                 onChange={(e) =>
                   patch(variable.name, { type: e.target.value as VariableType })
                 }
-                className={cellClass}
+                wrapperClassName={cellClass}
               >
                 {VARIABLE_TYPES.map((type) => (
                   <option key={type} value={type}>
                     {type}
                   </option>
                 ))}
-              </select>
+              </Select>
               <input
                 aria-label={t("promptsView.editor.variableLabel")}
                 value={variable.label ?? ""}

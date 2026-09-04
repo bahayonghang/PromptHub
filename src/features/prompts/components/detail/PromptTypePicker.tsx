@@ -8,7 +8,7 @@ import {
   type PromptTypeDefinition,
 } from "../../types";
 
-import { IconButton } from "../../../../components/ui";
+import { IconButton, Select} from "../../../../components/ui";
 export interface PromptTypePickerProps {
   definitions: PromptTypeDefinition[];
   baseKind: PromptType;
@@ -88,7 +88,7 @@ export function PromptTypePicker({
         {t("promptsView.editor.type")}
       </label>
       <div className="grid grid-cols-[minmax(0,1fr)_2.25rem] gap-2">
-        <select
+        <Select
           ref={selectRef}
           id="prompt-type"
           value={value}
@@ -104,7 +104,7 @@ export function PromptTypePicker({
             );
             if (definition) onChange(definition.baseKind, definition.id);
           }}
-          className={inputClass}
+          wrapperClassName={inputClass}
         >
           <optgroup label={t("promptsView.editor.builtInTypes")}>
             {PROMPT_TYPES.map((type) => (
@@ -124,7 +124,7 @@ export function PromptTypePicker({
               ))}
             </optgroup>
           )}
-        </select>
+        </Select>
         <IconButton
           label={t("promptsView.editor.newType")}
           icon={<PlusIcon className="h-4 w-4" aria-hidden="true" />}
@@ -169,14 +169,14 @@ export function PromptTypePicker({
               }}
               className={inputClass}
             />
-            <select
+            <Select
               value={newBaseKind}
               aria-label={t("promptsView.editor.baseType")}
               disabled={busy}
               onChange={(event) =>
                 setNewBaseKind(event.target.value as PromptType)
               }
-              className={inputClass}
+              wrapperClassName={inputClass}
             >
               {PROMPT_TYPES.map((type) => (
                 <option key={type} value={type}>
@@ -185,7 +185,7 @@ export function PromptTypePicker({
                   )}
                 </option>
               ))}
-            </select>
+            </Select>
             <IconButton
               label={
                 busy

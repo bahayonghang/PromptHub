@@ -7,7 +7,7 @@ import { useToastStore } from "../../notifications/toastStore";
 import type { BundlePreview, ImportConflictPolicy } from "../types";
 
 
-import { IconButton } from "../../../components/ui";
+import { IconButton, Select} from "../../../components/ui";
 interface LibraryHeaderProps {
   onCreate: () => void;
 }
@@ -98,18 +98,18 @@ export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
             className="w-full rounded-sm border border-input bg-background px-2 py-1.5 text-xs text-foreground"
           />
           <div className="flex items-center gap-2">
-            <select
+            <Select
               value={conflictPolicy}
               onChange={(event) =>
                 setConflictPolicy(event.target.value as ImportConflictPolicy)
               }
               aria-label={t("promptsView.bundle.conflictPolicy")}
-              className="min-w-0 flex-1 rounded-sm border border-input bg-background px-2 py-1.5 text-xs text-foreground"
+              wrapperClassName="min-w-0 flex-1"
             >
               <option value="skip">{t("promptsView.bundle.skip")}</option>
               <option value="duplicate">{t("promptsView.bundle.duplicate")}</option>
               <option value="replace">{t("promptsView.bundle.replace")}</option>
-            </select>
+            </Select>
             <button
               type="button"
               disabled={bundlePath.trim() === ""}

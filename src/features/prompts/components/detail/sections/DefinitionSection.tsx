@@ -14,6 +14,7 @@ import { CopyPromptButton } from "../../CopyPromptButton";
 import { VariableEditor } from "../../VariableEditor";
 import type { PromptDraft } from "../promptDraft";
 
+import { Select } from "../../../../../components/ui";
 export interface DefinitionSectionProps {
   draft: PromptDraft;
   prompt: Prompt | null;
@@ -132,7 +133,7 @@ export function DefinitionSection({
                 key={`${index}-${message.role}`}
                 className="prompt-editor__message grid grid-cols-1 items-start gap-2 border-b border-border py-3 last:border-b-0"
               >
-                <select
+                <Select
                   value={message.role}
                   aria-label={t("evaluation.messageRole", {
                     index: index + 1,
@@ -146,14 +147,14 @@ export function DefinitionSection({
                     };
                     onUpdateMessages(next);
                   }}
-                  className="prompt-editor__message-role w-full min-w-[6.5rem] rounded-md border border-input bg-background px-2 py-2 text-xs text-foreground"
+                  wrapperClassName="w-full min-w-[6.5rem]"
                 >
                   <option value="system">{t("evaluation.roleSystem")}</option>
                   <option value="user">{t("evaluation.roleUser")}</option>
                   <option value="assistant">
                     {t("evaluation.roleAssistant")}
                   </option>
-                </select>
+                </Select>
                 <textarea
                   value={message.content}
                   aria-label={t("evaluation.messageContent", {

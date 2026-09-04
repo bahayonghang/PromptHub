@@ -9,6 +9,7 @@ import type { PreferenceSaveStatus } from "../settingsStore";
 import type { Settings } from "../types";
 import { PreferenceStatus } from "./PreferenceStatus";
 
+import { Select } from "../../../components/ui";
 interface GeneralPanelProps {
   settings: Settings | null;
   /** Persists a partial settings update through the backend (Req 19.2). */
@@ -48,20 +49,20 @@ export function GeneralPanel({
             {t("settingsView.general.languageHint")}
           </p>
         </div>
-        <select
+        <Select
           id="settings-language"
           value={isSupportedLocale(settings?.language) ? settings.language : DEFAULT_LOCALE}
           aria-describedby="settings-language-hint"
           disabled={settings == null || languageStatus === "saving"}
           onChange={(event) => onLanguageChange(event.target.value as SupportedLocale)}
-          className="w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          wrapperClassName="w-full max-w-sm"
         >
           {SUPPORTED.map((locale) => (
             <option key={locale} value={locale}>
               {t(`settingsView.general.locale.${locale}`)}
             </option>
           ))}
-        </select>
+        </Select>
         <PreferenceStatus
           status={languageStatus}
           errorKey={languageError}

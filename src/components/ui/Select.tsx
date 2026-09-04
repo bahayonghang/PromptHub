@@ -8,7 +8,12 @@ export interface SelectOption {
 }
 
 export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "size"> {
-  options: readonly SelectOption[];
+  /**
+   * Convenience form for a flat list. Omit it and pass `children` instead when
+   * the call site needs `<optgroup>`, a placeholder entry, or per-option
+   * attributes.
+   */
+  options?: readonly SelectOption[];
   size?: "md" | "lg";
   /** Rendered before the value (e.g. a sort glyph). */
   leading?: ReactNode;
@@ -30,6 +35,7 @@ export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
   {
     options,
+    children,
     size = "md",
     leading,
     block = false,
@@ -69,11 +75,13 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         )}
         {...rest}
       >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
+        {options
+          ? options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))
+          : children}
       </select>
       <ChevronDownIcon
         aria-hidden="true"

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { CheckIcon, FolderPlusIcon, LoaderCircleIcon, XIcon } from "lucide-react";
 import type { CreateFolderInput, Folder } from "../../types";
 
-import { IconButton } from "../../../../components/ui";
+import { IconButton, Select} from "../../../../components/ui";
 export interface FolderPickerProps {
   folders: Folder[];
   value: string | null;
@@ -76,13 +76,13 @@ export function FolderPicker({
         {t("promptsView.editor.folder")}
       </label>
       <div className="grid grid-cols-[minmax(0,1fr)_2.25rem] gap-2">
-        <select
+        <Select
           ref={selectRef}
           id="prompt-folder"
           value={value ?? ""}
           disabled={disabled}
           onChange={(event) => onChange(event.target.value || null)}
-          className={inputClass}
+          wrapperClassName={inputClass}
         >
           <option value="">{t("promptsView.editor.noFolder")}</option>
           {folders.map((folder) => (
@@ -90,7 +90,7 @@ export function FolderPicker({
               {folder.name}
             </option>
           ))}
-        </select>
+        </Select>
         <IconButton
           label={t("promptsView.newFolder")}
           icon={<FolderPlusIcon className="h-4 w-4" aria-hidden="true" />}

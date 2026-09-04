@@ -37,7 +37,7 @@ import { useSettingsStore, type PreferenceKey, type PreferenceValue } from "../s
 import { PreferenceStatus } from "./PreferenceStatus";
 import { SpecimenCard } from "./SpecimenCard";
 
-import { IconButton } from "../../../components/ui";
+import { IconButton, Select} from "../../../components/ui";
 const labelClass = "text-sm font-medium text-foreground";
 const selectClass =
   "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
@@ -217,19 +217,19 @@ export function AppearancePanel() {
 
       {applied.themeFamily === "catppuccin" && (
         <Section icon={MoonIcon} label={t("settingsView.appearance.catppuccinDarkVariant")}>
-          <select
+          <Select
             value={applied.catppuccinDarkVariant}
             aria-label={t("settingsView.appearance.catppuccinDarkVariant")}
             disabled={saving("catppuccinDarkVariant")}
             onChange={(event) => save("catppuccinDarkVariant", event.target.value)}
-            className={`${selectClass} max-w-sm`}
+            wrapperClassName={`${selectClass} max-w-sm`}
           >
             {CATPPUCCIN_DARK_VARIANTS.map((item) => (
               <option key={item} value={item}>
                 {t(`settingsView.appearance.darkVariantOption.${item}`)}
               </option>
             ))}
-          </select>
+          </Select>
           {status("catppuccinDarkVariant")}
         </Section>
       )}
@@ -275,16 +275,16 @@ export function AppearancePanel() {
                       ? t("settingsView.appearance.primaryFont")
                       : t("settingsView.appearance.fallbackFont", { index })}
                   </span>
-                  <select
+                  <Select
                     value={font}
                     disabled={saving("interfaceFontStack")}
                     onChange={(event) => updateFont(index, event.target.value)}
-                    className={selectClass}
+                    wrapperClassName={selectClass}
                   >
                     {options.map((family) => (
                       <option key={family} value={family}>{family}</option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
                 <div className="mt-5 flex items-center gap-0.5">
                   <IconButton

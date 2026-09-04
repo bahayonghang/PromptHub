@@ -10,6 +10,7 @@ import type {
   ReferenceList,
 } from "../../types";
 
+import { Select } from "../../../../components/ui";
 export interface ReferencesTabProps {
   prompt: Prompt | null;
   prompts: PromptListItem[];
@@ -155,11 +156,11 @@ export function ReferencesTab({
           {t("promptsView.detail.picker")}
         </h3>
         <div className="mt-2 flex flex-wrap gap-2">
-          <select
+          <Select
             aria-label={t("promptsView.detail.pickerPlaceholder")}
             value={pickerId}
             onChange={(event) => setPickerId(event.target.value)}
-            className="min-w-0 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+            wrapperClassName="min-w-0 flex-1"
           >
             <option value="">
               {t("promptsView.detail.pickerPlaceholder")}
@@ -169,7 +170,7 @@ export function ReferencesTab({
                 {item.title}
               </option>
             ))}
-          </select>
+          </Select>
           <button
             type="button"
             disabled={!pickerId}

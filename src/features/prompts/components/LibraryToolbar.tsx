@@ -3,6 +3,7 @@ import { LayoutGridIcon, LayoutListIcon, SearchIcon } from "lucide-react";
 import { usePromptStore, type LibraryViewMode } from "../promptStore";
 import type { SortField, SortOrder } from "../types";
 
+import { Select } from "../../../components/ui";
 const SORT_FIELDS: { value: SortField; labelKey: string }[] = [
   { value: "updatedAt", labelKey: "promptsView.sortUpdated" },
   { value: "createdAt", labelKey: "promptsView.sortCreated" },
@@ -50,27 +51,25 @@ export function LibraryToolbar() {
             {countLabel}
           </span>
         </label>
-        <select
+        <Select
           value={filters.sortBy}
           aria-label={t("promptsView.sortBy")}
           onChange={(event) => void setFilters({ sortBy: event.target.value as SortField })}
-          className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
         >
           {SORT_FIELDS.map((field) => (
             <option key={field.value} value={field.value}>
               {t(field.labelKey)}
             </option>
           ))}
-        </select>
-        <select
+        </Select>
+        <Select
           value={filters.sortOrder}
           aria-label={t("promptsView.sortDirection")}
           onChange={(event) => void setFilters({ sortOrder: event.target.value as SortOrder })}
-          className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
         >
           <option value="desc">{t("promptsView.sortDesc")}</option>
           <option value="asc">{t("promptsView.sortAsc")}</option>
-        </select>
+        </Select>
         <div className="inline-flex rounded-md border border-input p-0.5" role="group" aria-label={t("promptsView.chrome.viewMode")}>
           <button
             type="button"

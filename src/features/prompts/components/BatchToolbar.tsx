@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { CheckCheckIcon, FolderInputIcon, TagIcon, Trash2Icon, XIcon } from "lucide-react";
 import type { Folder } from "../types";
 
+import { Select } from "../../../components/ui";
 interface BatchToolbarProps {
   selectedCount: number;
   folders: Folder[];
@@ -63,11 +64,11 @@ export function BatchToolbar({
         </button>
       </div>
       <div className="flex items-center gap-1">
-        <select
+        <Select
           value={folderId}
           onChange={(event) => setFolderId(event.target.value)}
           aria-label={t("promptsView.batch.folder")}
-          className="min-w-0 flex-1 rounded-sm border border-input bg-background px-2 py-1 text-xs text-foreground"
+          wrapperClassName="min-w-0 flex-1"
         >
           <option value="">{t("promptsView.editor.noFolder")}</option>
           {folders.map((folder) => (
@@ -75,7 +76,7 @@ export function BatchToolbar({
               {folder.name}
             </option>
           ))}
-        </select>
+        </Select>
         <button
           type="button"
           title={t("promptsView.batch.move")}
