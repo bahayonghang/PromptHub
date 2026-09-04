@@ -523,7 +523,7 @@ Token 层是干净的（语义命名、HSL 通道、双主题齐备）。`DESIGN
 | 阶段 | 状态 | 说明 |
 |---|---|---|
 | 1 Token 层 | ✅ | 字号阶梯、控件高度、交互态、标签色板、材质、动效 token |
-| 2 基元组件 | ✅ | 15 个基元 + `useConfirm`；阶段 5 补齐 `Textarea`/`Switch`/`SettingRow`/`Banner`；`TypeIcon`/`VersionBadge`/`Chip`/`Toolbar`/`Tooltip` 未做（无迫切调用方） |
+| 2 基元组件 | ✅ | 15 个基元 + `useConfirm`；阶段 5 补齐 `Textarea`/`Switch`/`SettingRow`/`Banner` 并全量收敛调用方；`TypeIcon`/`VersionBadge`/`Chip`/`Toolbar`/`Tooltip` 未做（无迫切调用方） |
 | 3 全局替换 | ✅ | 见第 9 节指标表，全部归零 |
 | 4 布局重构 | ◐ | 已删外壳页头、统一控件高度；侧栏与列表/网格的重排未做 |
 | 5 深水区 | ◐ | `EvaluationWorkbench` 已拆分并套基元；详情弹窗排版与层级已细化；设置页已统一 `SettingRow`/`Switch`/`Banner`；Toast 已改语义色条。**「详情模态 → 右侧停靠面板」的状态机改造未做**（见下） |
@@ -561,6 +561,13 @@ Token 层是干净的（语义命名、HSL 通道、双主题齐备）。`DESIGN
   `CloseDialog.tsx` 这个此前四处遮罩中被遗漏的一处。
 - **开关旋钮硬编码 `bg-white`**：深色主题下在 Signal Blue 轨道上刺眼，
   改为 `bg-card`。
+- **`inputClass` / `fieldClass` 在 11 个文件里逐字重复**：新建 `Textarea`
+  基元后若只在评估工作台使用，等于又多了一套写法。已把 6 处 `<textarea>`
+  与 24 处 `<input>` 全部收敛到基元并删除全部常量，且加守护禁止重新声明。
+  其中 `VersionHistory` 的备注超长时输入框本身没有 invalid 态，
+  接基元后一并修复。
+- 保留的 16 处原生 `<input>` 是复选框、combobox、带绝对定位图标的搜索框
+  与行内重命名字段，结构上不适合套 `Input`，属有意保留。
 
 ---
 
@@ -576,6 +583,8 @@ Token 层是干净的（语义命名、HSL 通道、双主题齐备）。`DESIGN
 | `iconButtonClass` 重复定义 | 6 | 0 | **0** ✅ |
 | `window.confirm` | 9 | 0 | **0** ✅ |
 | 原生 `<select>` | 22 | 0 | **0** ✅ |
+| 原生 `<textarea>` | 6 | 0 | **0** ✅ |
+| 重复的 `inputClass`/`fieldClass` 常量 | 11 | 0 | **0** ✅ |
 | `disabled:opacity-*` 取值种类 | 5 | 1 | **1** ✅ |
 | 选中态 `bg-primary/*` 取值种类 | 3 | 1（走 `--state-selected`） | **1** ✅ |
 | 逐组件 `focus-visible:ring` | 131 | 0（收敛到基础层单条规则） | **0** ✅ |
@@ -589,7 +598,7 @@ Token 层是干净的（语义命名、HSL 通道、双主题齐备）。`DESIGN
 > 信息架构（阶段 5 的停靠面板改造），不适合放在本次机械替换里。
 
 **以上指标已全部固化为可执行断言**：`src/theme/style-conventions.test.ts`
-（15 条）与 `src/components/layout/chrome.test.ts`（3 条）。这些断言做过
+（17 条）与 `src/components/layout/chrome.test.ts`（3 条）。这些断言做过
 反向验证——注入违规代码后会转红。手工清理完的指标若没有守护，
 下一个 PR 就会重新引入。
 
