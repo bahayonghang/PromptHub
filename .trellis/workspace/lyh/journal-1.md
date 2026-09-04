@@ -498,3 +498,24 @@ Added deterministic paging, immutable revisions, portable bundles, private promp
 ### Status
 
 [OK] **Completed**
+
+
+## Session 17: 详情弹层内容 tab 双栏工作台
+
+**Date**: 2026-09-04
+**Task**: 详情弹层内容 tab 双栏工作台
+**Branch**: `dev`
+
+### Summary
+
+去掉内容 tab 的 68ch 阅读栏，改为左正文、右元数据的 prompt-editor workspace。窄于 40rem 全宽堆叠。章节 padding 限定在 workspace，避免泄漏到 PromptEditor。Vitest 451 通过。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `83724df` | (see git log) |
+
+### Status
+
+[OK] **Completed**

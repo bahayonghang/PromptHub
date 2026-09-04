@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 16
+- **Total Sessions**: 17
 - **Last Active**: 2026-09-04
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~500 | Active |
+| `journal-1.md` | ~521 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 17 | 2026-09-04 | 详情弹层内容 tab 双栏工作台 | `83724df` | `dev` |
 | 16 | 2026-09-04 | 关闭常驻托盘 | `f00f10f` | `dev` |
 | 15 | 2026-09-03 | 前置复制按钮并累计使用次数 | `055a6de`, `84c9637`, `8234a59` | `dev` |
 | 14 | 2026-09-03 | 补充核心业务测试覆盖 | `50806df`, `95e1757`, `af0bc9e` | `dev` |
