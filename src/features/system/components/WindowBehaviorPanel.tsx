@@ -41,7 +41,7 @@ export function WindowBehaviorPanel() {
               onClick={() => void setCloseAction(action)}
               className={`rounded-md border px-4 py-2 text-body transition-colors ${
                 closeAction === action
-                  ? "border-primary bg-primary/15 text-foreground"
+                  ? "border-primary bg-state-selected text-foreground"
                   : "border-input text-muted-foreground hover:bg-accent hover:text-foreground"
               }`}
             >

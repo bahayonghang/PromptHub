@@ -77,7 +77,7 @@ export function LibraryToolbar() {
             aria-label={t("promptsView.chrome.viewList")}
             onClick={() => setMode("list")}
             className={`flex h-7 w-7 items-center justify-center rounded-sm ${
-              viewMode === "list" ? "bg-primary/15 text-foreground" : "text-muted-foreground hover:bg-accent"
+              viewMode === "list" ? "bg-state-selected text-foreground" : "text-muted-foreground hover:bg-accent"
             }`}
           >
             <LayoutListIcon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -88,7 +88,7 @@ export function LibraryToolbar() {
             aria-label={t("promptsView.chrome.viewGrid")}
             onClick={() => setMode("grid")}
             className={`flex h-7 w-7 items-center justify-center rounded-sm ${
-              viewMode === "grid" ? "bg-primary/15 text-foreground" : "text-muted-foreground hover:bg-accent"
+              viewMode === "grid" ? "bg-state-selected text-foreground" : "text-muted-foreground hover:bg-accent"
             }`}
           >
             <LayoutGridIcon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -101,7 +101,7 @@ export function LibraryToolbar() {
           onClick={() => setBatchMode(!batchMode)}
           className={`h-8 rounded-md border px-2 text-label ${
             batchMode
-              ? "border-primary bg-primary/15 text-foreground"
+              ? "border-primary bg-state-selected text-foreground"
               : "border-input text-muted-foreground hover:bg-accent hover:text-foreground"
           }`}
         >

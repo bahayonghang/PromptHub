@@ -76,7 +76,7 @@ export function PromptList({
             return (
               <tr
                 key={item.id}
-                className={`text-body ${selected ? "bg-primary/10" : "hover:bg-accent/60"}`}
+                className={`text-body ${selected ? "bg-state-selected" : "hover:bg-accent/60"}`}
               >
                 {batchMode && (
                   <td className="min-w-0 px-1 align-middle">

@@ -162,7 +162,7 @@ export function AppearancePanel() {
                 onClick={() => save("themeFamily", family)}
                 className={`flex min-h-14 items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors ${
                   selected
-                    ? "border-primary bg-primary/10 text-foreground"
+                    ? "border-primary bg-state-selected text-foreground"
                     : "border-input text-muted-foreground hover:bg-accent hover:text-foreground"
                 }`}
               >
@@ -337,7 +337,7 @@ export function AppearancePanel() {
       <Section icon={ZoomInIcon} label={t("settingsView.appearance.fontScale")}>
         <div className="flex flex-wrap gap-2" role="group" aria-label={t("settingsView.appearance.fontScale")}>
           {FONT_SCALES.map((scale) => (
-            <button key={scale} type="button" aria-pressed={applied.fontScale === scale} disabled={saving("fontScale")} onClick={() => save("fontScale", scale)} className={`${optionClass} ${applied.fontScale === scale ? "border-primary bg-primary/10 text-foreground" : "border-input text-muted-foreground hover:bg-accent hover:text-foreground"}`}>
+            <button key={scale} type="button" aria-pressed={applied.fontScale === scale} disabled={saving("fontScale")} onClick={() => save("fontScale", scale)} className={`${optionClass} ${applied.fontScale === scale ? "border-primary bg-state-selected text-foreground" : "border-input text-muted-foreground hover:bg-accent hover:text-foreground"}`}>
               {t(`settingsView.appearance.fontScaleOption.${scale}`)}
             </button>
           ))}
@@ -348,7 +348,7 @@ export function AppearancePanel() {
       <Section icon={RowsIcon} label={t("settingsView.appearance.density")}>
         <div className="flex flex-wrap gap-2" role="group" aria-label={t("settingsView.appearance.density")}>
           {DENSITIES.map((density) => (
-            <button key={density} type="button" aria-pressed={applied.density === density} disabled={saving("density")} onClick={() => save("density", density)} className={`${optionClass} ${applied.density === density ? "border-primary bg-primary/10 text-foreground" : "border-input text-muted-foreground hover:bg-accent hover:text-foreground"}`}>
+            <button key={density} type="button" aria-pressed={applied.density === density} disabled={saving("density")} onClick={() => save("density", density)} className={`${optionClass} ${applied.density === density ? "border-primary bg-state-selected text-foreground" : "border-input text-muted-foreground hover:bg-accent hover:text-foreground"}`}>
               {t(`settingsView.appearance.densityOption.${density}`)}
             </button>
           ))}

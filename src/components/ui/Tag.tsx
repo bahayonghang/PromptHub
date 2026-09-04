@@ -17,6 +17,13 @@ export interface TagProps {
   plain?: boolean;
   icon?: ReactNode;
   className?: string;
+  /**
+   * Forwarded to the rendered element. Call sites use data attributes to drive
+   * roving-focus keyboard navigation over a group of tags.
+   */
+  "data-tag-chip"?: string;
+  /** Accessible name for the trailing count, e.g. "12 prompts". */
+  countLabel?: string;
 }
 
 const BASE =
@@ -39,6 +46,8 @@ export function Tag({
   plain = false,
   icon,
   className = "",
+  countLabel,
+  ...rest
 }: TagProps) {
   const tone = plain
     ? "border-transparent bg-surface-inset text-muted-foreground"
@@ -49,13 +58,19 @@ export function Tag({
       {icon ?? (!plain && <i aria-hidden="true" className="h-1 w-1 shrink-0 rounded-full bg-current" />)}
       <span className="min-w-0 truncate">{name}</span>
       {count != null && (
-        <span className="font-mono text-micro opacity-70 tabular-nums">{count}</span>
+        <span className="font-mono text-micro opacity-70 tabular-nums" aria-label={countLabel}>
+          {count}
+        </span>
       )}
     </>
   );
 
   if (!onToggle) {
-    return <span className={cn(BASE, tone, className)}>{content}</span>;
+    return (
+      <span className={cn(BASE, tone, className)} {...rest}>
+        {content}
+      </span>
+    );
   }
 
   return (
@@ -67,9 +82,9 @@ export function Tag({
         BASE,
         tone,
         "transition-colors duration-fast ease-out",
-        "",
         className,
       )}
+      {...rest}
     >
       {content}
     </button>

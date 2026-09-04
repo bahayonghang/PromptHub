@@ -388,7 +388,7 @@ export function EvaluationWorkbench({ prompt, versions }: EvaluationWorkbenchPro
                     <tr key={cell.id}>
                       <td className="border-b border-r border-border p-2 text-muted-foreground">{testSets.flatMap((set) => set.cases).find((item) => item.id === cell.testCaseId)?.name ?? cell.testCaseId.slice(0, 8)}</td>
                       <td className="border-b border-border p-1">
-                        <button type="button" aria-pressed={compareCells.includes(cell.id)} onClick={() => setCompareCells((items) => items.includes(cell.id) ? items.filter((id) => id !== cell.id) : [...items.slice(-1), cell.id])} className={`flex w-full items-center justify-between rounded-sm border px-2 py-1.5 text-left ${compareCells.includes(cell.id) ? "border-primary bg-primary/10" : "border-input hover:bg-accent"}`}>
+                        <button type="button" aria-pressed={compareCells.includes(cell.id)} onClick={() => setCompareCells((items) => items.includes(cell.id) ? items.filter((id) => id !== cell.id) : [...items.slice(-1), cell.id])} className={`flex w-full items-center justify-between rounded-sm border px-2 py-1.5 text-left ${compareCells.includes(cell.id) ? "border-primary bg-state-selected" : "border-input hover:bg-accent"}`}>
                           <span className="truncate">{profiles.find((profile) => profile.id === cell.profileRevisionId)?.name ?? cell.profileRevisionId.slice(0, 8)} / v{versions.find((version) => version.id === cell.promptRevisionId)?.version ?? "?"}</span>
                           <span className="ml-2 shrink-0 tabular-nums">{cell.cacheHit ? `${t("evaluation.cached")} ` : ""}{cell.status}</span>
                         </button>

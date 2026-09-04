@@ -86,7 +86,7 @@ export function DataPathPanel({
         {status?.restartRequired && (
           <div
             role="status"
-            className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-body text-foreground"
+            className="flex items-center gap-2 rounded-md border border-primary/40 bg-state-selected px-3 py-2 text-body text-foreground"
           >
             <AlertTriangleIcon className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
             <span>

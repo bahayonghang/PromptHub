@@ -174,4 +174,19 @@ describe("EmptyState", () => {
     expect(screen.getByText("Try clearing the active filters.")).toBeDefined();
     expect(screen.getByRole("button", { name: "Clear all" })).toBeDefined();
   });
+
+  it("forwards data attributes so roving-focus navigation can find the chip", () => {
+    // PromptLibraryNav drives ArrowLeft/ArrowRight over the tag cloud by
+    // querying [data-tag-chip]; dropping the attribute would silently kill
+    // keyboard navigation without failing any render assertion.
+    const { container } = render(
+      <Tag name="工程" data-tag-chip="" onToggle={vi.fn()} />,
+    );
+    expect(container.querySelectorAll("[data-tag-chip]").length).toBe(1);
+  });
+
+  it("labels the count for assistive technology", () => {
+    render(<Tag name="工程" count={12} countLabel="12 prompts" />);
+    expect(screen.getByLabelText("12 prompts").textContent).toBe("12");
+  });
 });

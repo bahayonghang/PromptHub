@@ -4,6 +4,7 @@ import { ImageIcon, LockIcon, PinIcon, StarIcon, VideoIcon } from "lucide-react"
 import type { LibraryItem } from "../libraryItem";
 import { CopyPromptButton } from "./CopyPromptButton";
 
+import { Tag } from "../../../components/ui";
 interface PromptGridProps {
   items: LibraryItem[];
   selectedPromptId: string | null;
@@ -112,9 +113,7 @@ export function PromptGrid({
               {(item.tags.length > 0 || item.overflowTagCount > 0) && (
                 <div className="flex flex-wrap gap-1">
                   {item.tags.map((tag) => (
-                    <span key={tag} className="rounded-full bg-muted px-2 py-0.5 text-micro text-muted-foreground">
-                      {tag}
-                    </span>
+                    <Tag key={tag} name={tag} />
                   ))}
                   {item.overflowTagCount > 0 && (
                     <span className="text-micro text-muted-foreground-subtle">

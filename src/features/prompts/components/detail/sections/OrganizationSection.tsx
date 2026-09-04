@@ -4,6 +4,7 @@ import type { CreateFolderInput, Folder } from "../../../types";
 import type { PromptDraft } from "../promptDraft";
 import { FolderPicker } from "../FolderPicker";
 
+import { tagClasses } from "../../../../../components/ui";
 export interface OrganizationSectionProps {
   draft: PromptDraft;
   folders: Folder[];
@@ -65,7 +66,7 @@ export function OrganizationSection({
               {draft.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-label text-foreground"
+                  className={`flex items-center gap-1 rounded-sm border px-1.5 h-5 text-meta ${tagClasses(tag, false)}`}
                 >
                   {tag}
                   <button

@@ -16,7 +16,7 @@ import type { Folder } from "../types";
 import { FolderTree } from "./FolderTree";
 import { TagManager } from "./TagManager";
 
-import { useConfirm } from "../../../components/ui";
+import { Tag, useConfirm} from "../../../components/ui";
 const SAVED_VIEWS: { view: SavedView; icon: LucideIcon }[] = [
   { view: "all", icon: InboxIcon },
   { view: "favorites", icon: StarIcon },
@@ -214,28 +214,19 @@ export function PromptLibraryNav() {
             const pressed = filters.tags.includes(tag);
             const count = libraryCounts.tags[tag];
             return (
-              <button
+              <Tag
                 key={tag}
-                type="button"
+                name={tag}
                 data-tag-chip=""
-                aria-pressed={pressed}
-                onClick={() => handleToggleTag(tag)}
-                className={`inline-flex max-w-full items-center gap-1 rounded-full border px-2 py-0.5 text-label ${
-                  pressed
-                    ? "border-primary bg-primary/15 text-foreground"
-                    : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-                }`}
-              >
-                <span className="truncate">{tag}</span>
-                {count != null && (
-                  <span
-                    className="font-mono text-muted-foreground-subtle"
-                    aria-label={t("promptsView.library.bucketCount", { count })}
-                  >
-                    {count}
-                  </span>
-                )}
-              </button>
+                pressed={pressed}
+                onToggle={() => handleToggleTag(tag)}
+                count={count ?? undefined}
+                countLabel={
+                  count != null
+                    ? t("promptsView.library.bucketCount", { count })
+                    : undefined
+                }
+              />
             );
           })}
         </div>

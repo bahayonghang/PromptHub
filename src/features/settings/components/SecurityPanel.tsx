@@ -110,7 +110,7 @@ export function SecurityPanel({
       <section className="flex items-center gap-3 rounded-md border border-border p-4">
         <span
           className={`flex h-10 w-10 items-center justify-center rounded-full ${
-            hasMasterPassword ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
+            hasMasterPassword ? "bg-state-selected text-primary" : "bg-muted text-muted-foreground"
           }`}
         >
           {hasMasterPassword ? (

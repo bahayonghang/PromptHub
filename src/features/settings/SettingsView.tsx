@@ -112,7 +112,7 @@ export function SettingsView() {
               onClick={() => setSection(entry.id)}
               className={`flex items-center gap-2 rounded-md px-3 py-2 text-left text-body transition-colors max-[900px]:justify-center max-[900px]:px-2 ${
                 active
-                  ? "bg-primary/15 font-medium text-foreground"
+                  ? "bg-state-selected font-medium text-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground"
               }`}
             >
@@ -128,7 +128,7 @@ export function SettingsView() {
         {restartRequired && (
           <div
             role="status"
-            className="flex items-center gap-2 border-b border-primary/40 bg-primary/10 px-4 py-2 text-body text-foreground"
+            className="flex items-center gap-2 border-b border-primary/40 bg-state-selected px-4 py-2 text-body text-foreground"
           >
             <RefreshCwIcon className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
             {t("settingsView.restartRequired")}

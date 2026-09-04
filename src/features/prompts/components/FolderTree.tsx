@@ -153,7 +153,7 @@ export function FolderTree({
           style={{ paddingLeft: `${node.depth * 12 + 8}px` }}
           className={`group flex items-center gap-1 rounded-md py-1.5 pr-2 text-body transition-colors ${
             isSelected
-              ? "bg-primary/15 text-foreground"
+              ? "bg-state-selected text-foreground"
               : "text-muted-foreground hover:bg-accent hover:text-foreground"
           } ${isDropTarget ? "ring-1 ring-primary" : ""}`}
         >
@@ -316,7 +316,7 @@ export function FolderTree({
         onClick={() => onSelectFolder(null)}
         className={`mx-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-body transition-colors ${
           selectedFolderId == null
-            ? "bg-primary/15 text-foreground"
+            ? "bg-state-selected text-foreground"
             : "text-muted-foreground hover:bg-accent hover:text-foreground"
         }`}
       >
