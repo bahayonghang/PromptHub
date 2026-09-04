@@ -22,6 +22,10 @@ boundary. The default local gates for frontend work are `just build` and
 - Adding locale keys to only one language bundle.
 - Using icon libraries other than `lucide-react`.
 - Styling with raw one-off colors where a Tailwind token exists.
+- Clamping an Operate overlay form to a reading measure (`max-w-[68ch]` or
+  equivalent). `DESIGN.md` 65–75ch applies to prose, not the prompt workbench
+  container. See [Component Guidelines](./component-guidelines.md)
+  (Prompt detail workbench).
 - Editing generated output or the read-only `ref/PromptHub/**` tree.
 - Swallowing all async failures silently when the store/view has an error
   channel.

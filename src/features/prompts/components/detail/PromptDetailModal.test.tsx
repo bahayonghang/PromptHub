@@ -4,6 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import i18n, { ensureBundle } from "../../../../runtime/i18n";
 import type { Folder, Prompt, PromptTypeDefinition } from "../../types";
 import { PromptDetailModal, type PromptDetailModalProps } from "./PromptDetailModal";
+import modalSrc from "./PromptDetailModal.tsx?raw";
+// @ts-expect-error - node types are not installed in this frontend project.
+import { readFileSync } from "node:fs";
 import { resetPreferredChatModeForTests } from "../../definitionMode";
 import { usePromptStore } from "../../promptStore";
 import { useToastStore } from "../../../notifications/toastStore";
@@ -377,6 +380,51 @@ describe("PromptDetailModal", () => {
     });
     expect(writeText).not.toHaveBeenCalled();
     expect(incrementUsage).not.toHaveBeenCalled();
+  });
+
+  it("does not clamp the content tab to a reading column", () => {
+    expect(modalSrc).not.toContain("max-w-[68ch]");
+    expect(modalSrc).toContain("prompt-editor__workspace");
+    expect(modalSrc).toContain("prompt-editor__body-pane");
+    expect(modalSrc).toContain("prompt-editor__meta-pane");
+  });
+
+  it("scopes workspace padding so PromptEditor keeps stacked spacing", () => {
+    const globalsCss = readFileSync("src/styles/globals.css", "utf8");
+    expect(globalsCss).toContain(
+      ".prompt-editor__workspace .prompt-editor__identity",
+    );
+    expect(globalsCss).toContain(
+      ".prompt-editor__workspace .prompt-editor__organization-section",
+    );
+    expect(globalsCss).toContain(".prompt-editor__workspace .prompt-editor__media");
+    expect(globalsCss).not.toMatch(/(?:^|\n)\.prompt-editor__identity\s*\{/);
+    expect(globalsCss).not.toMatch(
+      /(?:^|\n)\.prompt-editor__organization-section\s*\{/,
+    );
+    expect(globalsCss).not.toMatch(/(?:^|\n)\.prompt-editor__media\s*\{/);
+  });
+
+  it("keeps prompt content in the body pane and metadata in the rail", () => {
+    renderSavedModal();
+    const body = document.querySelector(".prompt-editor__body-pane");
+    const meta = document.querySelector(".prompt-editor__meta-pane");
+    expect(body).toBeTruthy();
+    expect(meta).toBeTruthy();
+    expect(
+      body?.contains(screen.getByRole("heading", { name: "Prompt content" })),
+    ).toBe(true);
+    expect(
+      meta?.contains(screen.getByRole("heading", { name: "Basics" })),
+    ).toBe(true);
+    expect(
+      meta?.contains(screen.getByRole("heading", { name: "Organization" })),
+    ).toBe(true);
+    expect(
+      meta?.contains(
+        screen.getByRole("heading", { name: "Supporting details" }),
+      ),
+    ).toBe(true);
   });
 });
 

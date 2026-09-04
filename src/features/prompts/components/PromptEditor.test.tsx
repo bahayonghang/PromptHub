@@ -5,6 +5,7 @@ import i18n, { ensureBundle } from "../../../runtime/i18n";
 import { resetPreferredChatModeForTests, setPreferredChatMode } from "../definitionMode";
 import type { Folder, Prompt, PromptTypeDefinition } from "../types";
 import { PromptEditor } from "./PromptEditor";
+import editorSrc from "./PromptEditor.tsx?raw";
 
 function folder(id: string, name: string): Folder {
   return {
@@ -507,5 +508,10 @@ describe("PromptEditor create chat default and copy", () => {
       "true",
     );
     expect(screen.getByLabelText("User Prompt")).toBeTruthy();
+  });
+
+  it("keeps the stacked prompt-editor__body layout", () => {
+    expect(editorSrc).toContain("prompt-editor__body");
+    expect(editorSrc).not.toContain("prompt-editor__workspace");
   });
 });

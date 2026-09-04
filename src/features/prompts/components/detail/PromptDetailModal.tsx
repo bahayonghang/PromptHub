@@ -559,16 +559,8 @@ export function PromptDetailModal({
                   void save();
                 }}
               >
-                <div className="prompt-editor__body min-h-0 flex-1 overflow-y-auto px-4 py-5">
-                  <div className="mx-auto flex w-full max-w-[68ch] flex-col gap-7">
-                    <IdentitySection
-                      draft={draft}
-                      titleValid={titleIsValid(draft)}
-                      readOnly={readOnly}
-                      promptTypeDefinitions={promptTypeDefinitions}
-                      onChange={onChange}
-                      onCreatePromptType={onCreatePromptType}
-                    />
+                <div className="prompt-editor__workspace">
+                  <div className="prompt-editor__body-pane">
                     <DefinitionSection
                       draft={draft}
                       prompt={prompt}
@@ -591,6 +583,16 @@ export function PromptDetailModal({
                         {t("promptsView.detail.fillAndCopy")}
                       </Button>
                     )}
+                  </div>
+                  <div className="prompt-editor__meta-pane">
+                    <IdentitySection
+                      draft={draft}
+                      titleValid={titleIsValid(draft)}
+                      readOnly={readOnly}
+                      promptTypeDefinitions={promptTypeDefinitions}
+                      onChange={onChange}
+                      onCreatePromptType={onCreatePromptType}
+                    />
                     <OrganizationSection
                       draft={draft}
                       folders={folders}

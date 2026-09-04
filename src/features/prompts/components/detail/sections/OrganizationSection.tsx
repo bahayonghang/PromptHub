@@ -37,7 +37,7 @@ export function OrganizationSection({
   return (
     <section
       aria-labelledby="prompt-editor-organization"
-      className="border-t border-border pt-5"
+      className="prompt-editor__organization-section border-t border-border pt-5"
     >
       <h3
         id="prompt-editor-organization"

@@ -228,6 +228,47 @@ browser that `getComputedStyle(container).containerType === "inline-size"` at
 the required viewport sizes. Closed off-canvas regions must also disappear from
 the accessibility tree, not only move outside the visible canvas.
 
+### Prompt detail workbench
+
+The content tab of `PromptDetailModal` is an Operate workbench, not a reading
+page. Do not wrap the form in `max-w-[68ch] mx-auto`. That clamp was applied
+once from the prose measure in `DESIGN.md` and left ~20rem empty gutters inside
+the 1180px overlay.
+
+Layout contract:
+
+- `.prompt-editor` remains the named container (`container-type: inline-size`).
+- `.prompt-editor__workspace` is a grid: narrow areas `identity / body / org /
+  media`; at `@container prompt-editor (min-width: 40rem)` areas `body | meta`
+  with columns `minmax(0, 1fr) minmax(16rem, 20rem)`.
+- Definition (prompt body) lives in `.prompt-editor__body-pane`. Identity,
+  Organization, and Media live in `.prompt-editor__meta-pane`.
+- The meta pane is `display: contents` when stacked so Identity stays above the
+  body. DOM order is body then meta so Tab reaches the prompt body first.
+- `@container prompt-editor` measures the **form** (full overlay), not the
+  visible column. Force `__two-column` and `__organization` back to one column
+  inside `.prompt-editor__meta-pane`, or a 20rem rail splits title/description
+  into ~10rem halves.
+
+Area padding and `grid-area` for Identity / Organization / Media must be
+scoped under `.prompt-editor__workspace`. Those section roots are also mounted
+by `PromptEditor`, which still uses a stacked `.prompt-editor__body` and must
+not inherit overlay padding.
+
+Wrong:
+
+```tsx
+<div className="mx-auto flex w-full max-w-[68ch] flex-col gap-7">
+  <IdentitySection />
+  <DefinitionSection />
+</div>
+```
+
+Correct: compose `__workspace` / `__body-pane` / `__meta-pane` as in
+`PromptDetailModal.tsx`. Guard with the `?raw` assertions in
+`PromptDetailModal.test.tsx` (no `max-w-[68ch]`; selectors stay
+workspace-scoped) and `PromptEditor.test.tsx` (no `__workspace`).
+
 ### Overlay Tools in Clipped Workspaces
 
 Workbench roots such as `prompt-workspace` use `overflow-hidden` to contain

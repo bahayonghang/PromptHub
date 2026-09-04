@@ -340,6 +340,61 @@
   container-type: inline-size;
 }
 
+/*
+ * Content-tab workbench. Narrow: identity, body, org, media in one column.
+ * Wide: body | metadata rail. The reading-column clamp (68ch) must not return.
+ */
+.prompt-editor__workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(16rem, 1fr) auto auto;
+  grid-template-areas:
+    "identity"
+    "body"
+    "org"
+    "media";
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.prompt-editor__meta-pane {
+  display: contents;
+}
+
+/*
+ * Area padding is workspace-only. PromptEditor stacks the same sections
+ * under .prompt-editor__body and must keep its own spacing.
+ */
+.prompt-editor__workspace .prompt-editor__identity {
+  grid-area: identity;
+  min-width: 0;
+  padding: 1rem 1rem 0;
+}
+
+.prompt-editor__workspace .prompt-editor__organization-section {
+  grid-area: org;
+  min-width: 0;
+  padding: 0 1rem;
+}
+
+.prompt-editor__workspace .prompt-editor__media {
+  grid-area: media;
+  min-width: 0;
+  padding: 0 1rem 1.25rem;
+}
+
+.prompt-editor__body-pane {
+  grid-area: body;
+  min-width: 0;
+  padding: 1rem;
+}
+
+.prompt-editor__body-pane .prompt-editor__definition {
+  border-top-width: 0;
+  padding-top: 0;
+}
+
 @keyframes prompt-detail-enter {
   from {
     opacity: 0;
@@ -404,6 +459,39 @@
     padding-inline: 1.5rem;
   }
 
+  .prompt-editor__workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-areas: "body meta";
+    overflow: hidden;
+  }
+
+  .prompt-editor__meta-pane {
+    display: flex;
+    flex-direction: column;
+    grid-area: meta;
+    min-height: 0;
+    overflow-y: auto;
+    border-left: 1px solid hsl(var(--border));
+    padding: 1rem 1rem 1.25rem;
+  }
+
+  .prompt-editor__workspace .prompt-editor__identity {
+    padding: 0;
+  }
+
+  .prompt-editor__workspace .prompt-editor__organization-section,
+  .prompt-editor__workspace .prompt-editor__media {
+    padding-inline: 0;
+    padding-bottom: 0;
+  }
+
+  .prompt-editor__body-pane {
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1rem 1.5rem 1.25rem;
+  }
+
   .prompt-editor__two-column {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -422,6 +510,12 @@
 
   .prompt-editor__organization {
     grid-template-columns: minmax(12rem, 0.7fr) minmax(0, 1.3fr);
+  }
+
+  /* The rail is ~20rem; keep its fields stacked. */
+  .prompt-editor__meta-pane .prompt-editor__two-column,
+  .prompt-editor__meta-pane .prompt-editor__organization {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

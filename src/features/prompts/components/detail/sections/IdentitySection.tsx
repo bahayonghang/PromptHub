@@ -31,7 +31,10 @@ export function IdentitySection({
   const { t } = useTranslation();
 
   return (
-    <section aria-labelledby="prompt-editor-basics">
+    <section
+      aria-labelledby="prompt-editor-basics"
+      className="prompt-editor__identity"
+    >
       <h3
         id="prompt-editor-basics"
         className="text-body font-semibold text-foreground"

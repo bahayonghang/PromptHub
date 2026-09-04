@@ -20,7 +20,7 @@ export function MediaSection({
   return (
     <section
       aria-labelledby="prompt-editor-references"
-      className="border-t border-border pt-5"
+      className="prompt-editor__media border-t border-border pt-5"
     >
       <h3
         id="prompt-editor-references"

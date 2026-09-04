@@ -65,7 +65,7 @@ export function DefinitionSection({
   return (
     <section
       aria-labelledby="prompt-editor-definition"
-      className="border-t border-border pt-5"
+      className="prompt-editor__definition border-t border-border pt-5"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
