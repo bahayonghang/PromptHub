@@ -1916,6 +1916,7 @@
     "fail": "失败",
     "labels": "修订标签",
     "noLabels": "尚未分配标签。",
+    "noRuns": "暂无运行记录",
     "status": "状态",
     "allStatuses": "全部状态",
     "allProfiles": "全部配置",

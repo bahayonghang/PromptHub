@@ -14,7 +14,7 @@ export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement
    * attributes.
    */
   options?: readonly SelectOption[];
-  size?: "md" | "lg";
+  size?: "sm" | "md" | "lg";
   /** Rendered before the value (e.g. a sort glyph). */
   leading?: ReactNode;
   block?: boolean;
@@ -54,7 +54,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         "focus-within:border-ring/70",
         !disabled && "hover:border-border-strong hover:bg-state-hover",
         disabled && "opacity-50",
-        size === "lg" ? "h-control-lg" : "h-control-md",
+        size === "lg" && "h-control-lg",
+        size === "md" && "h-control-md",
+        size === "sm" && "h-control-sm pl-2 pr-1.5",
         block ? "flex w-full" : "w-auto",
         wrapperClassName,
       )}

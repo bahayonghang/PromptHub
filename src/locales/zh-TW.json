@@ -1882,6 +1882,7 @@
     "fail": "失敗",
     "labels": "修訂標籤",
     "noLabels": "尚未指派標籤。",
+    "noRuns": "尚無執行紀錄",
     "status": "狀態",
     "allStatuses": "所有狀態",
     "allProfiles": "所有設定",

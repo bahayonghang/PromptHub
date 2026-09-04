@@ -1880,6 +1880,7 @@
     "fail": "Fail",
     "labels": "Revision labels",
     "noLabels": "No labels assigned.",
+    "noRuns": "Aucune exécution",
     "status": "Status",
     "allStatuses": "All statuses",
     "allProfiles": "All profiles",
