@@ -1330,6 +1330,7 @@
     "deleteFolder": "Delete folder",
     "folderNamePlaceholder": "Folder name",
     "deleteFolderConfirm": "Delete folder \"{{name}}\" and all of its subfolders? Prompts inside will be moved out of the folder.",
+    "deleteFolderTitle": "Delete folder",
     "emptyFolders": "No folders yet",
     "promptCount": "{{count}} prompts",
     "noPrompts": "No prompts found",
@@ -1352,6 +1353,7 @@
     "copyPromptLocked": "Unlock the prompt library to copy private content",
     "deletePrompt": "Delete prompt",
     "deletePromptConfirm": "Delete this prompt? Its version history will be removed too.",
+    "deletePromptTitle": "Delete prompt",
     "privatePrompt": "Private prompt",
     "privateLockedPreview": "Private content is locked",
     "privateLockedTitle": "Private prompt locked",
@@ -1384,14 +1386,16 @@
       "tagPlaceholder": "Tag selected prompts",
       "addTag": "Add tag to selected prompts",
       "delete": "Delete selected prompts",
-      "deleteConfirm": "Delete the selected prompts and their revision histories?"
+      "deleteConfirm": "Delete the selected prompts and their revision histories?",
+      "deleteTitle": "Delete selected prompts"
     },
     "tags": {
       "manage": "Manage tags",
       "rename": "Rename tag",
       "renameValue": "New tag name",
       "delete": "Delete tag",
-      "deleteConfirm": "Delete tag {{tag}} from every prompt?"
+      "deleteConfirm": "Delete tag {{tag}} from every prompt?",
+      "deleteTitle": "Delete tag"
     },
     "library": {
       "nav": "Prompt library",
@@ -1571,6 +1575,7 @@
       "versionLabel": "v{{version}}",
       "restore": "Restore",
       "restoreConfirm": "Restore v{{version}}? The current prompt will be overwritten.",
+      "restoreTitle": "Restore version",
       "showDiff": "Compare revision with current prompt",
       "noDiff": "This revision matches the current prompt.",
       "sources": {
@@ -1791,6 +1796,7 @@
         "overwrite": "Overwrite with current data"
       },
       "applyConfirm": "Apply this data-path change? The app will need to restart to complete it.",
+      "applyTitle": "Change data directory",
       "recoveryTitle": "Recover data",
       "recoveryHint": "Search known locations for recoverable PromptHub data.",
       "recoveryScan": "Scan",
@@ -1842,7 +1848,9 @@
         "restore": "Restore",
         "delete": "Delete backup",
         "restoreConfirm": "Restore this backup? The app will need to restart to complete it.",
-        "deleteConfirm": "Delete this backup? This cannot be undone."
+        "restoreTitle": "Restore backup",
+        "deleteConfirm": "Delete this backup? This cannot be undone.",
+        "deleteTitle": "Delete backup"
       }
     }
   },

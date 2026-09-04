@@ -108,7 +108,7 @@ export function VersionHistory({
                   aria-label={t("promptsView.history.showDiff")}
                   aria-expanded={expanded}
                   onClick={() => setExpandedId(expanded ? null : version.id)}
-                  className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                  className="rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
                 >
                   {expanded ? (
                     <ChevronDownIcon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -116,7 +116,7 @@ export function VersionHistory({
                     <ChevronRightIcon className="h-3.5 w-3.5" aria-hidden="true" />
                   )}
                 </button>
-                <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground">
+                <span className="rounded-sm bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground">
                   {t("promptsView.history.versionLabel", { version: version.version })}
                 </span>
                 <span className="text-xs text-muted-foreground">
@@ -128,7 +128,7 @@ export function VersionHistory({
                     title={t("promptsView.history.restore")}
                     aria-label={t("promptsView.history.restore")}
                     onClick={() => onRollback(version.version)}
-                    className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                    className="rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
                   >
                     <RotateCcwIcon className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>

@@ -35,7 +35,7 @@ export function ToastHost() {
             type="button"
             aria-label={t("promptsView.toast.dismiss")}
             onClick={() => dismiss(toast.id)}
-            className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="flex h-6 w-6 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <XIcon className="h-3.5 w-3.5" aria-hidden="true" />
           </button>

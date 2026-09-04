@@ -10,7 +10,7 @@ export interface MediaSectionProps {
 
 const labelClass = "text-xs font-medium text-muted-foreground";
 const inputClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60";
+  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
 
 export function MediaSection({
   draft,

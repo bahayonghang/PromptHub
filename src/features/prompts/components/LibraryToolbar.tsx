@@ -44,7 +44,7 @@ export function LibraryToolbar() {
             className="h-8 w-full rounded-md border border-input bg-background py-1 pl-7 pr-16 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <span
-            className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[11px] text-muted-foreground-subtle"
+            className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 font-mono text-meta text-muted-foreground-subtle"
             aria-live="polite"
           >
             {countLabel}
@@ -77,7 +77,7 @@ export function LibraryToolbar() {
             aria-pressed={viewMode === "list"}
             aria-label={t("promptsView.chrome.viewList")}
             onClick={() => setMode("list")}
-            className={`flex h-7 w-7 items-center justify-center rounded ${
+            className={`flex h-7 w-7 items-center justify-center rounded-sm ${
               viewMode === "list" ? "bg-primary/15 text-foreground" : "text-muted-foreground hover:bg-accent"
             }`}
           >
@@ -88,7 +88,7 @@ export function LibraryToolbar() {
             aria-pressed={viewMode === "grid"}
             aria-label={t("promptsView.chrome.viewGrid")}
             onClick={() => setMode("grid")}
-            className={`flex h-7 w-7 items-center justify-center rounded ${
+            className={`flex h-7 w-7 items-center justify-center rounded-sm ${
               viewMode === "grid" ? "bg-primary/15 text-foreground" : "text-muted-foreground hover:bg-accent"
             }`}
           >

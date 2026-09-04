@@ -188,6 +188,7 @@
         "overwrite": "用当前数据覆盖"
       },
       "applyConfirm": "应用此数据目录更改？应用需要重启才能完成。",
+      "applyTitle": "更改数据目录",
       "recoveryTitle": "恢复数据",
       "recoveryHint": "在已知位置搜索可恢复的 PromptHub 数据。",
       "recoveryScan": "扫描",
@@ -239,7 +240,9 @@
         "restore": "恢复",
         "delete": "删除备份",
         "restoreConfirm": "恢复此备份？恢复需要重启才能完成。",
-        "deleteConfirm": "删除此备份？此操作无法撤销。"
+        "restoreTitle": "恢复备份",
+        "deleteConfirm": "删除此备份？此操作无法撤销。",
+        "deleteTitle": "删除备份"
       }
     }
   },
@@ -1570,6 +1573,7 @@
     "deleteFolder": "删除文件夹",
     "folderNamePlaceholder": "文件夹名称",
     "deleteFolderConfirm": "删除文件夹“{{name}}”及其所有子文件夹？其中的 Prompt 将移出该文件夹。",
+    "deleteFolderTitle": "删除文件夹",
     "emptyFolders": "暂无文件夹",
     "promptCount": "{{count}} 个 Prompt",
     "noPrompts": "未找到 Prompt",
@@ -1592,6 +1596,7 @@
     "copyPromptLocked": "请先解锁 Prompt 库后再复制私密内容",
     "deletePrompt": "删除 Prompt",
     "deletePromptConfirm": "删除此 Prompt？其版本历史也将一并删除。",
+    "deletePromptTitle": "删除 Prompt",
     "privatePrompt": "私密 Prompt",
     "privateLockedPreview": "私密内容已锁定",
     "privateLockedTitle": "私密 Prompt 已锁定",
@@ -1624,14 +1629,16 @@
       "tagPlaceholder": "为所选 Prompt 添加标签",
       "addTag": "添加标签",
       "delete": "删除所选 Prompt",
-      "deleteConfirm": "删除所选 Prompt 及其修订历史？"
+      "deleteConfirm": "删除所选 Prompt 及其修订历史？",
+      "deleteTitle": "删除所选 Prompt"
     },
     "tags": {
       "manage": "管理标签",
       "rename": "重命名标签",
       "renameValue": "新标签名称",
       "delete": "删除标签",
-      "deleteConfirm": "从所有 Prompt 中删除标签 {{tag}}？"
+      "deleteConfirm": "从所有 Prompt 中删除标签 {{tag}}？",
+      "deleteTitle": "删除标签"
     },
     "library": {
       "nav": "Prompt 库",
@@ -1811,6 +1818,7 @@
       "versionLabel": "v{{version}}",
       "restore": "恢复",
       "restoreConfirm": "恢复 v{{version}}？当前 Prompt 将被覆盖。",
+      "restoreTitle": "恢复版本",
       "showDiff": "将此修订与当前 Prompt 比较",
       "noDiff": "此修订与当前 Prompt 相同。",
       "sources": {

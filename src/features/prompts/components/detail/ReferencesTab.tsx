@@ -179,7 +179,7 @@ export function ReferencesTab({
               onInsert(`@@${target.title}@@`);
               setPickerId("");
             }}
-            className="rounded-md border border-input px-3 py-2 text-sm text-foreground hover:bg-accent disabled:opacity-40"
+            className="rounded-md border border-input px-3 py-2 text-sm text-foreground hover:bg-accent disabled:opacity-50"
           >
             {t("promptsView.detail.insertReference")}
           </button>

@@ -37,7 +37,7 @@ export function VariableEditor({ variables, onChange }: VariableEditorProps) {
               key={variable.name}
               className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-2"
             >
-              <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">
+              <code className="rounded-sm bg-muted px-1.5 py-0.5 text-xs text-foreground">
                 {`{{${variable.name}}}`}
               </code>
               <select

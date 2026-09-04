@@ -96,7 +96,7 @@ export function Sidebar({
         {!collapsed && (
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{t("app.name")}</p>
-            <p className="truncate font-mono text-[11px] text-muted-foreground-subtle">
+            <p className="truncate font-mono text-meta text-muted-foreground-subtle">
               {t("promptsView.library.productVersion")}
             </p>
           </div>
@@ -131,7 +131,7 @@ export function Sidebar({
             {!collapsed && t("promptsView.library.commandPalette")}
           </span>
           {!collapsed && (
-            <kbd className="font-mono text-[11px] text-muted-foreground-subtle">
+            <kbd className="font-mono text-meta text-muted-foreground-subtle">
               {formatBinding(
                 SHORTCUT_BINDINGS.find((item) => item.id === "togglePalette")!,
                 platformModifier().symbol,

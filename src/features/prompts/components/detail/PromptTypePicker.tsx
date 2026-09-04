@@ -8,6 +8,7 @@ import {
   type PromptTypeDefinition,
 } from "../../types";
 
+import { IconButton } from "../../../../components/ui";
 export interface PromptTypePickerProps {
   definitions: PromptTypeDefinition[];
   baseKind: PromptType;
@@ -76,8 +77,6 @@ export function PromptTypePicker({
 
   const inputClass =
     "min-w-0 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring";
-  const iconButtonClass =
-    "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-input text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
   const value = definitionId ? `custom:${definitionId}` : `base:${baseKind}`;
 
   return (
@@ -126,22 +125,20 @@ export function PromptTypePicker({
             </optgroup>
           )}
         </select>
-        <button
-          ref={createButtonRef}
-          type="button"
-          title={t("promptsView.editor.newType")}
-          aria-label={t("promptsView.editor.newType")}
-          aria-expanded={creating}
+        <IconButton
+          label={t("promptsView.editor.newType")}
+          icon={<PlusIcon className="h-4 w-4" aria-hidden="true" />}
+          size="lg"
+          variant="bordered"
           disabled={disabled}
           onClick={() => {
             setCreating(true);
             setNewBaseKind(baseKind);
             setValidationError(null);
           }}
-          className={iconButtonClass}
-        >
-          <PlusIcon className="h-4 w-4" aria-hidden="true" />
-        </button>
+          aria-expanded={creating}
+          ref={createButtonRef}
+        />
       </div>
       {creating && (
         <div className="flex flex-col gap-1">
@@ -189,23 +186,13 @@ export function PromptTypePicker({
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              title={
+            <IconButton
+              label={
                 busy
                   ? t("promptsView.editor.creatingType")
                   : t("promptsView.editor.createType")
               }
-              aria-label={
-                busy
-                  ? t("promptsView.editor.creatingType")
-                  : t("promptsView.editor.createType")
-              }
-              disabled={busy}
-              onClick={() => void submit()}
-              className={iconButtonClass}
-            >
-              {busy ? (
+              icon={busy ? (
                 <LoaderCircleIcon
                   className="h-4 w-4 animate-spin"
                   aria-hidden="true"
@@ -213,17 +200,19 @@ export function PromptTypePicker({
               ) : (
                 <CheckIcon className="h-4 w-4" aria-hidden="true" />
               )}
-            </button>
-            <button
-              type="button"
-              title={t("promptsView.editor.cancelTypeCreate")}
-              aria-label={t("promptsView.editor.cancelTypeCreate")}
+              size="lg"
+              variant="bordered"
+              disabled={busy}
+              onClick={() => void submit()}
+            />
+            <IconButton
+              label={t("promptsView.editor.cancelTypeCreate")}
+              icon={<XIcon className="h-4 w-4" aria-hidden="true" />}
+              size="lg"
+              variant="bordered"
               disabled={busy}
               onClick={cancel}
-              className={iconButtonClass}
-            >
-              <XIcon className="h-4 w-4" aria-hidden="true" />
-            </button>
+            />
           </div>
           {validationError && (
             <span

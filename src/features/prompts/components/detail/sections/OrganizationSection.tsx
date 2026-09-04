@@ -19,7 +19,7 @@ export interface OrganizationSectionProps {
 
 const labelClass = "text-xs font-medium text-muted-foreground";
 const inputClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60";
+  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
 
 export function OrganizationSection({
   draft,
@@ -77,7 +77,7 @@ export function OrganizationSection({
                         tags: draft.tags.filter((item) => item !== tag),
                       })
                     }
-                    className="rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
+                    className="rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                   >
                     <XIcon className="h-3 w-3" aria-hidden="true" />
                   </button>
@@ -110,7 +110,7 @@ export function OrganizationSection({
               type="button"
               disabled={readOnly}
               onClick={() => onAddTag(tagInput)}
-              className="flex min-h-9 shrink-0 items-center justify-center gap-1 rounded-md border border-input px-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
+              className="flex min-h-9 shrink-0 items-center justify-center gap-1 rounded-md border border-input px-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
             >
               <PlusIcon className="h-4 w-4" aria-hidden="true" />
               {t("promptsView.editor.addTag")}

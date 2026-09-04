@@ -172,7 +172,7 @@ export function CommandPalette() {
           className="max-h-80 overflow-y-auto p-2"
         >
           {prompts.length > 0 && (
-            <p className="px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="px-2 py-1 text-meta font-medium uppercase tracking-wide text-muted-foreground">
               {t("promptsView.palette.groupPrompts")}
             </p>
           )}
@@ -192,7 +192,7 @@ export function CommandPalette() {
                 onClick={() => void activate(row)}
               />
             ))}
-          <p className="px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="px-2 py-1 text-meta font-medium uppercase tracking-wide text-muted-foreground">
             {t("promptsView.palette.groupActions")}
           </p>
           {rows
@@ -244,7 +244,7 @@ function PaletteOption({
     >
       <span className="truncate">{label}</span>
       {hint && (
-        <kbd className="font-mono text-[11px] text-muted-foreground">{hint}</kbd>
+        <kbd className="font-mono text-meta text-muted-foreground">{hint}</kbd>
       )}
     </div>
   );

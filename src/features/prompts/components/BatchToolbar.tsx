@@ -39,7 +39,7 @@ export function BatchToolbar({
           title={t("promptsView.batch.selectPage")}
           aria-label={t("promptsView.batch.selectPage")}
           onClick={onSelectPage}
-          className="rounded p-1 hover:bg-accent hover:text-foreground"
+          className="rounded-sm p-1 hover:bg-accent hover:text-foreground"
         >
           <CheckCheckIcon className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
@@ -48,7 +48,7 @@ export function BatchToolbar({
           title={t("promptsView.batch.clear")}
           aria-label={t("promptsView.batch.clear")}
           onClick={onClear}
-          className="rounded p-1 hover:bg-accent hover:text-foreground"
+          className="rounded-sm p-1 hover:bg-accent hover:text-foreground"
         >
           <XIcon className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
@@ -57,7 +57,7 @@ export function BatchToolbar({
           title={t("promptsView.chrome.batchExit")}
           aria-label={t("promptsView.chrome.batchExit")}
           onClick={onExit}
-          className="rounded px-1.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="rounded-sm px-1.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           {t("promptsView.chrome.batchExit")}
         </button>
@@ -67,7 +67,7 @@ export function BatchToolbar({
           value={folderId}
           onChange={(event) => setFolderId(event.target.value)}
           aria-label={t("promptsView.batch.folder")}
-          className="min-w-0 flex-1 rounded border border-input bg-background px-2 py-1 text-xs text-foreground"
+          className="min-w-0 flex-1 rounded-sm border border-input bg-background px-2 py-1 text-xs text-foreground"
         >
           <option value="">{t("promptsView.editor.noFolder")}</option>
           {folders.map((folder) => (
@@ -81,7 +81,7 @@ export function BatchToolbar({
           title={t("promptsView.batch.move")}
           aria-label={t("promptsView.batch.move")}
           onClick={() => onMove(folderId || null)}
-          className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="rounded-sm p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           <FolderInputIcon className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -91,7 +91,7 @@ export function BatchToolbar({
           value={tag}
           onChange={(event) => setTag(event.target.value)}
           placeholder={t("promptsView.batch.tagPlaceholder")}
-          className="min-w-0 flex-1 rounded border border-input bg-background px-2 py-1 text-xs text-foreground"
+          className="min-w-0 flex-1 rounded-sm border border-input bg-background px-2 py-1 text-xs text-foreground"
         />
         <button
           type="button"
@@ -102,7 +102,7 @@ export function BatchToolbar({
             onTag([tag.trim()]);
             setTag("");
           }}
-          className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
+          className="rounded-sm p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
         >
           <TagIcon className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -111,7 +111,7 @@ export function BatchToolbar({
           title={t("promptsView.batch.delete")}
           aria-label={t("promptsView.batch.delete")}
           onClick={onDelete}
-          className="rounded p-1.5 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
+          className="rounded-sm p-1.5 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
         >
           <Trash2Icon className="h-4 w-4" aria-hidden="true" />
         </button>

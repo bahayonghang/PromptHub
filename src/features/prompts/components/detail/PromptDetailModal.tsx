@@ -66,6 +66,7 @@ import {
 import { platformModifier } from "../../../../shortcuts/platform";
 import { useToastStore } from "../../../notifications/toastStore";
 
+import { IconButton } from "../../../../components/ui";
 export type DetailTab = "content" | "versions" | "run" | "references";
 
 export interface PromptDetailModalProps {
@@ -97,8 +98,6 @@ export interface PromptDetailModalProps {
 
 const TABS: DetailTab[] = ["content", "versions", "run", "references"];
 
-const iconButtonClass =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40";
 
 export function PromptDetailModal({
   open,
@@ -409,66 +408,46 @@ export function PromptDetailModal({
                 )}
               </div>
             </div>
-            <button
-              type="button"
-              title={readOnly ? t("promptsView.detail.edit") : t("promptsView.detail.readOnly")}
-              aria-label={readOnly ? t("promptsView.detail.edit") : t("promptsView.detail.readOnly")}
-              aria-pressed={!readOnly}
+            <IconButton
+              label={readOnly ? t("promptsView.detail.edit") : t("promptsView.detail.readOnly")}
+              icon={<PencilIcon className="h-4 w-4" aria-hidden="true" />}
               disabled={locked}
               onClick={() => setReadOnly((value) => !value)}
-              className={iconButtonClass}
-            >
-              <PencilIcon className="h-4 w-4" aria-hidden="true" />
-            </button>
+              aria-pressed={!readOnly}
+            />
             {!creating && prompt && (
               <>
-                <button
-                  type="button"
-                  title={
+                <IconButton
+                  label={
                     prompt.isFavorite
                       ? t("promptsView.unfavorite")
                       : t("promptsView.favorite")
                   }
-                  aria-label={
-                    prompt.isFavorite
-                      ? t("promptsView.unfavorite")
-                      : t("promptsView.favorite")
-                  }
-                  aria-pressed={prompt.isFavorite}
+                  icon={<StarIcon
+                    className={`h-4 w-4 ${prompt.isFavorite ? "fill-current text-primary" : ""}`}
+                    aria-hidden="true"
+                  />}
                   onClick={() =>
                     onToggleFavorite(prompt.id, !prompt.isFavorite)
                   }
-                  className={iconButtonClass}
-                >
-                  <StarIcon
-                    className={`h-4 w-4 ${prompt.isFavorite ? "fill-current text-primary" : ""}`}
-                    aria-hidden="true"
-                  />
-                </button>
-                <button
-                  type="button"
-                  title={prompt.isPinned ? t("promptsView.unpin") : t("promptsView.pin")}
-                  aria-label={prompt.isPinned ? t("promptsView.unpin") : t("promptsView.pin")}
-                  aria-pressed={prompt.isPinned}
-                  onClick={() => onTogglePin(prompt.id, !prompt.isPinned)}
-                  className={iconButtonClass}
-                >
-                  <PinIcon
+                  aria-pressed={prompt.isFavorite}
+                />
+                <IconButton
+                  label={prompt.isPinned ? t("promptsView.unpin") : t("promptsView.pin")}
+                  icon={<PinIcon
                     className={`h-4 w-4 ${prompt.isPinned ? "fill-current text-primary" : ""}`}
                     aria-hidden="true"
-                  />
-                </button>
+                  />}
+                  onClick={() => onTogglePin(prompt.id, !prompt.isPinned)}
+                  aria-pressed={prompt.isPinned}
+                />
                 <div className="relative">
-                  <button
-                    type="button"
-                    title={t("promptsView.detail.moreActions")}
-                    aria-label={t("promptsView.detail.moreActions")}
-                    aria-expanded={menuOpen}
+                  <IconButton
+                    label={t("promptsView.detail.moreActions")}
+                    icon={<MoreHorizontalIcon className="h-4 w-4" aria-hidden="true" />}
                     onClick={() => setMenuOpen((value) => !value)}
-                    className={iconButtonClass}
-                  >
-                    <MoreHorizontalIcon className="h-4 w-4" aria-hidden="true" />
-                  </button>
+                    aria-expanded={menuOpen}
+                  />
                   {menuOpen && (
                     <div
                       role="menu"
@@ -481,7 +460,7 @@ export function PromptDetailModal({
                           setMenuOpen(false);
                           onDuplicate(prompt.id);
                         }}
-                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
+                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
                       >
                         <CopyIcon className="h-3.5 w-3.5" aria-hidden="true" />
                         {t("promptsView.duplicatePrompt")}
@@ -493,7 +472,7 @@ export function PromptDetailModal({
                           setMenuOpen(false);
                           onDelete(prompt.id);
                         }}
-                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10"
+                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10"
                       >
                         <Trash2Icon className="h-3.5 w-3.5" aria-hidden="true" />
                         {t("promptsView.deletePrompt")}
@@ -503,15 +482,11 @@ export function PromptDetailModal({
                 </div>
               </>
             )}
-            <button
-              type="button"
-              title={t("promptsView.detail.close")}
-              aria-label={t("promptsView.detail.close")}
+            <IconButton
+              label={t("promptsView.detail.close")}
+              icon={<XIcon className="h-4 w-4" aria-hidden="true" />}
               onClick={requestClose}
-              className={iconButtonClass}
-            >
-              <XIcon className="h-4 w-4" aria-hidden="true" />
-            </button>
+            />
           </header>
 
           <div
@@ -544,7 +519,7 @@ export function PromptDetailModal({
                   disabled={disabled}
                   title={disabled ? t("promptsView.detail.lockedTabsHint") : label}
                   onClick={() => setTab(item)}
-                  className={`min-h-9 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 ${
+                  className={`min-h-9 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 ${
                     tab === item
                       ? "border-b-2 border-primary text-foreground"
                       : "text-muted-foreground"

@@ -16,6 +16,7 @@ import type { Folder } from "../types";
 import { FolderTree } from "./FolderTree";
 import { TagManager } from "./TagManager";
 
+import { useConfirm } from "../../../components/ui";
 const SAVED_VIEWS: { view: SavedView; icon: LucideIcon }[] = [
   { view: "all", icon: InboxIcon },
   { view: "favorites", icon: StarIcon },
@@ -27,6 +28,8 @@ const SAVED_VIEWS: { view: SavedView; icon: LucideIcon }[] = [
  * Mounted in the app sidebar slot; it does not live in PromptsView.
  */
 export function PromptLibraryNav() {
+  const { confirm, confirmDialog } = useConfirm();
+
   const { t } = useTranslation();
   const collapsed = useAppStore((state) => state.sidebarCollapsed);
   const setActiveView = useAppStore((state) => state.setActiveView);
@@ -72,8 +75,14 @@ export function PromptLibraryNav() {
     void toggleTagFilter(tag);
   };
 
-  const handleDeleteFolder = (folder: Folder) => {
-    if (window.confirm(t("promptsView.deleteFolderConfirm", { name: folder.name }))) {
+  const handleDeleteFolder = async (folder: Folder) => {
+    if (
+      await confirm({
+        title: t("promptsView.deleteFolderTitle"),
+        message: t("promptsView.deleteFolderConfirm", { name: folder.name }),
+        destructive: true,
+      })
+    ) {
       void deleteFolder(folder.id);
     }
   };
@@ -116,7 +125,7 @@ export function PromptLibraryNav() {
               aria-label={t(`promptsView.library.${view}`)}
               aria-current={current ? "true" : undefined}
               onClick={() => handleSelectView(view)}
-              className={`flex h-10 w-10 flex-col items-center justify-center rounded-lg text-[10px] font-mono ${
+              className={`flex h-10 w-10 flex-col items-center justify-center rounded-lg text-micro font-mono ${
                 current
                   ? "bg-primary/15 text-foreground"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent"
@@ -138,7 +147,7 @@ export function PromptLibraryNav() {
       aria-label={t("promptsView.library.nav")}
     >
       <section aria-label={t("promptsView.library.savedViews")}>
-        <h2 className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="px-2 pb-1 text-meta font-semibold uppercase tracking-wide text-muted-foreground">
           {t("promptsView.library.savedViews")}
         </h2>
         <div role="list" className="flex flex-col gap-0.5">
@@ -191,7 +200,7 @@ export function PromptLibraryNav() {
       </section>
 
       <section aria-label={t("promptsView.library.tags")}>
-        <h2 className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="px-2 pb-1 text-meta font-semibold uppercase tracking-wide text-muted-foreground">
           {t("promptsView.library.tags")}
         </h2>
         <div
@@ -234,12 +243,21 @@ export function PromptLibraryNav() {
           tags={tags}
           onRename={(old, next) => void renameTag(old, next)}
           onDelete={(tag) => {
-            if (window.confirm(t("promptsView.tags.deleteConfirm", { tag }))) {
-              void deleteTag(tag);
-            }
+            void (async () => {
+              if (
+                await confirm({
+                  title: t("promptsView.tags.deleteTitle"),
+                  message: t("promptsView.tags.deleteConfirm", { tag }),
+                  destructive: true,
+                })
+              ) {
+                void deleteTag(tag);
+              }
+            })();
           }}
         />
       </section>
+      {confirmDialog}
     </nav>
   );
 }

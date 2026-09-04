@@ -6,9 +6,8 @@ import { useSystemStore } from "../../system/systemStore";
 import { useToastStore } from "../../notifications/toastStore";
 import type { BundlePreview, ImportConflictPolicy } from "../types";
 
-const iconButtonClass =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40";
 
+import { IconButton } from "../../../components/ui";
 interface LibraryHeaderProps {
   onCreate: () => void;
 }
@@ -54,10 +53,9 @@ export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
           <p className="truncate font-mono text-xs text-muted-foreground-subtle">{subtitle}</p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            title={t("promptsView.bundle.export")}
-            aria-label={t("promptsView.bundle.export")}
+          <IconButton
+            label={t("promptsView.bundle.export")}
+            icon={<DownloadIcon className="h-4 w-4" aria-hidden="true" />}
             onClick={() =>
               void exportBundle().then((result) => {
                 if (result) {
@@ -70,20 +68,13 @@ export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
                 }
               })
             }
-            className={iconButtonClass}
-          >
-            <DownloadIcon className="h-4 w-4" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            title={t("promptsView.bundle.import")}
-            aria-label={t("promptsView.bundle.import")}
-            aria-pressed={showImport}
+          />
+          <IconButton
+            label={t("promptsView.bundle.import")}
+            icon={<UploadIcon className="h-4 w-4" aria-hidden="true" />}
             onClick={() => setShowImport((open) => !open)}
-            className={iconButtonClass}
-          >
-            <UploadIcon className="h-4 w-4" aria-hidden="true" />
-          </button>
+            aria-pressed={showImport}
+          />
           <button
             type="button"
             onClick={onCreate}
@@ -104,7 +95,7 @@ export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
             }}
             placeholder={t("promptsView.bundle.pathPlaceholder")}
             aria-label={t("promptsView.bundle.path")}
-            className="w-full rounded border border-input bg-background px-2 py-1.5 text-xs text-foreground"
+            className="w-full rounded-sm border border-input bg-background px-2 py-1.5 text-xs text-foreground"
           />
           <div className="flex items-center gap-2">
             <select
@@ -113,7 +104,7 @@ export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
                 setConflictPolicy(event.target.value as ImportConflictPolicy)
               }
               aria-label={t("promptsView.bundle.conflictPolicy")}
-              className="min-w-0 flex-1 rounded border border-input bg-background px-2 py-1.5 text-xs text-foreground"
+              className="min-w-0 flex-1 rounded-sm border border-input bg-background px-2 py-1.5 text-xs text-foreground"
             >
               <option value="skip">{t("promptsView.bundle.skip")}</option>
               <option value="duplicate">{t("promptsView.bundle.duplicate")}</option>
@@ -123,7 +114,7 @@ export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
               type="button"
               disabled={bundlePath.trim() === ""}
               onClick={() => void previewBundle(bundlePath.trim()).then(setBundlePreview)}
-              className="rounded border border-input px-2 py-1.5 text-xs text-foreground hover:bg-accent disabled:opacity-40"
+              className="rounded-sm border border-input px-2 py-1.5 text-xs text-foreground hover:bg-accent disabled:opacity-50"
             >
               {t("promptsView.bundle.preview")}
             </button>
@@ -176,7 +167,7 @@ export function LibraryHeader({ onCreate }: LibraryHeaderProps) {
                     }
                   })
                 }
-                className="mt-2 rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-2 rounded-sm bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {t("promptsView.bundle.confirmImport")}
               </button>

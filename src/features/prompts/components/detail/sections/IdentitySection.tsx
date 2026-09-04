@@ -20,7 +20,7 @@ export interface IdentitySectionProps {
 
 const labelClass = "text-xs font-medium text-muted-foreground";
 const inputClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60";
+  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
 
 export function IdentitySection({
   draft,
@@ -91,7 +91,7 @@ export function IdentitySection({
             checked={draft.isPrivate}
             disabled={readOnly}
             onChange={(event) => onChange({ isPrivate: event.target.checked })}
-            className="h-4 w-4 shrink-0 rounded border-input text-primary focus:ring-ring"
+            className="h-4 w-4 shrink-0 rounded-sm border-input text-primary focus:ring-ring"
           />
           <span>
             {t("promptsView.editor.privatePrompt")}

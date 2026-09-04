@@ -188,6 +188,7 @@
         "overwrite": "現在のデータで上書き"
       },
       "applyConfirm": "このデータパスの変更を適用しますか？完了するにはアプリの再起動が必要です。",
+      "applyTitle": "データディレクトリを変更",
       "recoveryTitle": "データを復元",
       "recoveryHint": "既知の場所から復元可能な PromptHub データを検索します。",
       "recoveryScan": "スキャン",
@@ -239,7 +240,9 @@
         "restore": "復元",
         "delete": "バックアップを削除",
         "restoreConfirm": "このバックアップを復元しますか？完了するにはアプリの再起動が必要です。",
-        "deleteConfirm": "このバックアップを削除しますか？この操作は元に戻せません。"
+        "restoreTitle": "バックアップを復元",
+        "deleteConfirm": "このバックアップを削除しますか？この操作は元に戻せません。",
+        "deleteTitle": "バックアップを削除"
       }
     }
   },
@@ -1537,6 +1540,7 @@
     "deleteFolder": "フォルダーを削除",
     "folderNamePlaceholder": "フォルダー名",
     "deleteFolderConfirm": "フォルダー「{{name}}」とそのサブフォルダーをすべて削除しますか？中の Prompt はフォルダー外へ移動します。",
+    "deleteFolderTitle": "フォルダーを削除",
     "emptyFolders": "フォルダーはまだありません",
     "promptCount": "{{count}} 件の Prompt",
     "noPrompts": "Prompt が見つかりません",
@@ -1559,6 +1563,7 @@
     "copyPromptLocked": "プライベート内容をコピーするにはライブラリのロックを解除してください",
     "deletePrompt": "Prompt を削除",
     "deletePromptConfirm": "この Prompt を削除しますか？バージョン履歴も削除されます。",
+    "deletePromptTitle": "プロンプトを削除",
     "privatePrompt": "非公開 Prompt",
     "privateLockedPreview": "非公開コンテンツはロックされています",
     "privateLockedTitle": "非公開 Prompt はロックされています",
@@ -1591,14 +1596,16 @@
       "tagPlaceholder": "タグを追加",
       "addTag": "タグを追加",
       "delete": "選択した Prompt を削除",
-      "deleteConfirm": "選択した Prompt とリビジョン履歴を削除しますか？"
+      "deleteConfirm": "選択した Prompt とリビジョン履歴を削除しますか？",
+      "deleteTitle": "選択したプロンプトを削除"
     },
     "tags": {
       "manage": "タグを管理",
       "rename": "タグ名を変更",
       "renameValue": "新しいタグ名",
       "delete": "タグを削除",
-      "deleteConfirm": "すべての Prompt からタグ {{tag}} を削除しますか？"
+      "deleteConfirm": "すべての Prompt からタグ {{tag}} を削除しますか？",
+      "deleteTitle": "タグを削除"
     },
     "library": {
       "nav": "Prompt ライブラリ",
@@ -1778,6 +1785,7 @@
       "versionLabel": "v{{version}}",
       "restore": "復元",
       "restoreConfirm": "v{{version}} を復元しますか？現在の Prompt は上書きされます。",
+      "restoreTitle": "バージョンを復元",
       "showDiff": "このリビジョンを現在の Prompt と比較",
       "noDiff": "このリビジョンは現在の Prompt と同じです。",
       "sources": {

@@ -188,6 +188,7 @@
         "overwrite": "Mit aktuellen Daten überschreiben"
       },
       "applyConfirm": "Diese Datenpfad-Änderung anwenden? Die App muss zum Abschluss neu gestartet werden.",
+      "applyTitle": "Datenverzeichnis ändern",
       "recoveryTitle": "Daten wiederherstellen",
       "recoveryHint": "Bekannte Speicherorte nach wiederherstellbaren PromptHub-Daten durchsuchen.",
       "recoveryScan": "Suchen",
@@ -239,7 +240,9 @@
         "restore": "Wiederherstellen",
         "delete": "Sicherung löschen",
         "restoreConfirm": "Diese Sicherung wiederherstellen? Die App muss zum Abschluss neu gestartet werden.",
-        "deleteConfirm": "Diese Sicherung löschen? Dies kann nicht rückgängig gemacht werden."
+        "restoreTitle": "Backup wiederherstellen",
+        "deleteConfirm": "Diese Sicherung löschen? Dies kann nicht rückgängig gemacht werden.",
+        "deleteTitle": "Backup löschen"
       }
     }
   },
@@ -1531,6 +1534,7 @@
     "deleteFolder": "Ordner löschen",
     "folderNamePlaceholder": "Ordnername",
     "deleteFolderConfirm": "Ordner „{{name}}“ und alle Unterordner löschen? Enthaltene Prompts werden aus dem Ordner verschoben.",
+    "deleteFolderTitle": "Ordner löschen",
     "emptyFolders": "Noch keine Ordner",
     "promptCount": "{{count}} Prompts",
     "noPrompts": "Keine Prompts gefunden",
@@ -1553,6 +1557,7 @@
     "copyPromptLocked": "Entsperren Sie die Bibliothek, um private Inhalte zu kopieren",
     "deletePrompt": "Prompt löschen",
     "deletePromptConfirm": "Diesen Prompt löschen? Sein Versionsverlauf wird ebenfalls entfernt.",
+    "deletePromptTitle": "Prompt löschen",
     "privatePrompt": "Privater Prompt",
     "privateLockedPreview": "Privater Inhalt ist gesperrt",
     "privateLockedTitle": "Privater Prompt ist gesperrt",
@@ -1585,14 +1590,16 @@
       "tagPlaceholder": "Tag hinzufugen",
       "addTag": "Tag hinzufugen",
       "delete": "Auswahl loschen",
-      "deleteConfirm": "Ausgewahlte Prompts und ihre Revisionen loschen?"
+      "deleteConfirm": "Ausgewahlte Prompts und ihre Revisionen loschen?",
+      "deleteTitle": "Ausgewählte Prompts löschen"
     },
     "tags": {
       "manage": "Tags verwalten",
       "rename": "Tag umbenennen",
       "renameValue": "Neuer Tag-Name",
       "delete": "Tag loschen",
-      "deleteConfirm": "Tag {{tag}} aus allen Prompts loschen?"
+      "deleteConfirm": "Tag {{tag}} aus allen Prompts loschen?",
+      "deleteTitle": "Tag löschen"
     },
     "library": {
       "nav": "Prompt-Bibliothek",
@@ -1772,6 +1779,7 @@
       "versionLabel": "v{{version}}",
       "restore": "Wiederherstellen",
       "restoreConfirm": "v{{version}} wiederherstellen? Der aktuelle Prompt wird überschrieben.",
+      "restoreTitle": "Version wiederherstellen",
       "showDiff": "Diese Revision mit dem aktuellen Prompt vergleichen",
       "noDiff": "Diese Revision entspricht dem aktuellen Prompt.",
       "sources": {

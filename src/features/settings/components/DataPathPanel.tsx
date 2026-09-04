@@ -160,7 +160,7 @@ export function DataPathPanel({
                 {preview.markers.map((marker) => (
                   <li
                     key={marker.path}
-                    className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-foreground"
+                    className="rounded-full bg-muted px-2 py-0.5 text-meta text-foreground"
                   >
                     {marker.name}
                   </li>

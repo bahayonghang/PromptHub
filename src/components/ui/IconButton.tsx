@@ -2,7 +2,7 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { cn } from "./cn";
 
 export type IconButtonVariant = "ghost" | "bordered" | "danger";
-export type IconButtonSize = "xs" | "sm" | "md";
+export type IconButtonSize = "xs" | "sm" | "md" | "lg";
 
 export interface IconButtonProps
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
@@ -44,6 +44,7 @@ const SIZES: Record<IconButtonSize, string> = {
   xs: "h-control-xs w-control-xs",
   sm: "h-control-sm w-control-sm",
   md: "h-control-md w-control-md",
+  lg: "h-control-lg w-control-lg",
 };
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(

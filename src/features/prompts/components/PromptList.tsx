@@ -55,7 +55,7 @@ export function PromptList({
     <div className="overflow-x-hidden p-2">
       <table className="w-full table-fixed border-separate border-spacing-y-1 text-left">
         <thead>
-          <tr className="text-[11px] font-medium text-muted-foreground-subtle">
+          <tr className="text-meta font-medium text-muted-foreground-subtle">
             {batchMode && <th className="w-8 px-1">{t("promptsView.items.columns.select")}</th>}
             <th className="w-[28%] min-w-0 px-1">{t("promptsView.items.columns.title")}</th>
             <th className="w-[24%] min-w-0 px-1">{t("promptsView.items.columns.description")}</th>
@@ -85,7 +85,7 @@ export function PromptList({
                       checked={checked}
                       onChange={() => onToggleSelection(item.id)}
                       aria-label={t("promptsView.batch.selectPrompt", { title: item.title })}
-                      className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
+                      className="h-4 w-4 rounded-sm border-input text-primary focus:ring-ring"
                     />
                   </td>
                 )}
@@ -109,7 +109,7 @@ export function PromptList({
                       className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 truncate text-left font-medium text-foreground"
                     >
                       {item.isPinned && (
-                        <span className="inline-flex items-center gap-0.5 rounded bg-muted px-1 text-[10px] text-muted-foreground">
+                        <span className="inline-flex items-center gap-0.5 rounded-sm bg-muted px-1 text-micro text-muted-foreground">
                           <PinIcon className="h-3 w-3" aria-hidden="true" />
                           {t("promptsView.items.pinned")}
                         </span>
@@ -124,7 +124,7 @@ export function PromptList({
                 <td className="min-w-0 truncate px-1 align-middle text-xs text-muted-foreground">
                   {item.description}
                 </td>
-                <td className="min-w-0 truncate px-1 align-middle text-[11px] text-muted-foreground">
+                <td className="min-w-0 truncate px-1 align-middle text-meta text-muted-foreground">
                   {item.tags.join(", ")}
                   {item.overflowTagCount > 0
                     ? ` ${t("promptsView.items.moreTags", { count: item.overflowTagCount })}`
@@ -151,7 +151,7 @@ export function PromptList({
                     aria-pressed={item.isFavorite}
                     aria-label={item.isFavorite ? t("promptsView.unfavorite") : t("promptsView.favorite")}
                     onClick={() => onToggleFavorite(item.id, !item.isFavorite)}
-                    className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                    className="rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
                   >
                     <StarIcon className={`h-3.5 w-3.5 ${item.isFavorite ? "fill-current text-primary" : ""}`} aria-hidden="true" />
                   </button>

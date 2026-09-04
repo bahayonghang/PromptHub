@@ -31,7 +31,7 @@ export interface DefinitionSectionProps {
 
 const labelClass = "text-xs font-medium text-muted-foreground";
 const inputClass =
-  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60";
+  "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
 
 export function DefinitionSection({
   draft,
@@ -98,7 +98,7 @@ export function DefinitionSection({
               aria-pressed={!chatMode}
               disabled={readOnly}
               onClick={() => onSetChatMode(false)}
-              className={`flex min-h-8 items-center gap-1.5 rounded px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 ${
+              className={`flex min-h-8 items-center gap-1.5 rounded-sm px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 ${
                 !chatMode
                   ? "bg-accent text-foreground"
                   : "text-muted-foreground"
@@ -112,7 +112,7 @@ export function DefinitionSection({
               aria-pressed={chatMode}
               disabled={readOnly}
               onClick={() => onSetChatMode(true)}
-              className={`flex min-h-8 items-center gap-1.5 rounded px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 ${
+              className={`flex min-h-8 items-center gap-1.5 rounded-sm px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 ${
                 chatMode
                   ? "bg-accent text-foreground"
                   : "text-muted-foreground"
@@ -214,7 +214,7 @@ export function DefinitionSection({
                           }
                           onUpdateMessages(next);
                         }}
-                        className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30"
+                        className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                       >
                         <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
@@ -232,7 +232,7 @@ export function DefinitionSection({
                   { role: "user", content: "" },
                 ])
               }
-              className="flex min-h-8 w-fit items-center gap-1.5 rounded-md border border-input px-2.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
+              className="flex min-h-8 w-fit items-center gap-1.5 rounded-md border border-input px-2.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
             >
               <PlusIcon className="h-3.5 w-3.5" aria-hidden="true" />
               {t("evaluation.addMessage")}

@@ -23,4 +23,5 @@ export { Panel, type PanelProps } from "./Panel";
 export { UsageBar, type UsageBarProps } from "./UsageBar";
 export { EmptyState, type EmptyStateProps } from "./EmptyState";
 export { ConfirmDialog, type ConfirmDialogProps } from "./ConfirmDialog";
+export { useConfirm, type ConfirmRequest } from "./useConfirm";
 export { Modal, type ModalProps } from "./Modal";

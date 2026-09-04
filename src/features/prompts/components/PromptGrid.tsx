@@ -65,7 +65,7 @@ export function PromptGrid({
                     checked={checked}
                     onChange={() => onToggleSelection(item.id)}
                     aria-label={t("promptsView.batch.selectPrompt", { title: item.title })}
-                    className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-ring"
+                    className="mt-1 h-4 w-4 rounded-sm border-input text-primary focus:ring-ring"
                   />
                 )}
                 <CopyPromptButton
@@ -87,7 +87,7 @@ export function PromptGrid({
                 >
                   <div className="flex items-center gap-1.5">
                     {item.isPinned && (
-                      <span className="inline-flex items-center gap-0.5 rounded bg-muted px-1 text-[10px] text-muted-foreground">
+                      <span className="inline-flex items-center gap-0.5 rounded-sm bg-muted px-1 text-micro text-muted-foreground">
                         <PinIcon className="h-3 w-3" aria-hidden="true" />
                         {t("promptsView.items.pinned")}
                       </span>
@@ -104,7 +104,7 @@ export function PromptGrid({
                   aria-pressed={item.isFavorite}
                   aria-label={item.isFavorite ? t("promptsView.unfavorite") : t("promptsView.favorite")}
                   onClick={() => onToggleFavorite(item.id, !item.isFavorite)}
-                  className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                  className="rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
                 >
                   <StarIcon className={`h-4 w-4 ${item.isFavorite ? "fill-current text-primary" : ""}`} aria-hidden="true" />
                 </button>
@@ -112,18 +112,18 @@ export function PromptGrid({
               {(item.tags.length > 0 || item.overflowTagCount > 0) && (
                 <div className="flex flex-wrap gap-1">
                   {item.tags.map((tag) => (
-                    <span key={tag} className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                    <span key={tag} className="rounded-full bg-muted px-2 py-0.5 text-micro text-muted-foreground">
                       {tag}
                     </span>
                   ))}
                   {item.overflowTagCount > 0 && (
-                    <span className="text-[10px] text-muted-foreground-subtle">
+                    <span className="text-micro text-muted-foreground-subtle">
                       {t("promptsView.items.moreTags", { count: item.overflowTagCount })}
                     </span>
                   )}
                 </div>
               )}
-              <div className="mt-auto flex items-center gap-2 font-mono text-[11px] text-muted-foreground-subtle">
+              <div className="mt-auto flex items-center gap-2 font-mono text-meta text-muted-foreground-subtle">
                 <span className="inline-flex min-w-0 items-center gap-1 truncate">
                   <TypeBadge kind={item.typeKind} />
                   {item.typeLabel}

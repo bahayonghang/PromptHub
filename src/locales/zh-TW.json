@@ -188,6 +188,7 @@
         "overwrite": "以目前的資料覆寫"
       },
       "applyConfirm": "套用此資料目錄變更？套用需要重新啟動才能完成。",
+      "applyTitle": "變更資料目錄",
       "recoveryTitle": "復原資料",
       "recoveryHint": "在已知位置搜尋可復原的 PromptHub 資料。",
       "recoveryScan": "掃描",
@@ -239,7 +240,9 @@
         "restore": "復原",
         "delete": "刪除備份",
         "restoreConfirm": "復原此備份？復原需要重新啟動才能完成。",
-        "deleteConfirm": "刪除此備份？此操作無法復原。"
+        "restoreTitle": "還原備份",
+        "deleteConfirm": "刪除此備份？此操作無法復原。",
+        "deleteTitle": "刪除備份"
       }
     }
   },
@@ -1536,6 +1539,7 @@
     "deleteFolder": "刪除資料夾",
     "folderNamePlaceholder": "資料夾名稱",
     "deleteFolderConfirm": "刪除資料夾「{{name}}」及其所有子資料夾？其中的 Prompt 將移出該資料夾。",
+    "deleteFolderTitle": "刪除資料夾",
     "emptyFolders": "尚無資料夾",
     "promptCount": "{{count}} 個 Prompt",
     "noPrompts": "找不到 Prompt",
@@ -1558,6 +1562,7 @@
     "copyPromptLocked": "請先解鎖 Prompt 庫後再複製私密內容",
     "deletePrompt": "刪除 Prompt",
     "deletePromptConfirm": "刪除此 Prompt？其版本歷史也會一併刪除。",
+    "deletePromptTitle": "刪除 Prompt",
     "privatePrompt": "私密 Prompt",
     "privateLockedPreview": "私密內容已鎖定",
     "privateLockedTitle": "私密 Prompt 已鎖定",
@@ -1590,14 +1595,16 @@
       "tagPlaceholder": "為所選 Prompt 加上標籤",
       "addTag": "加入標籤",
       "delete": "刪除所選 Prompt",
-      "deleteConfirm": "刪除所選 Prompt 及其修訂歷史？"
+      "deleteConfirm": "刪除所選 Prompt 及其修訂歷史？",
+      "deleteTitle": "刪除所選 Prompt"
     },
     "tags": {
       "manage": "管理標籤",
       "rename": "重新命名標籤",
       "renameValue": "新標籤名稱",
       "delete": "刪除標籤",
-      "deleteConfirm": "從所有 Prompt 中刪除標籤 {{tag}}？"
+      "deleteConfirm": "從所有 Prompt 中刪除標籤 {{tag}}？",
+      "deleteTitle": "刪除標籤"
     },
     "library": {
       "nav": "Prompt 庫",
@@ -1777,6 +1784,7 @@
       "versionLabel": "v{{version}}",
       "restore": "還原",
       "restoreConfirm": "還原 v{{version}}？目前的 Prompt 將被覆寫。",
+      "restoreTitle": "還原版本",
       "showDiff": "將此修訂與目前的 Prompt 比較",
       "noDiff": "此修訂與目前的 Prompt 相同。",
       "sources": {

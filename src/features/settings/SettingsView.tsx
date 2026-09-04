@@ -18,6 +18,7 @@ import { DataPathPanel } from "./components/DataPathPanel";
 import { SyncPanel } from "./components/SyncPanel";
 import { SystemPanel } from "../system/components/SystemPanel";
 
+import { useConfirm } from "../../components/ui";
 /** The settings sections selectable from the left rail. */
 type SettingsSection = "appearance" | "general" | "security" | "sync" | "dataPath" | "system";
 
@@ -46,6 +47,8 @@ const SECTIONS: readonly SectionEntry[] = [
  * effect (Req 19.5, 19.7, 17.7).
  */
 export function SettingsView() {
+  const { confirm, confirmDialog } = useConfirm();
+
   const { t } = useTranslation();
 
   const settings = useSettingsStore((s) => s.settings);
@@ -171,14 +174,29 @@ export function SettingsView() {
               onExport={exportZip}
               onCreateBackup={() => void createBackup()}
               onRestoreBackup={(id) => {
-                if (window.confirm(t("settingsView.sync.backup.restoreConfirm"))) {
-                  void restoreBackup(id);
-                }
+                void (async () => {
+                  if (
+                    await confirm({
+                      title: t("settingsView.sync.backup.restoreTitle"),
+                      message: t("settingsView.sync.backup.restoreConfirm"),
+                    })
+                  ) {
+                    void restoreBackup(id);
+                  }
+                })();
               }}
               onDeleteBackup={(id) => {
-                if (window.confirm(t("settingsView.sync.backup.deleteConfirm"))) {
-                  void deleteBackup(id);
-                }
+                void (async () => {
+                  if (
+                    await confirm({
+                      title: t("settingsView.sync.backup.deleteTitle"),
+                      message: t("settingsView.sync.backup.deleteConfirm"),
+                      destructive: true,
+                    })
+                  ) {
+                    void deleteBackup(id);
+                  }
+                })();
               }}
             />
           )}
@@ -191,15 +209,29 @@ export function SettingsView() {
               onPreview={(targetPath) => void previewDataChange(targetPath)}
               onClearPreview={clearPreview}
               onApply={(targetPath, action) => {
-                if (window.confirm(t("settingsView.dataPath.applyConfirm"))) {
-                  void applyDataChange(targetPath, action);
-                }
+                void (async () => {
+                  if (
+                    await confirm({
+                      title: t("settingsView.dataPath.applyTitle"),
+                      message: t("settingsView.dataPath.applyConfirm"),
+                    })
+                  ) {
+                    void applyDataChange(targetPath, action);
+                  }
+                })();
               }}
               onRecoveryScan={() => void recoveryScan()}
               onRecoveryApply={(sourcePath) => {
-                if (window.confirm(t("settingsView.dataPath.recoveryConfirm"))) {
-                  void recoveryApply(sourcePath);
-                }
+                void (async () => {
+                  if (
+                    await confirm({
+                      title: t("settingsView.dataPath.recoveryTitle"),
+                      message: t("settingsView.dataPath.recoveryConfirm"),
+                    })
+                  ) {
+                    void recoveryApply(sourcePath);
+                  }
+                })();
               }}
             />
           )}
@@ -212,6 +244,7 @@ export function SettingsView() {
           </div>
         </div>
       </section>
+      {confirmDialog}
     </div>
   );
 }

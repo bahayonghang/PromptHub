@@ -56,13 +56,13 @@
 ### 1.2 圆角语汇混乱且与 token 脱节
 
 ```
-104×  rounded-md   → calc(var(--radius) - 2px) = 10px
-196×  rounded      → Tailwind 默认 0.25rem = 4px  ← 未走 token！
+110×  rounded-md   → calc(var(--radius) - 2px) = 10px
+ 69×  rounded      → Tailwind 默认 0.25rem = 4px  ← 未走 token！
  16×  rounded-full
   8×  rounded-lg   → var(--radius) = 12px
 ```
 
-**问题**：`rounded`（裸类）出现 196 次，解析为硬编码 4px，完全绕过
+**问题**：`rounded`（裸类）出现 69 次，解析为硬编码 4px，完全绕过
 `--radius` 设计令牌。这意味着用户在设置里换主题，圆角不会跟随，而且
 同一个界面上同时存在 4px / 10px / 12px 三种圆角，边缘节奏是断裂的。
 `DESIGN.md` 明确规定"控件 10px、面板 12px"，实际执行率不到 60%。
@@ -494,7 +494,7 @@ Token 层是干净的（语义命名、HSL 通道、双主题齐备）。`DESIGN
 - 152 个 `<button>` → `Button` / `IconButton`。
 - 9 处 `window.confirm` → `ConfirmDialog`。
 - 22 个 `<select>` → `Select`。
-- 196 处裸 `rounded` → token 化圆角。
+- 69 处裸 `rounded` → token 化圆角。
 - 18 处 `text-[10px]/[11px]` → `text-micro` / `text-meta`。
 - **这一步单独提交，diff 大但机械，评审时只需确认无行为变化。**
 
@@ -524,7 +524,7 @@ Token 层是干净的（语义命名、HSL 通道、双主题齐备）。`DESIGN
 
 | 指标 | 现状 | 目标 |
 |---|---|---|
-| 裸 `rounded` 类（绕过 token） | 196 | 0 |
+| 裸 `rounded` 类（绕过 token） | 69 | 0 |
 | 任意值字号 `text-[Npx]` | 18 | 0 |
 | `iconButtonClass` 重复定义 | 6 | 0 |
 | `window.confirm` | 9 | 0 |

@@ -37,13 +37,12 @@ import { useSettingsStore, type PreferenceKey, type PreferenceValue } from "../s
 import { PreferenceStatus } from "./PreferenceStatus";
 import { SpecimenCard } from "./SpecimenCard";
 
+import { IconButton } from "../../../components/ui";
 const labelClass = "text-sm font-medium text-foreground";
 const selectClass =
   "w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 const optionClass =
   "rounded-md border px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
-const iconButtonClass =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-35";
 
 function Section({
   icon: Icon,
@@ -167,7 +166,7 @@ export function AppearancePanel() {
                     : "border-input text-muted-foreground hover:bg-accent hover:text-foreground"
                 }`}
               >
-                <span className="flex shrink-0 overflow-hidden rounded border border-border" aria-hidden="true">
+                <span className="flex shrink-0 overflow-hidden rounded-sm border border-border" aria-hidden="true">
                   {variants.map((item) => (
                     <span key={item} className="h-7 w-5" style={{ backgroundColor: swatch(item, "--background") }} />
                   ))}
@@ -203,7 +202,7 @@ export function AppearancePanel() {
                 aria-pressed={selected}
                 disabled={saving("theme")}
                 onClick={() => save("theme", mode)}
-                className={`inline-flex min-h-9 items-center gap-1.5 rounded px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                className={`inline-flex min-h-9 items-center gap-1.5 rounded-sm px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                   selected ? "bg-background font-medium text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -288,15 +287,24 @@ export function AppearancePanel() {
                   </select>
                 </label>
                 <div className="mt-5 flex items-center gap-0.5">
-                  <button type="button" aria-label={t("settingsView.appearance.moveFontUp")} title={t("settingsView.appearance.moveFontUp")} disabled={index === 0 || saving("interfaceFontStack")} onClick={() => moveFont(index, -1)} className={iconButtonClass}>
-                    <ChevronUpIcon className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                  <button type="button" aria-label={t("settingsView.appearance.moveFontDown")} title={t("settingsView.appearance.moveFontDown")} disabled={index === fontStack.length - 1 || saving("interfaceFontStack")} onClick={() => moveFont(index, 1)} className={iconButtonClass}>
-                    <ChevronDownIcon className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                  <button type="button" aria-label={t("settingsView.appearance.removeFont")} title={t("settingsView.appearance.removeFont")} disabled={fontStack.length === 1 || saving("interfaceFontStack")} onClick={() => removeFont(index)} className={iconButtonClass}>
-                    <XIcon className="h-4 w-4" aria-hidden="true" />
-                  </button>
+                  <IconButton
+                    label={t("settingsView.appearance.moveFontUp")}
+                    icon={<ChevronUpIcon className="h-4 w-4" aria-hidden="true" />}
+                    disabled={index === 0 || saving("interfaceFontStack")}
+                    onClick={() => moveFont(index, -1)}
+                  />
+                  <IconButton
+                    label={t("settingsView.appearance.moveFontDown")}
+                    icon={<ChevronDownIcon className="h-4 w-4" aria-hidden="true" />}
+                    disabled={index === fontStack.length - 1 || saving("interfaceFontStack")}
+                    onClick={() => moveFont(index, 1)}
+                  />
+                  <IconButton
+                    label={t("settingsView.appearance.removeFont")}
+                    icon={<XIcon className="h-4 w-4" aria-hidden="true" />}
+                    disabled={fontStack.length === 1 || saving("interfaceFontStack")}
+                    onClick={() => removeFont(index)}
+                  />
                 </div>
               </li>
             );
@@ -312,7 +320,7 @@ export function AppearancePanel() {
           {t("settingsView.appearance.addFallback")}
         </button>
         {systemFontsStatus === "loading" && (
-          <div role="status" className="h-4 w-40 animate-pulse rounded bg-muted" aria-label={t("settingsView.appearance.systemFontsLoading")} />
+          <div role="status" className="h-4 w-40 animate-pulse rounded-sm bg-muted" aria-label={t("settingsView.appearance.systemFontsLoading")} />
         )}
         {systemFontsStatus === "empty" && <p className="text-xs text-muted-foreground">{t("settingsView.appearance.systemFontsEmpty")}</p>}
         {systemFontsStatus === "error" && (

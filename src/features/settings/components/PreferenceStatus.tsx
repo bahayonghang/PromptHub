@@ -37,7 +37,7 @@ export function PreferenceStatus({ status = "idle", errorKey, onRetry }: Prefere
       <button
         type="button"
         onClick={onRetry}
-        className="inline-flex items-center gap-1 rounded px-1 py-0.5 font-medium underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex items-center gap-1 rounded-sm px-1 py-0.5 font-medium underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <RotateCcwIcon className="h-3 w-3" aria-hidden="true" />
         {t("settingsView.preferences.retry")}

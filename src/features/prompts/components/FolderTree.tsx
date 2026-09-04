@@ -185,7 +185,7 @@ export function FolderTree({
                   setRenameValue("");
                 }
               }}
-              className="min-w-0 flex-1 rounded border border-input bg-background px-1 py-0.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+              className="min-w-0 flex-1 rounded-sm border border-input bg-background px-1 py-0.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
             />
           ) : (
             <>
@@ -225,7 +225,7 @@ export function FolderTree({
                     setCreatingUnder(node.id);
                     setNewName("");
                   }}
-                  className="rounded p-1 hover:bg-accent hover:text-foreground"
+                  className="rounded-sm p-1 hover:bg-accent hover:text-foreground"
                 >
                   <FolderPlusIcon className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
@@ -237,7 +237,7 @@ export function FolderTree({
                     setRenamingId(node.id);
                     setRenameValue(node.name);
                   }}
-                  className="rounded p-1 hover:bg-accent hover:text-foreground"
+                  className="rounded-sm p-1 hover:bg-accent hover:text-foreground"
                 >
                   <PencilIcon className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
@@ -246,7 +246,7 @@ export function FolderTree({
                   title={t("promptsView.deleteFolder")}
                   aria-label={t("promptsView.deleteFolder")}
                   onClick={() => onDeleteFolder(node)}
-                  className="rounded p-1 hover:bg-destructive/15 hover:text-destructive"
+                  className="rounded-sm p-1 hover:bg-destructive/15 hover:text-destructive"
                 >
                   <Trash2Icon className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
@@ -270,7 +270,7 @@ export function FolderTree({
                   setCreatingUnder(undefined);
                 }
               }}
-              className="my-1 w-[calc(100%-0.5rem)] rounded border border-input bg-background px-1.5 py-0.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+              className="my-1 w-[calc(100%-0.5rem)] rounded-sm border border-input bg-background px-1.5 py-0.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
         )}
@@ -305,7 +305,7 @@ export function FolderTree({
             setCreatingUnder(null);
             setNewName("");
           }}
-          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           <FolderPlusIcon className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -346,7 +346,7 @@ export function FolderTree({
                   setCreatingUnder(undefined);
                 }
               }}
-              className="my-1 w-full rounded border border-input bg-background px-1.5 py-1 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
+              className="my-1 w-full rounded-sm border border-input bg-background px-1.5 py-1 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
             />
           </li>
         )}

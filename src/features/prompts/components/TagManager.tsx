@@ -28,7 +28,7 @@ export function TagManager({ tags, onRename, onDelete }: TagManagerProps) {
                   value={value}
                   onChange={(event) => setValue(event.target.value)}
                   aria-label={t("promptsView.tags.renameValue")}
-                  className="min-w-0 flex-1 rounded border border-input bg-background px-2 py-1 text-xs text-foreground"
+                  className="min-w-0 flex-1 rounded-sm border border-input bg-background px-2 py-1 text-xs text-foreground"
                 />
                 <button
                   type="button"
@@ -39,7 +39,7 @@ export function TagManager({ tags, onRename, onDelete }: TagManagerProps) {
                     onRename(tag, value.trim());
                     setEditing(null);
                   }}
-                  className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                  className="rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
                 >
                   <CheckIcon className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
@@ -48,7 +48,7 @@ export function TagManager({ tags, onRename, onDelete }: TagManagerProps) {
                   title={t("common.cancel")}
                   aria-label={t("common.cancel")}
                   onClick={() => setEditing(null)}
-                  className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                  className="rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
                 >
                   <XIcon className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
@@ -64,7 +64,7 @@ export function TagManager({ tags, onRename, onDelete }: TagManagerProps) {
                     setEditing(tag);
                     setValue(tag);
                   }}
-                  className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                  className="rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
                 >
                   <PencilIcon className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
@@ -73,7 +73,7 @@ export function TagManager({ tags, onRename, onDelete }: TagManagerProps) {
                   title={t("promptsView.tags.delete")}
                   aria-label={t("promptsView.tags.delete")}
                   onClick={() => onDelete(tag)}
-                  className="rounded p-1 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
+                  className="rounded-sm p-1 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
                 >
                   <Trash2Icon className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>

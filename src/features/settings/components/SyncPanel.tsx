@@ -316,7 +316,7 @@ export function SyncPanel({
                 type="checkbox"
                 checked={scope[key]}
                 onChange={(e) => setScope((s) => ({ ...s, [key]: e.target.checked }))}
-                className="h-4 w-4 rounded border-input"
+                className="h-4 w-4 rounded-sm border-input"
               />
               {t(labelKey)}
             </label>
@@ -373,7 +373,7 @@ export function SyncPanel({
               >
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate text-sm text-foreground">{backup.id}</span>
-                  <span className="text-[11px] text-muted-foreground">{backup.createdAt}</span>
+                  <span className="text-meta text-muted-foreground">{backup.createdAt}</span>
                 </span>
                 <button
                   type="button"
