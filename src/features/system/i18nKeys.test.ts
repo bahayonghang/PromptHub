@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
 import en from "../../locales/en.json";
+import zh from "../../locales/zh.json";
+import zhTW from "../../locales/zh-TW.json";
+import ja from "../../locales/ja.json";
+import fr from "../../locales/fr.json";
+import de from "../../locales/de.json";
+import es from "../../locales/es.json";
 
 /** Resolves a dotted i18n key against a bundle, returning undefined if absent. */
 function lookup(bundle: unknown, key: string): unknown {
@@ -37,6 +43,7 @@ const KEYS = [
   "systemView.close.title",
   "systemView.close.message",
   "systemView.close.cancel",
+  "systemView.close.minimize",
   "systemView.close.confirm",
 
   // Shortcuts (Req 20.6, 20.11)
@@ -95,12 +102,16 @@ const KEYS = [
   "systemView.paths.unavailable",
 ];
 
+const BUNDLES: Record<string, unknown> = { en, zh, "zh-TW": zhTW, ja, fr, de, es };
+
 describe("system view i18n keys (Req 21.3)", () => {
-  it("resolves every rendered key to a non-empty string in the English bundle", () => {
-    for (const key of KEYS) {
-      const value = lookup(en, key);
-      expect(typeof value, `missing key: ${key}`).toBe("string");
-      expect((value as string).length, `empty key: ${key}`).toBeGreaterThan(0);
-    }
-  });
+  for (const [locale, bundle] of Object.entries(BUNDLES)) {
+    it(`resolves every rendered key to a non-empty string in the ${locale} bundle`, () => {
+      for (const key of KEYS) {
+        const value = lookup(bundle, key);
+        expect(typeof value, `[${locale}] missing key: ${key}`).toBe("string");
+        expect((value as string).length, `[${locale}] empty key: ${key}`).toBeGreaterThan(0);
+      }
+    });
+  }
 });

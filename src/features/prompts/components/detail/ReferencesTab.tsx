@@ -6,12 +6,13 @@ import type {
   IncomingReference,
   OutgoingReference,
   Prompt,
+  PromptListItem,
   ReferenceList,
 } from "../../types";
 
 export interface ReferencesTabProps {
   prompt: Prompt | null;
-  prompts: Prompt[];
+  prompts: PromptListItem[];
   onInsert: (token: string) => void;
 }
 

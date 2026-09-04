@@ -149,14 +149,24 @@ export function createRuntimeBridge(deps: Partial<RuntimeBridgeDeps> = {}): Runt
       let unlisten: (() => void) | undefined;
       let cancelled = false;
 
-      void listen<E>(event, (e) => handler(e.payload)).then((fn) => {
-        // If unsubscribe ran before the listener attached, detach immediately.
-        if (cancelled) {
-          fn();
-        } else {
-          unlisten = fn;
+      void listen<E>(event, (e) => {
+        try {
+          handler(e.payload);
+        } catch {
+          // A subscriber throw must not become an unhandled rejection.
         }
-      });
+      })
+        .then((fn) => {
+          // If unsubscribe ran before the listener attached, detach immediately.
+          if (cancelled) {
+            fn();
+          } else {
+            unlisten = fn;
+          }
+        })
+        .catch(() => {
+          // Listen failed; the subscription never attached.
+        });
 
       return () => {
         cancelled = true;

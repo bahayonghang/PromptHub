@@ -29,6 +29,10 @@ pub enum ErrorCode {
     /// Wrong credential supplied.
     Unauthorized,
     /// App is locked; the operation needs an unlock first.
+    ///
+    /// Used when writing sealed settings secrets (`githubToken`, `sync.password`)
+    /// while the library is locked. Keep this code; do not reuse it for
+    /// evaluation cancellation.
     Locked,
     /// File-system failure.
     Io,

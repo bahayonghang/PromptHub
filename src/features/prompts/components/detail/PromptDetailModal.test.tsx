@@ -3,8 +3,10 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import i18n, { ensureBundle } from "../../../../runtime/i18n";
 import type { Folder, Prompt, PromptTypeDefinition } from "../../types";
-import { PromptDetailModal } from "./PromptDetailModal";
+import { PromptDetailModal, type PromptDetailModalProps } from "./PromptDetailModal";
+import { resetPreferredChatModeForTests } from "../../definitionMode";
 import { usePromptStore } from "../../promptStore";
+import { useToastStore } from "../../../notifications/toastStore";
 
 const initialStore = usePromptStore.getState();
 
@@ -44,14 +46,60 @@ function savedPrompt(): Prompt {
 beforeEach(async () => {
   await ensureBundle("en");
   await i18n.changeLanguage("en");
+  resetPreferredChatModeForTests();
 });
 
 afterEach(() => {
   cleanup();
   usePromptStore.setState(initialStore, true);
+  for (const toast of useToastStore.getState().toasts) {
+    useToastStore.getState().dismiss(toast.id);
+  }
 });
 
 describe("PromptDetailModal", () => {
+  it("keeps focus on the new Prompt title while typing", async () => {
+    render(
+      <PromptDetailModal
+        open
+        creating
+        prompt={null}
+        prompts={[]}
+        versions={[]}
+        folders={[]}
+        promptTypeDefinitions={[]}
+        knownTags={[]}
+        onClose={vi.fn()}
+        onCreate={vi.fn()}
+        onSave={vi.fn()}
+        onCreateFolder={vi.fn(async () => null)}
+        onCreatePromptType={vi.fn(async () => null)}
+        onToggleFavorite={vi.fn()}
+        onTogglePin={vi.fn()}
+        onDuplicate={vi.fn()}
+        onDelete={vi.fn()}
+        onCreateVersion={vi.fn()}
+        onRollback={vi.fn()}
+      />,
+    );
+
+    const pencil = screen.getByRole("button", { name: "Read only" });
+    await waitFor(() => expect(document.activeElement).toBe(pencil));
+
+    const title = screen.getByLabelText("Title") as HTMLInputElement;
+    title.focus();
+    expect(document.activeElement).toBe(title);
+
+    fireEvent.change(title, { target: { value: "u" } });
+    await act(async () => {
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 20));
+    });
+
+    expect(title.value).toBe("u");
+    expect(screen.getByLabelText("Title")).toBe(title);
+    expect(document.activeElement).toBe(title);
+  });
+
   it("saves with the same update payload as the inline editor", async () => {
     const onSave = vi.fn(async () => savedPrompt());
     render(
@@ -165,4 +213,243 @@ describe("PromptDetailModal", () => {
       (screen.getByLabelText("Title") as HTMLInputElement).value,
     ).toBe("Dirty");
   });
+
+  it("calls onCreate and not onClose when Create succeeds", async () => {
+    const { onClose, onCreate } = renderCreateModal();
+    fillCreateDraft();
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+    await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("saves through the registered detail action without closing", async () => {
+    const { onClose, onCreate } = renderCreateModal();
+    fillCreateDraft();
+    await waitFor(() => {
+      expect(usePromptStore.getState().detailActions).not.toBeNull();
+    });
+    await act(async () => {
+      await usePromptStore.getState().detailActions?.save();
+    });
+    expect(onCreate).toHaveBeenCalledOnce();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("keeps the overlay open when create validation fails", () => {
+    const { onClose, onCreate } = renderCreateModal();
+    fireEvent.change(screen.getByLabelText("Title"), { target: { value: "   " } });
+    fireEvent.change(screen.getByLabelText("Content for message 1"), {
+      target: { value: "Body" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+    expect(onCreate).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("keeps the overlay open when onCreate fails", async () => {
+    const { onClose, onCreate } = renderCreateModal({
+      onCreate: vi.fn(async () => null),
+    });
+    fillCreateDraft();
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+    await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("does not call onClose after create-mode Save and close", async () => {
+    const { onClose, onCreate } = renderCreateModal();
+    fillCreateDraft();
+    fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Save and close" }));
+    await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.queryByRole("heading", { name: "Unsaved changes" })).toBeNull();
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("places header and content copy controls before their titles", () => {
+    renderSavedModal();
+    const copies = screen.getAllByRole("button", { name: "Copy Saved title" });
+    expect(copies).toHaveLength(2);
+    expect(copies[0]?.nextElementSibling?.textContent).toContain("Saved title");
+    expect(copies[1]?.nextElementSibling?.textContent).toContain("Prompt content");
+    expect(
+      screen.getByRole("group", { name: "Prompt content" }).querySelector(
+        "button[aria-label='Copy Saved title']",
+      ),
+    ).toBeNull();
+  });
+
+  it("copyFilled increments usage after a successful persisted copy", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    stubClipboard(writeText);
+    const incrementUsage = vi.fn(async (id: string) => ({ id, usageCount: 1 }));
+    const copyPrompt = vi.fn(async () => ({
+      systemPrompt: null,
+      userPrompt: "Saved body",
+      messages: [],
+      unexpanded: [],
+    }));
+    usePromptStore.setState({
+      api: {
+        ...usePromptStore.getState().api,
+        copyPrompt,
+        incrementUsage,
+      },
+    });
+    renderSavedModal();
+    await waitFor(() => {
+      expect(usePromptStore.getState().detailActions).not.toBeNull();
+    });
+    await act(async () => {
+      await usePromptStore.getState().detailActions?.copy();
+    });
+    expect(writeText).toHaveBeenCalled();
+    expect(incrementUsage).toHaveBeenCalledWith("prompt-1");
+    expect(writeText.mock.invocationCallOrder[0]).toBeLessThan(
+      incrementUsage.mock.invocationCallOrder[0],
+    );
+    expect(useToastStore.getState().toasts[0]?.message).toBe("Copied Saved title");
+  });
+
+  it("copyFilled does not increment a create draft", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    stubClipboard(writeText);
+    const incrementUsage = vi.fn(async (id: string) => ({ id, usageCount: 1 }));
+    usePromptStore.setState({
+      api: { ...usePromptStore.getState().api, incrementUsage },
+    });
+    renderCreateModal();
+    fillCreateDraft();
+    await waitFor(() => {
+      expect(usePromptStore.getState().detailActions).not.toBeNull();
+    });
+    await act(async () => {
+      await usePromptStore.getState().detailActions?.copy();
+    });
+    expect(writeText).toHaveBeenCalled();
+    expect(incrementUsage).not.toHaveBeenCalled();
+  });
+
+  it("copyFilled does not increment after a clipboard failure", async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error("denied"));
+    stubClipboard(writeText);
+    const incrementUsage = vi.fn(async (id: string) => ({ id, usageCount: 1 }));
+    const copyPrompt = vi.fn(async () => ({
+      systemPrompt: null,
+      userPrompt: "Saved body",
+      messages: [],
+      unexpanded: [],
+    }));
+    usePromptStore.setState({
+      api: {
+        ...usePromptStore.getState().api,
+        copyPrompt,
+        incrementUsage,
+      },
+    });
+    renderSavedModal();
+    await waitFor(() => {
+      expect(usePromptStore.getState().detailActions).not.toBeNull();
+    });
+    await act(async () => {
+      await usePromptStore.getState().detailActions?.copy();
+    });
+    expect(incrementUsage).not.toHaveBeenCalled();
+    expect(useToastStore.getState().toasts[0]?.tone).toBe("danger");
+  });
+
+  it("copyFilled does not write or increment when locked", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    stubClipboard(writeText);
+    const incrementUsage = vi.fn(async (id: string) => ({ id, usageCount: 1 }));
+    usePromptStore.setState({
+      api: { ...usePromptStore.getState().api, incrementUsage },
+    });
+    renderSavedModal({ ...savedPrompt(), isLocked: true });
+    await waitFor(() => {
+      expect(usePromptStore.getState().detailActions).not.toBeNull();
+    });
+    await act(async () => {
+      await usePromptStore.getState().detailActions?.copy();
+    });
+    expect(writeText).not.toHaveBeenCalled();
+    expect(incrementUsage).not.toHaveBeenCalled();
+  });
 });
+
+function renderCreateModal(
+  overrides: {
+    onClose?: PromptDetailModalProps["onClose"];
+    onCreate?: PromptDetailModalProps["onCreate"];
+  } = {},
+) {
+  const onClose = overrides.onClose ?? vi.fn();
+  const onCreate = overrides.onCreate ?? vi.fn(async () => ({ id: "new" }));
+  render(
+    <PromptDetailModal
+      open
+      creating
+      prompt={null}
+      prompts={[]}
+      versions={[]}
+      folders={[]}
+      promptTypeDefinitions={[]}
+      knownTags={[]}
+      onClose={onClose}
+      onCreate={onCreate}
+      onSave={vi.fn()}
+      onCreateFolder={vi.fn(async () => null)}
+      onCreatePromptType={vi.fn(async () => null)}
+      onToggleFavorite={vi.fn()}
+      onTogglePin={vi.fn()}
+      onDuplicate={vi.fn()}
+      onDelete={vi.fn()}
+      onCreateVersion={vi.fn()}
+      onRollback={vi.fn()}
+    />,
+  );
+  return { onClose, onCreate };
+}
+
+function fillCreateDraft(title = "New title", body = "New body") {
+  fireEvent.change(screen.getByLabelText("Title"), { target: { value: title } });
+  fireEvent.change(screen.getByLabelText("Content for message 1"), {
+    target: { value: body },
+  });
+}
+
+function renderSavedModal(prompt: Prompt = savedPrompt()) {
+  render(
+    <PromptDetailModal
+      open
+      creating={false}
+      prompt={prompt}
+      prompts={[prompt]}
+      versions={[]}
+      folders={[]}
+      promptTypeDefinitions={[]}
+      knownTags={[]}
+      onClose={vi.fn()}
+      onCreate={vi.fn()}
+      onSave={vi.fn(async () => prompt)}
+      onCreateFolder={vi.fn(async () => null)}
+      onCreatePromptType={vi.fn(async () => null)}
+      onToggleFavorite={vi.fn()}
+      onTogglePin={vi.fn()}
+      onDuplicate={vi.fn()}
+      onDelete={vi.fn()}
+      onCreateVersion={vi.fn()}
+      onRollback={vi.fn()}
+    />,
+  );
+}
+
+function stubClipboard(writeText: ReturnType<typeof vi.fn>) {
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { writeText },
+  });
+}

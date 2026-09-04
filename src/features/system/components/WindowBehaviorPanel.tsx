@@ -63,13 +63,13 @@ export function WindowBehaviorPanel() {
           aria-checked={autoLaunch}
           aria-label={t("systemView.window.autoLaunch")}
           onClick={() => void setAutoLaunch(!autoLaunch)}
-          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
             autoLaunch ? "bg-primary" : "bg-input"
           }`}
         >
           <span
-            className={`absolute top-0.5 h-5 w-5 rounded-full bg-background transition-transform ${
-              autoLaunch ? "translate-x-5" : "translate-x-0.5"
+            className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+              autoLaunch ? "translate-x-5" : "translate-x-0"
             }`}
           />
         </button>

@@ -68,10 +68,10 @@ describe("createSettingsApi command contract (Req 3.1)", () => {
     await api.getDataPath();
     await api.getDataStatus();
     await api.previewDataChange("/new/path");
-    await api.applyDataChange("/new/path", "migrate");
+    await api.applyDataChange("/new/path", "migrate", "tok-change");
     await api.recoveryScan();
     await api.recoveryPreview("/old/path");
-    await api.recoveryApply("/old/path");
+    await api.recoveryApply("/old/path", "tok-recovery");
 
     expect(invoke).toHaveBeenCalledWith("data.getPath");
     expect(invoke).toHaveBeenCalledWith("data.getStatus");
@@ -79,10 +79,14 @@ describe("createSettingsApi command contract (Req 3.1)", () => {
     expect(invoke).toHaveBeenCalledWith("data.applyChange", {
       targetPath: "/new/path",
       action: "migrate",
+      confirmToken: "tok-change",
     });
     expect(invoke).toHaveBeenCalledWith("data.recoveryScan");
     expect(invoke).toHaveBeenCalledWith("data.recoveryPreview", { sourcePath: "/old/path" });
-    expect(invoke).toHaveBeenCalledWith("data.recoveryApply", { sourcePath: "/old/path" });
+    expect(invoke).toHaveBeenCalledWith("data.recoveryApply", {
+      sourcePath: "/old/path",
+      confirmToken: "tok-recovery",
+    });
   });
 
   it("routes sync transport + backup commands through the bridge (Req 17)", async () => {

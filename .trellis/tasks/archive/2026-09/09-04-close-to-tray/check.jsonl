@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Verify closeAction round-trips and both close paths share one decision"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "i18n key coverage, no raw Tauri imports, frontend gates"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "DTO nullability and CloseAction union exhaustiveness"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "confirmClose must quit, not re-enter ask"}
+{"file": ".trellis/tasks/09-04-close-to-tray/prd.md", "reason": "Acceptance criteria AC1–AC8"}
+{"file": ".trellis/tasks/09-04-close-to-tray/research/tauri-tray.md", "reason": "Tray/quit must not be blocked by prevent_close"}

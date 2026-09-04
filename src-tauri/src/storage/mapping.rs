@@ -24,7 +24,9 @@ use rusqlite::types::Type;
 use rusqlite::{Error as SqlError, Row};
 use serde::de::DeserializeOwned;
 
-use crate::models::{Folder, Prompt, PromptTypeDefinition, PromptTypeSnapshot, PromptVersion};
+use crate::models::{
+    Folder, Prompt, PromptListItem, PromptTypeDefinition, PromptTypeSnapshot, PromptVersion,
+};
 use crate::storage::time::millis_to_iso8601;
 
 /// Wraps a JSON/enum decode failure as a rusqlite column-conversion error.
@@ -95,6 +97,27 @@ pub fn prompt_from_row(row: &Row<'_>) -> rusqlite::Result<Prompt> {
         source: row.get("source")?,
         notes: row.get("notes")?,
         last_ai_response: row.get("last_ai_response")?,
+        created_at: get_iso(row, "created_at")?,
+        updated_at: get_iso(row, "updated_at")?,
+    })
+}
+
+/// Maps a prompt list/search row into a [`PromptListItem`] without bodies.
+pub fn prompt_list_item_from_row(row: &Row<'_>) -> rusqlite::Result<PromptListItem> {
+    Ok(PromptListItem {
+        id: row.get("id")?,
+        title: row.get("title")?,
+        description: row.get("description")?,
+        prompt_type: get_enum(row, "prompt_type")?,
+        type_definition_id: row.get("type_definition_id")?,
+        tags: get_json_array(row, "tags")?,
+        folder_id: row.get("folder_id")?,
+        is_favorite: row.get("is_favorite")?,
+        is_pinned: row.get("is_pinned")?,
+        is_private: row.get("is_private")?,
+        is_locked: false,
+        current_version: row.get("current_version")?,
+        usage_count: row.get("usage_count")?,
         created_at: get_iso(row, "created_at")?,
         updated_at: get_iso(row, "updated_at")?,
     })

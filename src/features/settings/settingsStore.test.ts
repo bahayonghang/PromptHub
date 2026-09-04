@@ -70,6 +70,7 @@ function makeApi(overrides: Partial<SettingsApi> = {}): SettingsApi {
         isCurrent: false,
         recommendedAction: "migrate",
         markers: [],
+        confirmToken: "tok-change",
       }),
     ),
     applyDataChange: vi.fn(
@@ -81,6 +82,7 @@ function makeApi(overrides: Partial<SettingsApi> = {}): SettingsApi {
       exists: true,
       hasPromptHubData: true,
       markers: [],
+      confirmToken: "tok-recovery",
     })),
     recoveryApply: vi.fn(
       async (): Promise<ApplyResult> => ({ restartRequired: true, configuredPath: "/data" }),
@@ -122,6 +124,20 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("settings store (Req 3.1, 15, 17, 19)", () => {
   beforeEach(() => resetStore(makeApi()));
+
+  it("load() refetches settings after hydrateSettings", async () => {
+    const api = makeApi({
+      getSettings: vi.fn(async () => makeSettings({ theme: "light" })),
+    });
+    resetStore(api);
+    useSettingsStore.getState().hydrateSettings(makeSettings({ theme: "dark" }));
+    expect(useSettingsStore.getState().settings?.theme).toBe("dark");
+
+    await useSettingsStore.getState().load();
+
+    expect(api.getSettings).toHaveBeenCalledOnce();
+    expect(useSettingsStore.getState().settings?.theme).toBe("light");
+  });
 
   it("load() fetches settings, security status, data status, and backups", async () => {
     const api = makeApi({
@@ -358,6 +374,7 @@ describe("settings store (Req 3.1, 15, 17, 19)", () => {
       isCurrent: false,
       recommendedAction: "switch",
       markers: [{ name: "data", path: "/new/data", kind: "directory" }],
+      confirmToken: "tok-preview",
     };
     resetStore(makeApi({ previewDataChange: vi.fn(async () => preview) }));
 
@@ -368,7 +385,10 @@ describe("settings store (Req 3.1, 15, 17, 19)", () => {
   });
 
   it("applyDataChange() reports restartRequired and clears the preview (Req 19.5)", async () => {
-    resetStore(makeApi());
+    const applyDataChange = vi.fn(
+      async (): Promise<ApplyResult> => ({ restartRequired: true, configuredPath: "/new" }),
+    );
+    resetStore(makeApi({ applyDataChange }));
     useSettingsStore.setState({
       preview: {
         targetPath: "/new",
@@ -377,14 +397,36 @@ describe("settings store (Req 3.1, 15, 17, 19)", () => {
         isCurrent: false,
         recommendedAction: "migrate",
         markers: [],
+        confirmToken: "tok-1",
       },
     });
 
     const result = await useSettingsStore.getState().applyDataChange("/new", "migrate");
 
+    expect(applyDataChange).toHaveBeenCalledWith("/new", "migrate", "tok-1");
     expect(result?.restartRequired).toBe(true);
     expect(useSettingsStore.getState().restartRequired).toBe(true);
     expect(useSettingsStore.getState().preview).toBeNull();
+  });
+
+  it("recoveryApply() previews then applies with the confirm token (Req 19.8)", async () => {
+    const recoveryPreview = vi.fn(async () => ({
+      sourcePath: "/old",
+      exists: true,
+      hasPromptHubData: true,
+      markers: [],
+      confirmToken: "tok-recovery",
+    }));
+    const recoveryApply = vi.fn(
+      async (): Promise<ApplyResult> => ({ restartRequired: true, configuredPath: "/data" }),
+    );
+    resetStore(makeApi({ recoveryPreview, recoveryApply }));
+
+    const result = await useSettingsStore.getState().recoveryApply("/old");
+
+    expect(recoveryPreview).toHaveBeenCalledWith("/old");
+    expect(recoveryApply).toHaveBeenCalledWith("/old", "tok-recovery");
+    expect(result?.restartRequired).toBe(true);
   });
 
   it("recoveryScan() degrades gracefully when the capability is gated (Req 3.7)", async () => {

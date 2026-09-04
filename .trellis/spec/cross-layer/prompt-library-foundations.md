@@ -15,6 +15,8 @@ Wire commands and their TypeScript mirrors:
 
 ```text
 prompt.search({ query: SearchQuery }) -> PromptPage
+prompt.copy({ id, values }) -> PromptCopy
+prompt.incrementUsage({ id }) -> PromptUsage
 promptType.list() -> PromptTypeDefinition[]
 promptType.create({ input: { name, baseKind } }) -> PromptTypeDefinition
 version.list({ promptId }) -> PromptVersion[]
@@ -24,6 +26,10 @@ prompt.bundleExport({ destination? }) -> PortableExportResult
 prompt.bundlePreview({ filePath }) -> BundlePreview
 prompt.bundleImport({ filePath, policy }) -> PortableImportResult
 ```
+
+`PromptCopy` is substituted system/user/messages plus `unexpanded` reference tokens.
+`PromptUsage` is `{ id, usageCount }`. `prompt.copy` is read-only. `prompt.incrementUsage`
+adds one to `usage_count` and does not write `updated_at`.
 
 `PromptTypeDefinition` is `{ id, name, baseKind, createdAt }`, where `baseKind`
 is `text`, `image`, or `video`. Prompt create/update carries the existing
@@ -97,6 +103,8 @@ references, and definition snapshots on revisions.
 | Private field is plaintext in a private bundle | `VALIDATION`; write nothing |
 | Private bundle is locked or uses another key | `UNAUTHORIZED`; no backup or writes |
 | Private prompt is read while locked | Return metadata with `isLocked=true` and redacted content |
+| `security.setMasterPassword` when a verifier already exists | `CONFLICT`; verifier and `ENC::` rows unchanged. Re-key only through `security.changeMasterPassword`. The service primitive still overwrites; the Command_Layer owns the gate. |
+| Create or update private content while locked | `UNAUTHORIZED`; no Prompt write |
 
 ### 5. Good / Base / Bad Cases
 
@@ -127,7 +135,9 @@ references, and definition snapshots on revisions.
   traversal rejection, media collision cleanup, and wrong-key private import
   before writes.
 - Privacy: ciphertext-at-rest scans, locked redaction, FTS exclusion, unlock,
-  and atomic password re-key for prompts plus revisions.
+  atomic password re-key for prompts plus revisions, second
+  `setMasterPassword` leaving the verifier unchanged, and locked
+  create/update writing nothing.
 - Bridge: command names, camelCase argument names, DTO nullability, Rust command
   registration, and frontend API/store tests.
 - Finish with `just ci` and an isolated native Tauri export/preview/import smoke.
@@ -178,3 +188,102 @@ prompt.prompt_type = definition.base_kind;
 The service owns the pair invariant in the same transaction as the Prompt
 mutation. Frontend selection and validation improve feedback but are never the
 authority for execution behavior.
+
+## Scenario: Recording a clipboard copy as usage
+
+### 1. Scope / Trigger
+
+Use this contract when changing Prompt copy, clipboard write, the library
+usage column, or `usage_count`. Copy spans `prompt.copy` (read-only expansion),
+the frontend clipboard write, `prompt.incrementUsage`, and the prompt store
+patch. Do not treat copy as a content edit.
+
+### 2. Signatures
+
+```text
+prompt.copy({ id: string, values: Record<string, string> }) -> PromptCopy
+prompt.incrementUsage({ id: string }) -> { id: string, usageCount: number }
+```
+
+SQL for increment:
+
+```sql
+UPDATE prompts SET usage_count = usage_count + 1 WHERE id = ?1
+RETURNING usage_count
+```
+
+### 3. Contracts
+
+- Clipboard text is assembled on the frontend from `PromptCopy` (`formatCopiedPrompt`).
+- Increment runs only after `writeText` succeeds, and only when a persisted
+  `promptId` is present.
+- Increment does not write `updated_at`, does not append a revision, and does
+  not reload `prompt.search`. The store patches `prompts` and `selectedPrompt`.
+- Create-draft copy (no `promptId`) writes the clipboard and does not increment.
+- Keyboard copy (`Ctrl+Enter` / `Cmd+Enter`) and fill-and-copy of a persisted
+  Prompt increment once per successful write.
+- Success feedback is in-control `Check` plus a `ToastHost` success toast with
+  `replaceGroup: "prompt-copy"`. Failure stays on the control and may push a
+  danger toast in the same group. Increment failure after a successful write
+  must not flip the control to failed.
+
+### 4. Validation & Error Matrix
+
+| Condition | Error / behavior |
+|-----------|------------------|
+| Increment id is missing | `NOT_FOUND`; no row created |
+| Copy of a locked private Prompt | `UNAUTHORIZED`; no clipboard write; no increment |
+| Clipboard write fails after `prompt.copy` | In-control failed + danger toast; no increment |
+| Increment fails after a successful write | Copy toast stays; `usageCount` may stay stale until the next load |
+| `prompt.update({ usageCount })` used to count a copy | Forbidden: that path stamps `updated_at` |
+
+### 5. Good / Base / Bad Cases
+
+- Good: copy an unlocked Prompt with `usageCount` 0, then again; stored counts
+  are 1 then 2 and `updated_at` is unchanged.
+- Base: create-draft copy writes the clipboard and does not call increment.
+- Bad: increment inside `prompt.copy` before the clipboard write; a failed
+  write would still count a use.
+
+### 6. Tests Required
+
+- Service: 0→1→2, `updated_at` unchanged, missing id → `NOT_FOUND`, `copy`
+  leaves `usage_count` unchanged.
+- Bridge: `prompt.incrementUsage` wire name and `{ id }` args.
+- Store: patches list + selected usage; failure returns `null` without a view error.
+- Control: increment after `writeText`; locked / no `promptId` / write failure
+  do not increment; `replaceGroup` replaces copy toasts and keeps save toasts.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```rust
+// Counting a use inside read-only copy, and stamping updated_at.
+pub fn copy_secure(...) -> Result<PromptCopy, AppError> {
+    let prompt = get_secure(...)?;
+    conn.execute(
+        "UPDATE prompts SET usage_count = usage_count + 1, updated_at = ?1 WHERE id = ?2",
+        params![now_millis(), id],
+    )?;
+    Ok(build_copy(prompt))
+}
+```
+
+#### Correct
+
+```rust
+pub fn increment_usage(conn: &Connection, id: &str) -> Result<PromptUsage, AppError> {
+    let usage_count: i64 = conn
+        .query_row(
+            "UPDATE prompts SET usage_count = usage_count + 1 WHERE id = ?1 RETURNING usage_count",
+            [id],
+            |row| row.get(0),
+        )
+        .optional()?
+        .ok_or_else(|| AppError::not_found(format!("prompt `{id}` not found")))?;
+    Ok(PromptUsage { id: id.to_string(), usage_count })
+}
+```
+
+Frontend order: `prompt.copy` → `writeText` → `prompt.incrementUsage`.

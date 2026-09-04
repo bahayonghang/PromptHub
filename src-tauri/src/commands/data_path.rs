@@ -1,12 +1,22 @@
 use std::path::PathBuf;
+use std::sync::MutexGuard;
 
-use crate::error::CommandResult;
+use crate::error::{AppError, CommandResult};
 use crate::services::data_path::{
     self, ApplyResult, DataPathStatus, PreviewResult, RecoveryPreview, RecoverySource,
 };
 use crate::state::AppState;
 
-use super::{ensure_ready, into_command};
+use super::{ensure_ready, into_command, CommandRuntimeState};
+
+fn confirm_tokens(
+    runtime: &CommandRuntimeState,
+) -> Result<MutexGuard<'_, data_path::ConfirmTokenRegistry>, AppError> {
+    runtime
+        .confirm_tokens
+        .lock()
+        .map_err(|_| AppError::internal("confirm token lock is poisoned"))
+}
 
 fn config_path(state: &AppState) -> PathBuf {
     state.paths.data.join("data-path.json")
@@ -42,26 +52,31 @@ pub fn data_path_get_status(state: tauri::State<'_, AppState>) -> CommandResult<
 pub fn data_path_preview_change(
     target_path: String,
     state: tauri::State<'_, AppState>,
+    runtime: tauri::State<'_, CommandRuntimeState>,
 ) -> CommandResult<PreviewResult> {
-    into_command(
-        ensure_ready(&state).and_then(|_| {
-            data_path::preview_change(&state.paths.data, &PathBuf::from(target_path))
-        }),
-    )
+    into_command(ensure_ready(&state).and_then(|_| {
+        let mut tokens = confirm_tokens(&runtime)?;
+        data_path::preview_change(&state.paths.data, &PathBuf::from(target_path), &mut tokens)
+    }))
 }
 
 #[tauri::command(rename = "data.applyChange")]
 pub fn data_path_apply_change(
     target_path: String,
     action: String,
+    confirm_token: String,
     state: tauri::State<'_, AppState>,
+    runtime: tauri::State<'_, CommandRuntimeState>,
 ) -> CommandResult<ApplyResult> {
     into_command(ensure_ready(&state).and_then(|_| {
+        let mut tokens = confirm_tokens(&runtime)?;
         data_path::apply_change(
             &state.paths.data,
             &config_path(&state),
             &PathBuf::from(target_path),
             &action,
+            &confirm_token,
+            &mut tokens,
         )
     }))
 }
@@ -79,20 +94,28 @@ pub fn data_path_recovery_scan(
 pub fn data_path_recovery_preview(
     source_path: String,
     state: tauri::State<'_, AppState>,
+    runtime: tauri::State<'_, CommandRuntimeState>,
 ) -> CommandResult<RecoveryPreview> {
-    into_command(
-        ensure_ready(&state).and_then(|_| data_path::recovery_preview(&PathBuf::from(source_path))),
-    )
+    into_command(ensure_ready(&state).and_then(|_| {
+        let mut tokens = confirm_tokens(&runtime)?;
+        data_path::recovery_preview(&PathBuf::from(source_path), &mut tokens)
+    }))
 }
 
 #[tauri::command(rename = "data.recoveryApply")]
 pub fn data_path_recovery_apply(
     source_path: String,
+    confirm_token: String,
     state: tauri::State<'_, AppState>,
+    runtime: tauri::State<'_, CommandRuntimeState>,
 ) -> CommandResult<ApplyResult> {
-    into_command(
-        ensure_ready(&state).and_then(|_| {
-            data_path::recovery_apply(&state.paths.data, &PathBuf::from(source_path))
-        }),
-    )
+    into_command(ensure_ready(&state).and_then(|_| {
+        let mut tokens = confirm_tokens(&runtime)?;
+        data_path::recovery_apply(
+            &state.paths.data,
+            &PathBuf::from(source_path),
+            &confirm_token,
+            &mut tokens,
+        )
+    }))
 }

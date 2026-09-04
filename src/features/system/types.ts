@@ -19,6 +19,11 @@ export type CloseAction = "ask" | "minimize" | "exit";
 /** All close actions in display order. */
 export const CLOSE_ACTIONS: readonly CloseAction[] = ["ask", "minimize", "exit"];
 
+/** Type guard for a persisted close-action string (Req 20.4). */
+export function isCloseAction(value: unknown): value is CloseAction {
+  return (CLOSE_ACTIONS as readonly string[]).includes(value as string);
+}
+
 /** Payload of the `window:fullscreen-changed` event (Req 20.2). */
 export interface FullscreenChanged {
   fullscreen: boolean;

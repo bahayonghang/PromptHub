@@ -11,12 +11,20 @@ function App() {
   useEffect(() => {
     // Bootstrap app-level state (readiness + fatal init failures) through the
     // Runtime_Bridge (Req 3.1 / 23.3). The store owns all backend access.
+    let cancelled = false;
     let unsubscribe: (() => void) | undefined;
     void initialize().then((fn) => {
-      unsubscribe = fn;
+      if (cancelled) {
+        fn();
+      } else {
+        unsubscribe = fn;
+      }
     });
 
-    return () => unsubscribe?.();
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
   }, [initialize]);
 
   if (initError) {

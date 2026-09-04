@@ -30,7 +30,7 @@ use proptest::sample::select;
 use rusqlite::{params, Connection};
 
 use prompthub_lib::error::ErrorCode;
-use prompthub_lib::models::{Prompt, SearchQuery, SortField, SortOrder};
+use prompthub_lib::models::{PromptListItem, SearchQuery, SortField, SortOrder};
 use prompthub_lib::services::prompt::{self, PromptCreate};
 use prompthub_lib::storage::fts::init_fts;
 use prompthub_lib::storage::{create_memory_pool, init_schema, DbPool};
@@ -62,12 +62,12 @@ fn base_create(title: &str, user_prompt: &str) -> PromptCreate {
 }
 
 /// The set of result ids (order-independent comparison).
-fn id_set(prompts: &[Prompt]) -> BTreeSet<String> {
+fn id_set(prompts: &[PromptListItem]) -> BTreeSet<String> {
     prompts.iter().map(|p| p.id.clone()).collect()
 }
 
 /// The ordered list of result ids (order-sensitive comparison).
-fn id_list(prompts: &[Prompt]) -> Vec<String> {
+fn id_list(prompts: &[PromptListItem]) -> Vec<String> {
     prompts.iter().map(|p| p.id.clone()).collect()
 }
 

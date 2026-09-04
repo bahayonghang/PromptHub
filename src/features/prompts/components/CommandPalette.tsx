@@ -5,7 +5,7 @@ import { promptApi } from "../api";
 import { usePromptStore } from "../promptStore";
 import { usePaletteStore } from "../paletteStore";
 import { useSettingsStore } from "../../settings/settingsStore";
-import type { Prompt } from "../types";
+import type { PromptListItem } from "../types";
 import { formatBinding, SHORTCUT_BINDINGS } from "../../../shortcuts/bindings";
 import { platformModifier } from "../../../shortcuts/platform";
 
@@ -13,7 +13,7 @@ const SEARCH_DEBOUNCE_MS = 150;
 const RESULT_LIMIT = 5;
 
 type PaletteRow =
-  | { kind: "prompt"; id: string; prompt: Prompt }
+  | { kind: "prompt"; id: string; prompt: PromptListItem }
   | { kind: "action"; id: string; label: string; hint?: string };
 
 export function CommandPalette() {
@@ -21,7 +21,7 @@ export function CommandPalette() {
   const open = usePaletteStore((state) => state.open);
   const setOpen = usePaletteStore((state) => state.setOpen);
   const [query, setQuery] = useState("");
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [prompts, setPrompts] = useState<PromptListItem[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const sequence = useRef(0);
   const modifier = platformModifier();
@@ -39,6 +39,9 @@ export function CommandPalette() {
         .searchPrompts({ keyword: query.trim() || undefined, limit: RESULT_LIMIT })
         .then((page) => {
           if (current === sequence.current) setPrompts(page.items);
+        })
+        .catch(() => {
+          if (current !== sequence.current) return;
         });
     }, SEARCH_DEBOUNCE_MS);
     return () => window.clearTimeout(handle);

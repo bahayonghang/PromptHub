@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "closeAction flows settings JSON → command mutex → window events → frontend store"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "i18n in all 7 locales, Runtime Bridge, just build/test"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "Settings.closeAction DTO must mirror camelCase Option<String>"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "systemStore owns close dialog and closeAction; seed from settings"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "CloseDialog and WindowBehaviorPanel patterns"}
+{"file": ".trellis/tasks/09-04-close-to-tray/research/tauri-tray.md", "reason": "Tauri 2 tray, CloseRequested, single-instance, degradation"}

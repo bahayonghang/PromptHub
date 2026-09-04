@@ -81,9 +81,28 @@ pub struct Settings {
     /// Whether the app minimizes on launch.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub minimize_on_launch: Option<bool>,
+    /// Close-window behavior: `ask` | `minimize` | `exit` (Req 20.4).
+    /// Absent means the runtime default `ask`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub close_action: Option<String>,
+    /// When true, AI and sync HTTP may target private, loopback, or
+    /// link-local addresses. Absent or false keeps the public-only pin.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub allow_private_network: Option<bool>,
     /// Optional GitHub personal access token.
+    ///
+    /// Persisted as `ENC::` when a master password exists. `settings.get`
+    /// clears this field and reports [`Self::has_github_token`] instead.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub github_token: Option<String>,
+    /// Whether a GitHub token is stored. Surfaced by `settings.get`; not a
+    /// persistence field.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub has_github_token: Option<bool>,
+    /// Whether `sync.password` is stored. Surfaced by `settings.get`; not a
+    /// persistence field.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub has_sync_password: Option<bool>,
     /// Security state summary.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub security: Option<SecuritySettings>,

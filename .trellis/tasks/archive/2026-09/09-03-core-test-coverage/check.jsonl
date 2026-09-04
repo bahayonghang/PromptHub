@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/cross-layer/prompt-library-foundations.md", "reason": "Check new tests against library validation, privacy, and portable error matrix"}
+{"file": ".trellis/spec/cross-layer/prompt-evaluation-loop.md", "reason": "Check new tests against evaluation cancel, label, SSRF, and credential lock contracts"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Reject tautological tests and module mocks; require injected bridge/API fakes"}
+{"file": ".trellis/tasks/09-03-core-test-coverage/research/coverage-gaps.md", "reason": "Verify only the listed high-risk gaps were tested"}

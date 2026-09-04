@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 11
-- **Last Active**: 2026-08-24
+- **Total Sessions**: 16
+- **Last Active**: 2026-09-04
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~373 | Active |
+| `journal-1.md` | ~500 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,11 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 16 | 2026-09-04 | 关闭常驻托盘 | `f00f10f` | `dev` |
+| 15 | 2026-09-03 | 前置复制按钮并累计使用次数 | `055a6de`, `84c9637`, `8234a59` | `dev` |
+| 14 | 2026-09-03 | 补充核心业务测试覆盖 | `50806df`, `95e1757`, `af0bc9e` | `dev` |
+| 13 | 2026-09-02 | 新建 Prompt 创建后关闭弹窗 | `857aee1`, `8af4a27`, `85c3101` | `dev` |
+| 12 | 2026-08-27 | 修复新建 Prompt 标题焦点并升级 Trellis | `c5ca31212adcadeb2c636a49686e46beebae02a4`, `133a4d45e59284179c427bd3869f74e85e935be2`, `0fbe0ef` | `dev` |
 | 11 | 2026-08-24 | Prompt 一键复制与默认对话 | `647a468`, `2086fc5` | `main` |
 | 10 | 2026-07-15 | Prompt 工作区 UX 优化父任务收尾 | `105da0c`, `fa8082c`, `d844f34`, `7da169c`, `621f446`, `1369a0a`, `a258ae8`, `4a0cb50` | `main` |
 | 9 | 2026-07-15 | 可扩展 Prompt 类型定义 | `a258ae8`, `4a0cb50` | `main` |

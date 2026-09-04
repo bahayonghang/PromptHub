@@ -1,13 +1,17 @@
 use std::sync::atomic::Ordering;
 
-use crate::error::CommandResult;
+use crate::error::{AppError, CommandResult};
+use crate::services::data_path;
 use crate::services::sync::{
     self, BackupEntry, ConnectionTestResult, ExportResult, ExportScope, RestoreResult, S3Config,
-    StatResult, WebDavConfig,
+    WebDavConfig,
 };
 use crate::state::AppState;
+use crate::storage;
 
-use super::{ensure_app_ready, ensure_ready, into_command, CommandRuntimeState};
+use super::{
+    allow_private_network, ensure_app_ready, ensure_ready, into_command, CommandRuntimeState,
+};
 
 #[tauri::command(rename = "webdav.test")]
 pub async fn sync_webdav_test<R: tauri::Runtime>(
@@ -15,58 +19,14 @@ pub async fn sync_webdav_test<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
 ) -> CommandResult<ConnectionTestResult> {
     match ensure_app_ready(&app) {
-        Ok(()) => sync::webdav_test(&config).await.into(),
-        Err(e) => CommandResult::Err(e),
-    }
-}
-
-#[tauri::command(rename = "webdav.upload")]
-pub async fn sync_webdav_upload<R: tauri::Runtime>(
-    config: WebDavConfig,
-    remote_path: String,
-    data: Vec<u8>,
-    app: tauri::AppHandle<R>,
-) -> CommandResult<()> {
-    match ensure_app_ready(&app) {
-        Ok(()) => sync::webdav_upload(&config, &remote_path, data)
-            .await
-            .into(),
-        Err(e) => CommandResult::Err(e),
-    }
-}
-
-#[tauri::command(rename = "webdav.download")]
-pub async fn sync_webdav_download<R: tauri::Runtime>(
-    config: WebDavConfig,
-    remote_path: String,
-    app: tauri::AppHandle<R>,
-) -> CommandResult<Vec<u8>> {
-    match ensure_app_ready(&app) {
-        Ok(()) => sync::webdav_download(&config, &remote_path).await.into(),
-        Err(e) => CommandResult::Err(e),
-    }
-}
-
-#[tauri::command(rename = "webdav.stat")]
-pub async fn sync_webdav_stat<R: tauri::Runtime>(
-    config: WebDavConfig,
-    remote_path: String,
-    app: tauri::AppHandle<R>,
-) -> CommandResult<StatResult> {
-    match ensure_app_ready(&app) {
-        Ok(()) => sync::webdav_stat(&config, &remote_path).await.into(),
-        Err(e) => CommandResult::Err(e),
-    }
-}
-
-#[tauri::command(rename = "webdav.ensureDir")]
-pub async fn sync_webdav_ensure_dir<R: tauri::Runtime>(
-    config: WebDavConfig,
-    remote_path: String,
-    app: tauri::AppHandle<R>,
-) -> CommandResult<()> {
-    match ensure_app_ready(&app) {
-        Ok(()) => sync::webdav_ensure_dir(&config, &remote_path).await.into(),
+        Ok(()) => {
+            let allow = {
+                use tauri::Manager as _;
+                let state = app.state::<AppState>();
+                allow_private_network(&state)
+            };
+            sync::webdav_test(&config, allow).await.into()
+        }
         Err(e) => CommandResult::Err(e),
     }
 }
@@ -77,44 +37,14 @@ pub async fn sync_s3_test<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
 ) -> CommandResult<ConnectionTestResult> {
     match ensure_app_ready(&app) {
-        Ok(()) => sync::s3_test(&config).await.into(),
-        Err(e) => CommandResult::Err(e),
-    }
-}
-
-#[tauri::command(rename = "s3.upload")]
-pub async fn sync_s3_upload<R: tauri::Runtime>(
-    config: S3Config,
-    key: String,
-    data: Vec<u8>,
-    app: tauri::AppHandle<R>,
-) -> CommandResult<()> {
-    match ensure_app_ready(&app) {
-        Ok(()) => sync::s3_upload(&config, &key, data).await.into(),
-        Err(e) => CommandResult::Err(e),
-    }
-}
-
-#[tauri::command(rename = "s3.download")]
-pub async fn sync_s3_download<R: tauri::Runtime>(
-    config: S3Config,
-    key: String,
-    app: tauri::AppHandle<R>,
-) -> CommandResult<Vec<u8>> {
-    match ensure_app_ready(&app) {
-        Ok(()) => sync::s3_download(&config, &key).await.into(),
-        Err(e) => CommandResult::Err(e),
-    }
-}
-
-#[tauri::command(rename = "s3.stat")]
-pub async fn sync_s3_stat<R: tauri::Runtime>(
-    config: S3Config,
-    key: String,
-    app: tauri::AppHandle<R>,
-) -> CommandResult<StatResult> {
-    match ensure_app_ready(&app) {
-        Ok(()) => sync::s3_stat(&config, &key).await.into(),
+        Ok(()) => {
+            let allow = {
+                use tauri::Manager as _;
+                let state = app.state::<AppState>();
+                allow_private_network(&state)
+            };
+            sync::s3_test(&config, allow).await.into()
+        }
         Err(e) => CommandResult::Err(e),
     }
 }
@@ -163,13 +93,72 @@ pub fn sync_backup_restore(
     id: String,
     state: tauri::State<'_, AppState>,
 ) -> CommandResult<RestoreResult> {
-    into_command(
-        ensure_ready(&state)
-            .and_then(|_| sync::backup_restore(&state.paths.data, &state.paths.backup, &id)),
-    )
+    into_command(restore_backup(&state, &id))
+}
+
+/// Unloads the live pool before replacing the data directory. An open SQLite
+/// file can block the sidecar rename on Windows. On restore failure the original
+/// directory is still in place, so the pool is reopened.
+fn restore_backup(state: &AppState, id: &str) -> Result<RestoreResult, AppError> {
+    ensure_ready(state)?;
+    state.set_ready(false);
+    drop(state.take_pool()?);
+    match sync::backup_restore(&state.paths.data, &state.paths.backup, id) {
+        Ok(result) => Ok(result),
+        Err(error) => {
+            if let Ok(pool) = storage::create_pool(data_path::database_path(&state.paths)) {
+                if state.set_pool(pool).is_ok() {
+                    state.set_ready(true);
+                }
+            }
+            Err(error)
+        }
+    }
 }
 
 #[tauri::command(rename = "backup.delete")]
 pub fn sync_backup_delete(id: String, state: tauri::State<'_, AppState>) -> CommandResult<()> {
     into_command(ensure_ready(&state).and_then(|_| sync::backup_delete(&state.paths.backup, &id)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::commands::startup::{ensure_directories, resolve_runtime_paths, run_startup};
+    use crate::error::ErrorCode;
+    use tempfile::TempDir;
+
+    #[test]
+    fn backup_restore_unloads_pool_and_restores() {
+        let tmp = TempDir::new().unwrap();
+        let paths = resolve_runtime_paths(tmp.path());
+        ensure_directories(&paths).unwrap();
+        let state = AppState::new(paths);
+        run_startup(&state).unwrap();
+
+        let entry = sync::backup_create(&state.paths.data, &state.paths.backup).unwrap();
+        std::fs::write(state.paths.data.join("marker.txt"), b"LIVE").unwrap();
+
+        let result = restore_backup(&state, &entry.id).unwrap();
+        assert!(result.restart_required);
+        assert!(!state.is_ready());
+        assert!(state.pool.lock().unwrap().is_none());
+        assert!(!state.paths.data.join("marker.txt").exists());
+        assert!(data_path::database_path(&state.paths).is_file());
+    }
+
+    #[test]
+    fn backup_restore_unknown_id_reopens_pool() {
+        let tmp = TempDir::new().unwrap();
+        let paths = resolve_runtime_paths(tmp.path());
+        ensure_directories(&paths).unwrap();
+        let state = AppState::new(paths);
+        run_startup(&state).unwrap();
+
+        let err = restore_backup(&state, "nope").unwrap_err();
+        assert_eq!(err.code, ErrorCode::NotFound);
+        assert!(state.is_ready());
+        assert!(state.pool.lock().unwrap().is_some());
+        assert!(data_path::database_path(&state.paths).is_file());
+    }
 }

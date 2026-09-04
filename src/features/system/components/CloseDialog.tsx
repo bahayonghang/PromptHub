@@ -5,13 +5,14 @@ import { useSystemStore } from "../systemStore";
  * The close-confirmation dialog shown when the close action is `ask` and a
  * window-close is attempted (Req 20.4). The Window_Manager emits
  * `window:close-requested` and keeps the application running; this dialog lets
- * the user confirm exit (terminating the window) or cancel (keeping it running).
- * It renders nothing until a close is requested.
+ * the user keep running, hide to the tray, or exit via `window.quit`. It
+ * renders nothing until a close is requested.
  */
 export function CloseDialog() {
   const { t } = useTranslation();
   const open = useSystemStore((s) => s.closeDialogOpen);
   const dismiss = useSystemStore((s) => s.dismissCloseDialog);
+  const hideToTray = useSystemStore((s) => s.hideToTray);
   const confirm = useSystemStore((s) => s.confirmClose);
 
   if (!open) return null;
@@ -28,13 +29,20 @@ export function CloseDialog() {
         <p className="mt-2 text-sm text-muted-foreground">
           {t("systemView.close.message")}
         </p>
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
           <button
             type="button"
             onClick={dismiss}
             className="rounded-md border border-input px-4 py-2 text-sm text-foreground transition-colors hover:bg-accent"
           >
             {t("systemView.close.cancel")}
+          </button>
+          <button
+            type="button"
+            onClick={() => void hideToTray()}
+            className="rounded-md border border-input px-4 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+          >
+            {t("systemView.close.minimize")}
           </button>
           <button
             type="button"

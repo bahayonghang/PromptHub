@@ -1,0 +1,2 @@
+{"file":".trellis/spec/frontend/quality-guidelines.md","reason":"Verify the focused regression and the required frontend build and test gates."}
+{"file":".trellis/tasks/archive/2026-08/08-27-fix-new-prompt-title-focus/research/root-cause.md","reason":"Confirm the exact focus-loss symptom, root cause, and red-to-green verification boundary."}

@@ -4,6 +4,8 @@
 //! (Requirement 2.5). Timestamps cross the wire as ISO_8601 strings
 //! (Requirement 4.9), so they are modeled as `String`.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 use super::enums::{PromptRevisionSource, PromptType, SortField, SortOrder};
@@ -181,11 +183,33 @@ pub struct SearchQuery {
     pub offset: Option<u32>,
 }
 
+/// Library-card projection returned by `prompt.search`. Omits system/user/messages bodies.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PromptListItem {
+    pub id: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub prompt_type: PromptType,
+    #[serde(default)]
+    pub type_definition_id: Option<String>,
+    pub tags: Vec<String>,
+    pub folder_id: Option<String>,
+    pub is_favorite: bool,
+    pub is_pinned: bool,
+    pub is_private: bool,
+    pub is_locked: bool,
+    pub current_version: i64,
+    pub usage_count: i64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
 /// A deterministic page returned by `prompt.search`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PromptPage {
-    pub items: Vec<Prompt>,
+    pub items: Vec<PromptListItem>,
     pub total: u64,
     pub limit: u32,
     pub offset: u32,
@@ -193,9 +217,19 @@ pub struct PromptPage {
 }
 
 impl std::ops::Deref for PromptPage {
-    type Target = [Prompt];
+    type Target = [PromptListItem];
 
     fn deref(&self) -> &Self::Target {
         &self.items
     }
+}
+
+/// Folder/tag/library totals returned by `prompt.counts`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PromptCounts {
+    pub folders: BTreeMap<String, u64>,
+    pub tags: BTreeMap<String, u64>,
+    pub total: u64,
+    pub favorites: u64,
 }

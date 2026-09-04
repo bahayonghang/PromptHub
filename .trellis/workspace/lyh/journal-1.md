@@ -371,3 +371,130 @@ Added deterministic paging, immutable revisions, portable bundles, private promp
 ### Status
 
 [OK] **Completed**
+
+
+## Session 12: 修复新建 Prompt 标题焦点并升级 Trellis
+
+**Date**: 2026-08-27
+**Task**: 修复新建 Prompt 标题焦点并升级 Trellis
+**Branch**: `dev`
+
+### Summary
+
+升级 Trellis 运行时至 0.7.0-beta.3；修复新建 Prompt 首字符后焦点跳到铅笔按钮的问题；补齐回归测试、Hook 契约和归档复验路径。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c5ca31212adcadeb2c636a49686e46beebae02a4` | (see git log) |
+| `133a4d45e59284179c427bd3869f74e85e935be2` | (see git log) |
+| `0fbe0ef` | (see git log) |
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 13: 新建 Prompt 创建后关闭弹窗
+
+**Date**: 2026-09-02
+**Task**: 新建 Prompt 创建后关闭弹窗
+**Branch**: `dev`
+
+### Summary
+
+新建 Prompt 点击创建后保存并关闭弹窗，库列表保持选中新行；detailOpen 与选中态拆开，命令面板仍通过 requestSelectPrompt 打开弹窗。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `857aee1` | (see git log) |
+| `8af4a27` | (see git log) |
+| `85c3101` | (see git log) |
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 14: 补充核心业务测试覆盖
+
+**Date**: 2026-09-03
+**Task**: 补充核心业务测试覆盖
+**Branch**: `dev`
+
+### Summary
+
+按业务风险补齐 security、evaluation、prompt、portable 与前端 store 的权限/校验/取消/失败路径测试；加上 setMasterPassword 闸门与 SSRF 预检；just ci 通过。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `50806df` | (see git log) |
+| `95e1757` | (see git log) |
+| `af0bc9e` | (see git log) |
+
+### Status
+
+[OK] **Completed**
+
+
+## Session 15: 前置复制按钮并累计使用次数
+
+**Date**: 2026-09-03
+**Task**: 前置复制按钮并累计使用次数
+**Branch**: `dev`
+
+### Summary
+
+列表、卡片、详情把复制按钮放到标题前并放大；成功 toast 用 replaceGroup 替换；prompt.incrementUsage 在剪贴板写入成功后 +1，不改 updated_at。just ci 通过。
+
+### Main Changes
+
+- 复制控件移到列表/卡片/详情标题前，热区 36px
+- 成功 toast 与按钮内对勾；失败不计使用次数
+- 新增 prompt.incrementUsage，剪贴板成功后累计 usageCount
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `055a6de` | (see git log) |
+| `84c9637` | (see git log) |
+| `8234a59` | (see git log) |
+
+### Testing
+
+- [OK] just ci
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 未在打包 Tauri 窗口做真实点击验收
+
+
+## Session 16: 关闭常驻托盘
+
+**Date**: 2026-09-04
+**Task**: 关闭常驻托盘
+**Branch**: `dev`
+
+### Summary
+
+实现 ask/minimize/exit 关闭行为落盘、系统托盘显示/退出、单实例唤起，以及 window.quit/window.hide 与询问对话框。质量门禁已通过。记录关闭/托盘跨层合同后提交并归档 09-04-close-to-tray。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f00f10f` | (see git log) |
+
+### Status
+
+[OK] **Completed**

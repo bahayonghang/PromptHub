@@ -13,10 +13,12 @@ import type {
   BundlePreview,
   ImportConflictPolicy,
   Prompt,
+  PromptCounts,
   PromptPage,
   PromptTypeDefinition,
   PromptVersion,
   PromptCopyResult,
+  PromptUsage,
   PortableExportResult,
   PortableImportResult,
   ReferenceList,
@@ -30,6 +32,7 @@ export interface PromptApi {
   listPrompts(): Promise<Prompt[]>;
   getPrompt(id: string): Promise<Prompt>;
   searchPrompts(query: SearchQuery): Promise<PromptPage>;
+  countPrompts(): Promise<PromptCounts>;
   createPrompt(input: CreatePromptInput): Promise<Prompt>;
   updatePrompt(id: string, patch: UpdatePromptInput): Promise<Prompt>;
   deletePrompt(id: string): Promise<void>;
@@ -38,6 +41,7 @@ export interface PromptApi {
   batchTag(ids: string[], tags: string[]): Promise<void>;
   batchDelete(ids: string[]): Promise<void>;
   copyPrompt(id: string, values: Record<string, string>): Promise<PromptCopyResult>;
+  incrementUsage(id: string): Promise<PromptUsage>;
   listReferences(promptId: string): Promise<ReferenceList>;
 
   listPromptTypes(): Promise<PromptTypeDefinition[]>;
@@ -74,6 +78,7 @@ export function createPromptApi(bridge: RuntimeBridge = runtime): PromptApi {
     listPrompts: () => bridge.invoke<Prompt[]>("prompt.list"),
     getPrompt: (id) => bridge.invoke<Prompt>("prompt.get", { id }),
     searchPrompts: (query) => bridge.invoke<PromptPage>("prompt.search", { query }),
+    countPrompts: () => bridge.invoke<PromptCounts>("prompt.counts"),
     createPrompt: (input) => bridge.invoke<Prompt>("prompt.create", { input }),
     updatePrompt: (id, patch) =>
       bridge.invoke<Prompt>("prompt.update", { id, patch }),
@@ -86,6 +91,8 @@ export function createPromptApi(bridge: RuntimeBridge = runtime): PromptApi {
     batchDelete: (ids) => bridge.invoke<void>("prompt.batchDelete", { ids }),
     copyPrompt: (id, values) =>
       bridge.invoke<PromptCopyResult>("prompt.copy", { id, values }),
+    incrementUsage: (id) =>
+      bridge.invoke<PromptUsage>("prompt.incrementUsage", { id }),
     listReferences: (promptId) =>
       bridge.invoke<ReferenceList>("reference.list", { promptId }),
 

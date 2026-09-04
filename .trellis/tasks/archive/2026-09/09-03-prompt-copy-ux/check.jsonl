@@ -1,0 +1,7 @@
+{"file":".trellis/spec/frontend/index.md","reason":"Quality-check index for frontend component and store changes."}
+{"file":".trellis/spec/frontend/component-guidelines.md","reason":"Copy must remain a sibling of the title activator; hit target and i18n labels."}
+{"file":".trellis/spec/frontend/design-tokens.md","reason":"Success toast chrome must use token classes, not raw colors."}
+{"file":".trellis/spec/frontend/quality-guidelines.md","reason":"just build / just test; no @tauri-apps/api outside runtime; i18n key parity."}
+{"file":".trellis/spec/frontend/type-safety.md","reason":"Wire name prompt.incrementUsage and DTO field names must match the backend."}
+{"file":".trellis/spec/cross-layer/prompt-library-foundations.md","reason":"Increment must not stamp updated_at or append a revision."}
+{"file":".trellis/tasks/09-03-prompt-copy-ux/research/current-surfaces.md","reason":"Check all three screenshotted surfaces: list, grid, detail heading."}

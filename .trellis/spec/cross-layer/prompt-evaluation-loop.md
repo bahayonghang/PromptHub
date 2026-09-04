@@ -30,10 +30,13 @@ evaluation.labelList/Move/Rollback/History(...) -> label DTOs
 Events:
 
 ```text
-evaluation:run-chunk       { runId, chunk }
-evaluation:run-terminal    { runId, status }
-evaluation:matrix-progress { evaluationRunId, completed, total, cellId }
+evaluation:run-chunk       { requestId, runId, chunk }
+evaluation:run-terminal    { requestId, runId, status }
+evaluation:matrix-progress { requestId, evaluationRunId, completed, total, cellId }
 ```
+
+`requestId` is the same value the frontend passed to `evaluation.run` /
+`evaluation.matrixRun` / `evaluation.matrixRetry`. Channel names stay pinned.
 
 Schema version 4 adds `prompts.messages`, `prompt_versions.messages`, and the
 evaluation tables `execution_profile_revisions`, `prompt_runs`, `test_sets`,
@@ -80,8 +83,8 @@ evaluation tables `execution_profile_revisions`, `prompt_runs`, `test_sets`,
 | Text body and messages are both empty | `VALIDATION`; no Prompt write |
 | Message role is outside the three-role catalog | `VALIDATION`; no revision |
 | Required render variable is missing | `VALIDATION`; no provider call/run; a matrix records a terminal error cell and continues |
-| Credential is saved or used while locked | `UNAUTHORIZED`; no plaintext |
-| Provider endpoint is local/private or resolves privately | `SSRF_BLOCKED` |
+| Credential is saved or used while locked | `UNAUTHORIZED`; no plaintext; no `prompt_runs` row |
+| Provider endpoint is local/private or resolves privately | `SSRF_BLOCKED` before the initial `prompt_runs` insert and again on every redirect hop |
 | Provider redirects to a blocked host | `SSRF_BLOCKED` before that hop |
 | Provider timeout/network/malformed response | terminal `error` run record |
 | Request is cancelled | terminal `cancelled` run/cells; no failed score |
@@ -108,11 +111,13 @@ evaluation tables `execution_profile_revisions`, `prompt_runs`, `test_sets`,
   private at-rest ciphertext, locked redaction, re-key, rollback, and portable
   round-trip.
 - Profile/provider: DTO redaction, encrypted storage, re-key, SSRF local/private
-  rejection, redirect re-check, timeout/cancel, malformed response, and optional
-  usage provenance. Live-provider smoke is opt-in only.
+  rejection with no `prompt_runs` row, redirect re-check, timeout/cancel,
+  malformed response, and optional usage provenance. Live-provider smoke is
+  opt-in only.
 - Run/matrix: success/error/cancel persistence, restart reads, deterministic
   ordering, 20-case progress, preflight-error terminalization, partial failure,
-  retry, cache hit and invalidation.
+  retry, cache hit and invalidation. A cancelled matrix must not persist
+  remaining cells as `error` or `running`.
 - Provider streaming: split SSE input across transport chunks and assert each
   completed content line emits immediately while usage metadata is retained.
 - Evaluators/labels: exact/contains/regex/numeric/manual evidence, manual update,

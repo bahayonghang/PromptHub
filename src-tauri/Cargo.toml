@@ -18,22 +18,26 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon"] }
 # Window_Manager (Requirement 20): the OS-integration plugins behind the
 # window/shortcut/notification glue. `tauri-plugin-global-shortcut` registers the
 # global/local keyboard shortcuts and reports when one fires (20.6);
 # `tauri-plugin-autostart` sets the launch-on-login state (20.5); and
 # `tauri-plugin-notification` displays system notifications and surfaces a
-# permission denial (20.7, 20.13). All are version 2, matching the tauri 2.x core.
+# permission denial (20.7, 20.13). `tray-icon` on `tauri` plus the builders in
+# `lib.rs` create the always-on tray (20.4). `tauri-plugin-single-instance`
+# focuses the existing `main` window on a second launch, including when hidden
+# to the tray. All are version 2, matching the tauri 2.x core.
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-notification = "2"
+tauri-plugin-single-instance = "2"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # Storage_Engine: rusqlite with the `bundled` feature compiles SQLite (incl. FTS5)
 # directly into the binary, and r2d2 provides the connection pool.
-rusqlite = { version = "0.37", features = ["bundled"] }
+rusqlite = { version = "0.37", features = ["backup", "bundled"] }
 r2d2 = "0.8"
 r2d2_sqlite = "0.31"
 # Timestamp utilities (Requirement 4.9): chrono converts between epoch
@@ -45,14 +49,18 @@ chrono = { version = "0.4.38", default-features = false, features = ["clock", "s
 # identifier for each created prompt). The `v4` feature provides random UUIDs.
 uuid = { version = "1", features = ["v4"] }
 # Security_Service (Requirement 15): reproduce the reference crypto construction.
-# `scrypt` derives the 32-byte key from the master password; `aes-gcm` provides
+# `scrypt` derives the 32-byte KEK from the master password; `aes-gcm` provides
 # AES-256-GCM authenticated encryption (12-byte nonce + 16-byte tag); `rand`
-# supplies the cryptographically secure RNG (OsRng) for salts and nonces; and
-# `base64` encodes the `ENC::` envelope and the `{salt, hash}` verifier.
+# supplies the cryptographically secure RNG (OsRng) for salts, nonces, and the
+# DEK; `hmac`+`sha2` separate the wrap key from the stored verifier; `zeroize`
+# clears cached DEK bytes on lock; and `base64` encodes the `ENC::` envelope
+# and the stored verifier document.
 aes-gcm = "0.10"
 scrypt = "0.11"
 rand = "0.8"
 base64 = "0.22"
+hmac = "0.12"
+zeroize = { version = "1", features = ["derive"] }
 # Rules_Service (Requirement 14): SHA-256 content hashing for rule files. The
 # managed content hash is compared to the target file's hash to compute
 # `syncStatus` (14.2) and to detect changes on save (14.4). Pinned to the stable

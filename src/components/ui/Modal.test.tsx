@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Modal } from "./Modal";
 import { CloseDialog } from "../../features/system/components/CloseDialog";
@@ -22,32 +22,35 @@ describe("Modal", () => {
     document.body.appendChild(outside);
     outside.focus();
     const onClose = vi.fn();
-    const { rerender } = render(
-      <Modal open title="Dialog" onClose={onClose}>
-        <button type="button">First</button>
-        <button type="button">Last</button>
-      </Modal>,
-    );
-    const first = await screen.findByRole("button", { name: "First" });
-    expect(document.activeElement).toBe(first);
+    try {
+      const { rerender } = render(
+        <Modal open title="Dialog" onClose={onClose}>
+          <button type="button">First</button>
+          <button type="button">Last</button>
+        </Modal>,
+      );
+      const first = await screen.findByRole("button", { name: "First" });
+      await waitFor(() => expect(document.activeElement).toBe(first));
 
-    fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
-    expect(document.activeElement).toBe(
-      screen.getByRole("button", { name: "Last" }),
-    );
+      fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Last" }),
+      );
 
-    fireEvent.keyDown(screen.getByRole("button", { name: "Last" }), {
-      key: "Tab",
-    });
-    expect(document.activeElement).toBe(first);
+      fireEvent.keyDown(screen.getByRole("button", { name: "Last" }), {
+        key: "Tab",
+      });
+      expect(document.activeElement).toBe(first);
 
-    rerender(
-      <Modal open={false} title="Dialog" onClose={onClose}>
-        <button type="button">First</button>
-      </Modal>,
-    );
-    expect(document.activeElement).toBe(outside);
-    outside.remove();
+      rerender(
+        <Modal open={false} title="Dialog" onClose={onClose}>
+          <button type="button">First</button>
+        </Modal>,
+      );
+      expect(document.activeElement).toBe(outside);
+    } finally {
+      outside.remove();
+    }
   });
 
   it("Escape closes only the top stacked modal", async () => {

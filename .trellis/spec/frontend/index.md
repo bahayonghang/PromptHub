@@ -62,7 +62,9 @@ For i18n, theme, appearance, or UI quality work:
 
 ## Shared Rules
 
-- Never import `@tauri-apps/api` outside `src/runtime`.
+- The cross-boundary rules (Runtime Bridge, wire names, `CommandResult`) live
+  in the root `AGENTS.md`; [Quality Guidelines](./quality-guidelines.md) holds
+  the checklist form.
 - User-facing text goes through `useTranslation()` and dot-notation i18n keys.
 - Styling uses Tailwind token classes such as `bg-card`, `text-muted-foreground`,
   `border-border`, `bg-primary/15`, and `focus:ring-ring`.

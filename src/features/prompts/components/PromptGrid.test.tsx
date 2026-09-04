@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import i18n, { ensureBundle } from "../../../runtime/i18n";
 import { toLibraryItem } from "../libraryItem";
 import type { Prompt } from "../types";
+import { usePromptStore } from "../promptStore";
 import { PromptGrid } from "./PromptGrid";
 
 function makePrompt(overrides: Partial<Prompt> = {}): Prompt {
@@ -47,11 +48,17 @@ beforeEach(async () => {
 afterEach(cleanup);
 
 describe("PromptGrid", () => {
+  beforeEach(() => {
+    usePromptStore.setState({ incrementUsage: async () => null });
+  });
+
   it("does not open the prompt from checkbox, favorite, or copy", async () => {
     const onSelect = vi.fn();
     const onToggleSelection = vi.fn();
     const onToggleFavorite = vi.fn();
     const writeText = vi.fn().mockResolvedValue(undefined);
+    const incrementUsage = vi.fn(async () => null);
+    usePromptStore.setState({ incrementUsage });
     render(
       <PromptGrid
         items={itemsFrom([makePrompt()])}
@@ -72,13 +79,19 @@ describe("PromptGrid", () => {
     );
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Steelman" }));
     fireEvent.click(screen.getByRole("button", { name: "Favorite" }));
+    const copy = screen.getByRole("button", { name: "Copy Steelman" });
+    expect(copy.nextElementSibling?.textContent).toContain("Steelman");
+    expect(
+      copy.closest("article")?.querySelector(".mt-auto")?.querySelector("button"),
+    ).toBeNull();
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Copy Steelman" }));
+      fireEvent.click(copy);
     });
     expect(onSelect).not.toHaveBeenCalled();
     expect(onToggleSelection).toHaveBeenCalledWith("prompt-1");
     expect(onToggleFavorite).toHaveBeenCalledWith("prompt-1", true);
     expect(writeText).toHaveBeenCalled();
+    expect(incrementUsage).toHaveBeenCalledWith("prompt-1");
   });
 
   it("hides body-derived preview text on a locked card", () => {

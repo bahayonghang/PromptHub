@@ -203,7 +203,12 @@ export function SettingsView() {
               }}
             />
           )}
-          {section === "system" && <SystemPanel launchAtStartup={settings?.launchAtStartup} />}
+          {section === "system" && (
+            <SystemPanel
+              launchAtStartup={settings?.launchAtStartup}
+              closeAction={settings?.closeAction}
+            />
+          )}
           </div>
         </div>
       </section>

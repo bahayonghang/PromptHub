@@ -14,15 +14,8 @@ pub fn prompt_bundle_export(
     state: tauri::State<'_, AppState>,
 ) -> CommandResult<PortableExportResult> {
     into_command(conn(&state).and_then(|conn| {
-        let destination = destination.map_or_else(
-            || {
-                state.paths.backup.join(format!(
-                    "prompts-{}.prompthub",
-                    crate::storage::time::now_millis()
-                ))
-            },
-            PathBuf::from,
-        );
+        let destination =
+            portable::resolve_bundle_destination(destination.as_deref(), &state.paths)?;
         portable::export_bundle(&conn, &state.paths.media, &destination)
     }))
 }

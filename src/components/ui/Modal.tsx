@@ -20,7 +20,6 @@ export interface ModalProps {
 
 interface StackEntry {
   id: number;
-  onClose: () => void;
 }
 
 const stack: StackEntry[] = [];
@@ -75,7 +74,7 @@ export function Modal({
     const id = nextStackId;
     nextStackId += 1;
     stackId.current = id;
-    stack.push({ id, onClose });
+    stack.push({ id });
     setAppContentInert(true);
     const frame = window.requestAnimationFrame(() => {
       const root = dialogRef.current;
@@ -90,7 +89,7 @@ export function Modal({
       if (stack.length === 0) setAppContentInert(false);
       previousFocus.current?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open || typeof document === "undefined") return null;
 

@@ -640,10 +640,20 @@ impl ProviderAdapter for DefaultProviderAdapter {
         Box::pin(async move {
             match request.provider.as_str() {
                 "mock" => execute_mock(request, cancel, run_id, sink).await,
-                "openai-compatible" => execute_openai(request, cancel, run_id, sink).await,
+                "openai-compatible" => execute_openai(request, cancel, run_id, sink, false).await,
                 _ => Err(AppError::validation("unsupported provider adapter")),
             }
         })
+    }
+}
+
+/// Cancellation is signaled by the token. Adapters return an empty output
+/// instead of `AppError::internal("request cancelled")`; [`execute_run`] maps
+/// the token to persisted `cancelled` status.
+fn cancelled_provider_output() -> ProviderOutput {
+    ProviderOutput {
+        content: String::new(),
+        usage: None,
     }
 }
 
@@ -654,7 +664,7 @@ async fn execute_mock(
     sink: &dyn EvaluationEventSink,
 ) -> Result<ProviderOutput, AppError> {
     if cancel.is_cancelled() {
-        return Err(AppError::internal("request cancelled"));
+        return Ok(cancelled_provider_output());
     }
     let content = request
         .parameters
@@ -678,7 +688,7 @@ async fn execute_mock(
         .unwrap_or(content.len());
     for chunk in [&content[..midpoint], &content[midpoint..]] {
         if cancel.is_cancelled() {
-            return Err(AppError::internal("request cancelled"));
+            return Ok(cancelled_provider_output());
         }
         if !chunk.is_empty() {
             sink.emit_run_chunk(run_id, chunk);
@@ -724,6 +734,7 @@ async fn execute_openai(
     cancel: &CancellationToken,
     run_id: &str,
     sink: &dyn EvaluationEventSink,
+    allow_private_network: bool,
 ) -> Result<ProviderOutput, AppError> {
     let mut body = request.parameters.as_object().cloned().unwrap_or_default();
     body.insert("model".into(), Value::String(request.model));
@@ -738,20 +749,27 @@ async fn execute_openai(
     let mut current = request
         .endpoint
         .ok_or_else(|| AppError::validation("provider endpoint is required"))?;
+    let mut forward_authorization = true;
 
     for _ in 0..=MAX_REDIRECTS {
-        let (url, client) =
-            crate::services::network_safety::prepare_public_url(&current, PROVIDER_TIMEOUT).await?;
+        let (url, client) = crate::services::network_safety::prepare_public_url(
+            &current,
+            PROVIDER_TIMEOUT,
+            allow_private_network,
+        )
+        .await?;
         let mut builder = client
             .post(url.clone())
             .header(reqwest::header::CONTENT_TYPE, "application/json")
             .header(reqwest::header::ACCEPT, "text/event-stream")
             .body(body.clone());
-        if let Some(credential) = request.credential.as_deref() {
-            builder = builder.bearer_auth(credential);
+        if forward_authorization {
+            if let Some(credential) = request.credential.as_deref() {
+                builder = builder.bearer_auth(credential);
+            }
         }
         let response = tokio::select! {
-            _ = cancel.cancelled() => return Err(AppError::internal("request cancelled")),
+            _ = cancel.cancelled() => return Ok(cancelled_provider_output()),
             result = builder.send() => result.map_err(|error| {
                 if error.is_timeout() {
                     AppError::timeout("provider request timed out")
@@ -766,10 +784,11 @@ async fn execute_openai(
                 .get(reqwest::header::LOCATION)
                 .and_then(|value| value.to_str().ok())
                 .ok_or_else(|| AppError::network("provider redirect omitted Location"))?;
-            current = url
-                .join(location)
-                .map_err(|error| AppError::network(format!("invalid provider redirect: {error}")))?
-                .to_string();
+            let next = url.join(location).map_err(|error| {
+                AppError::network(format!("invalid provider redirect: {error}"))
+            })?;
+            forward_authorization = crate::services::network_safety::same_http_origin(&url, &next);
+            current = next.to_string();
             continue;
         }
         if !response.status().is_success() {
@@ -785,7 +804,7 @@ async fn execute_openai(
         let mut usage = None;
         let mut stream = response.bytes_stream();
         while let Some(chunk) = tokio::select! {
-            _ = cancel.cancelled() => return Err(AppError::internal("request cancelled")),
+            _ = cancel.cancelled() => return Ok(cancelled_provider_output()),
             chunk = stream.next() => chunk,
         } {
             let chunk = chunk.map_err(|error| {
@@ -824,51 +843,144 @@ async fn execute_openai(
     Err(AppError::network("too many provider redirects"))
 }
 
-fn run_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<PromptRun> {
-    let inputs: String = row.get("inputs")?;
-    let rendered: String = row.get("rendered_messages")?;
-    let usage: Option<String> = row.get("usage")?;
-    Ok(PromptRun {
+struct RawPromptRun {
+    id: String,
+    prompt_revision_id: String,
+    profile_revision_id: String,
+    test_case_id: Option<String>,
+    inputs: String,
+    rendered_messages: String,
+    output: Option<String>,
+    status: String,
+    error: Option<String>,
+    started_at: i64,
+    completed_at: Option<i64>,
+    duration_ms: Option<i64>,
+    usage: Option<String>,
+    cache_key: Option<String>,
+}
+
+fn raw_run_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<RawPromptRun> {
+    Ok(RawPromptRun {
         id: row.get("id")?,
         prompt_revision_id: row.get("prompt_revision_id")?,
         profile_revision_id: row.get("profile_revision_id")?,
         test_case_id: row.get("test_case_id")?,
-        inputs: decode(&inputs)?,
-        rendered_messages: decode(&rendered)?,
+        inputs: row.get("inputs")?,
+        rendered_messages: row.get("rendered_messages")?,
         output: row.get("output")?,
         status: row.get("status")?,
         error: row.get("error")?,
-        started_at: millis_to_iso8601(row.get("started_at")?),
-        completed_at: row
-            .get::<_, Option<i64>>("completed_at")?
-            .map(millis_to_iso8601),
+        started_at: row.get("started_at")?,
+        completed_at: row.get("completed_at")?,
         duration_ms: row.get("duration_ms")?,
-        usage: usage.map(|raw| decode(&raw)).transpose()?,
+        usage: row.get("usage")?,
         cache_key: row.get("cache_key")?,
     })
 }
 
-pub fn get_run(conn: &Connection, id: &str) -> Result<PromptRun, AppError> {
-    conn.query_row(
-        "SELECT * FROM prompt_runs WHERE id = ?1",
-        [id],
-        run_from_row,
-    )
-    .optional()
-    .map_err(|error| db_err("failed to read prompt run", error))?
-    .ok_or_else(|| AppError::not_found(format!("prompt run `{id}` not found")))
+fn reveal_text(raw: &str, key: Option<&[u8]>) -> Result<Option<String>, AppError> {
+    if crate::services::security::is_encrypted_value(raw) {
+        match key {
+            Some(key) => Ok(Some(crate::services::security::decrypt(raw, key)?)),
+            None => Ok(None),
+        }
+    } else {
+        Ok(Some(raw.to_string()))
+    }
 }
 
-pub fn list_runs(conn: &Connection) -> Result<Vec<PromptRun>, AppError> {
+fn reveal_json<T>(raw: &str, key: Option<&[u8]>) -> Result<T, AppError>
+where
+    T: Default + serde::de::DeserializeOwned,
+{
+    match reveal_text(raw, key)? {
+        Some(plain) => serde_json::from_str(&plain)
+            .map_err(|error| AppError::internal(format!("failed to decode prompt run: {error}"))),
+        None => Ok(T::default()),
+    }
+}
+
+fn present_run(raw: RawPromptRun, key: Option<&[u8]>) -> Result<PromptRun, AppError> {
+    let output = match raw.output.as_deref() {
+        Some(value) => reveal_text(value, key)?,
+        None => None,
+    };
+    Ok(PromptRun {
+        id: raw.id,
+        prompt_revision_id: raw.prompt_revision_id,
+        profile_revision_id: raw.profile_revision_id,
+        test_case_id: raw.test_case_id,
+        inputs: reveal_json(&raw.inputs, key)?,
+        rendered_messages: reveal_json(&raw.rendered_messages, key)?,
+        output,
+        status: raw.status,
+        error: raw.error,
+        started_at: millis_to_iso8601(raw.started_at),
+        completed_at: raw.completed_at.map(millis_to_iso8601),
+        duration_ms: raw.duration_ms,
+        usage: raw
+            .usage
+            .map(|raw| decode(&raw))
+            .transpose()
+            .map_err(|error| db_err("failed to decode prompt run usage", error))?,
+        cache_key: raw.cache_key,
+    })
+}
+
+fn maybe_seal(value: String, key: Option<&[u8]>) -> Result<String, AppError> {
+    match key {
+        Some(key) => crate::services::security::encrypt(&value, key),
+        None => Ok(value),
+    }
+}
+
+fn revision_is_private(conn: &Connection, id: &str) -> Result<bool, AppError> {
+    conn.query_row(
+        "SELECT is_private FROM prompt_versions WHERE id = ?1",
+        [id],
+        |row| row.get(0),
+    )
+    .optional()
+    .map_err(|error| db_err("failed to read prompt revision privacy", error))?
+    .ok_or_else(|| AppError::not_found(format!("prompt revision `{id}` not found")))
+}
+
+pub fn get_run(
+    conn: &Connection,
+    encryption: &Mutex<EncryptionState>,
+    id: &str,
+) -> Result<PromptRun, AppError> {
+    let raw = conn
+        .query_row(
+            "SELECT * FROM prompt_runs WHERE id = ?1",
+            [id],
+            raw_run_from_row,
+        )
+        .optional()
+        .map_err(|error| db_err("failed to read prompt run", error))?
+        .ok_or_else(|| AppError::not_found(format!("prompt run `{id}` not found")))?;
+    let key = crate::services::security::unlocked_key(encryption)?;
+    present_run(raw, key.as_deref())
+}
+
+pub fn list_runs(
+    conn: &Connection,
+    encryption: &Mutex<EncryptionState>,
+) -> Result<Vec<PromptRun>, AppError> {
     let mut stmt = conn
         .prepare("SELECT * FROM prompt_runs ORDER BY started_at DESC,id DESC LIMIT 500")
         .map_err(|error| db_err("failed to prepare prompt runs", error))?;
-    let runs = stmt
-        .query_map([], run_from_row)
+    let raw_runs = stmt
+        .query_map([], raw_run_from_row)
         .map_err(|error| db_err("failed to query prompt runs", error))?
         .collect::<rusqlite::Result<Vec<_>>>()
         .map_err(|error| db_err("failed to map prompt runs", error))?;
-    Ok(runs)
+    let key = crate::services::security::unlocked_key(encryption)?;
+    raw_runs
+        .into_iter()
+        .map(|raw| present_run(raw, key.as_deref()))
+        .collect()
 }
 
 pub async fn execute_run(
@@ -882,10 +994,15 @@ pub async fn execute_run(
 ) -> Result<PromptRun, AppError> {
     let run_id = uuid::Uuid::new_v4().to_string();
     let started = now_millis();
-    let (rendered, request) = {
+    let (rendered, request, seal_key) = {
         let conn = pool.get().map_err(|error| {
             AppError::io(format!("failed to acquire database connection: {error}"))
         })?;
+        let seal_key = if revision_is_private(&conn, &input.prompt_revision_id)? {
+            Some(required_key(encryption)?)
+        } else {
+            None
+        };
         let rendered = render_prompt(&conn, encryption, &input.prompt_revision_id, &input.inputs)?;
         let request = provider_request(
             &conn,
@@ -893,6 +1010,18 @@ pub async fn execute_run(
             &input.profile_revision_id,
             rendered.messages.clone(),
         )?;
+        (rendered, request, seal_key)
+    };
+    if request.provider == "openai-compatible" {
+        if let Some(endpoint) = request.endpoint.as_deref() {
+            crate::services::network_safety::prepare_public_url(endpoint, PROVIDER_TIMEOUT, false)
+                .await?;
+        }
+    }
+    {
+        let conn = pool.get().map_err(|error| {
+            AppError::io(format!("failed to acquire database connection: {error}"))
+        })?;
         conn.execute(
             "INSERT INTO prompt_runs (id,prompt_revision_id,profile_revision_id,test_case_id,inputs,rendered_messages,status,started_at,cache_key) VALUES (?1,?2,?3,?4,?5,?6,'running',?7,?8)",
             params![
@@ -900,15 +1029,14 @@ pub async fn execute_run(
                 input.prompt_revision_id,
                 input.profile_revision_id,
                 input.test_case_id,
-                encode(&input.inputs)?,
-                encode(&rendered.messages)?,
+                maybe_seal(encode(&input.inputs)?, seal_key.as_deref())?,
+                maybe_seal(encode(&rendered.messages)?, seal_key.as_deref())?,
                 started,
                 cache_key,
             ],
         )
         .map_err(|error| db_err("failed to create prompt run", error))?;
-        (rendered, request)
-    };
+    }
     let result = adapter.execute(request, cancel, &run_id, sink).await;
     let completed = now_millis();
     let (status, output, error, usage) = match result {
@@ -925,14 +1053,18 @@ pub async fn execute_run(
     let conn = pool
         .get()
         .map_err(|error| AppError::io(format!("failed to acquire database connection: {error}")))?;
+    let stored_output = match (output, seal_key.as_deref()) {
+        (Some(text), Some(key)) => Some(crate::services::security::encrypt(&text, key)?),
+        (text, _) => text,
+    };
     conn.execute(
         "UPDATE prompt_runs SET output=?1,status=?2,error=?3,completed_at=?4,duration_ms=?5,usage=?6 WHERE id=?7",
-        params![output, status, error, completed, completed - started, usage, run_id],
+        params![stored_output, status, error, completed, completed - started, usage, run_id],
     )
     .map_err(|error| db_err("failed to complete prompt run", error))?;
     sink.emit_run_terminal(&run_id, status);
     let _ = rendered;
-    get_run(&conn, &run_id)
+    get_run(&conn, encryption, &run_id)
 }
 
 fn evaluator_by_id(conn: &Connection, id: &str) -> Result<EvaluatorConfig, AppError> {
@@ -944,6 +1076,44 @@ fn evaluator_by_id(conn: &Connection, id: &str) -> Result<EvaluatorConfig, AppEr
     .optional()
     .map_err(|error| db_err("failed to read evaluator", error))?
     .ok_or_else(|| AppError::not_found(format!("evaluator `{id}` not found")))
+}
+
+/// Marks leftover `running` prompt runs, evaluation cells, and evaluation runs
+/// as `error` after an unexpected process exit.
+pub fn finalize_interrupted_runs(conn: &Connection) -> Result<(), AppError> {
+    let now = now_millis();
+    let tx = conn
+        .unchecked_transaction()
+        .map_err(|error| db_err("failed to start interrupted-run finalization", error))?;
+    tx.execute(
+        "UPDATE prompt_runs
+         SET status = 'error',
+             error = 'interrupted by application restart',
+             completed_at = ?1,
+             duration_ms = COALESCE(duration_ms, ?1 - started_at)
+         WHERE status = 'running'",
+        [now],
+    )
+    .map_err(|error| db_err("failed to finalize interrupted prompt runs", error))?;
+    tx.execute(
+        "UPDATE evaluation_cells
+         SET status = 'error',
+             error = 'interrupted by application restart'
+         WHERE status = 'running'",
+        [],
+    )
+    .map_err(|error| db_err("failed to finalize interrupted evaluation cells", error))?;
+    tx.execute(
+        "UPDATE evaluation_runs
+         SET status = 'error',
+             completed_at = COALESCE(completed_at, ?1)
+         WHERE status = 'running'",
+        [now],
+    )
+    .map_err(|error| db_err("failed to finalize interrupted evaluation runs", error))?;
+    tx.commit()
+        .map_err(|error| db_err("failed to commit interrupted-run finalization", error))?;
+    Ok(())
 }
 
 fn cache_key(
@@ -1521,6 +1691,17 @@ mod tests {
         fn emit_matrix_progress(&self, _id: &str, _completed: i64, _total: i64, _cell: &str) {}
     }
 
+    struct CancelOnFirstProgress {
+        token: CancellationToken,
+    }
+    impl EvaluationEventSink for CancelOnFirstProgress {
+        fn emit_run_chunk(&self, _run_id: &str, _chunk: &str) {}
+        fn emit_run_terminal(&self, _run_id: &str, _status: &str) {}
+        fn emit_matrix_progress(&self, _id: &str, _completed: i64, _total: i64, _cell: &str) {
+            self.token.cancel();
+        }
+    }
+
     struct FlakyAdapter(AtomicBool);
     impl ProviderAdapter for FlakyAdapter {
         fn execute<'a>(
@@ -1582,6 +1763,120 @@ mod tests {
             .unwrap();
         drop(conn);
         (pool, encryption, revision)
+    }
+
+    fn table_count(conn: &Connection, table: &str) -> i64 {
+        conn.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+            row.get(0)
+        })
+        .unwrap()
+    }
+
+    fn mock_profile(
+        conn: &Connection,
+        encryption: &Mutex<EncryptionState>,
+    ) -> ExecutionProfileRevision {
+        create_profile(
+            conn,
+            encryption,
+            ExecutionProfileInput {
+                profile_id: None,
+                name: "Mock".into(),
+                provider: "mock".into(),
+                endpoint: None,
+                model: "deterministic".into(),
+                parameters: json!({ "response": "yes" }),
+                credential: None,
+            },
+        )
+        .unwrap()
+    }
+
+    fn named_case_set(conn: &Connection, name: &str, case_count: usize) -> TestSet {
+        save_test_set(
+            conn,
+            TestSetInput {
+                id: None,
+                name: name.into(),
+                cases: (0..case_count)
+                    .map(|index| TestCaseInput {
+                        id: None,
+                        name: format!("Case {index}"),
+                        inputs: BTreeMap::from([("name".into(), "Ada".into())]),
+                        expected_output: Some("yes".into()),
+                        annotations: json!({}),
+                    })
+                    .collect(),
+            },
+        )
+        .unwrap()
+    }
+
+    fn evaluator(conn: &Connection, name: &str, kind: &str, config: Value) -> EvaluatorConfig {
+        create_evaluator(
+            conn,
+            EvaluatorInput {
+                name: name.into(),
+                kind: kind.into(),
+                config,
+            },
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn finalize_interrupted_runs_clears_leftover_running_rows() {
+        let (pool, _encryption, revision) = setup();
+        let conn = pool.get().unwrap();
+        let test_set = named_case_set(&conn, "Stuck", 1);
+        conn.execute(
+            "INSERT INTO prompt_runs (id, prompt_revision_id, profile_revision_id, status, started_at)
+             VALUES ('run-stuck', ?1, 'profile', 'running', 0)",
+            [&revision.id],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO evaluation_runs (id, test_set_id, prompt_revision_ids, profile_revision_ids, evaluator_ids, status, total_cells, started_at, runtime_version)
+             VALUES ('er-stuck', ?1, '[]', '[]', '[]', 'running', 1, 0, 'evaluation-v1')",
+            [&test_set.id],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO evaluation_cells (id, evaluation_run_id, prompt_revision_id, profile_revision_id, test_case_id, status, cache_key, sort_order)
+             VALUES ('cell-stuck', 'er-stuck', ?1, 'profile', 'case', 'running', 'k', 0)",
+            [&revision.id],
+        )
+        .unwrap();
+
+        finalize_interrupted_runs(&conn).unwrap();
+
+        let run_status: String = conn
+            .query_row(
+                "SELECT status FROM prompt_runs WHERE id = 'run-stuck'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let cell_status: String = conn
+            .query_row(
+                "SELECT status FROM evaluation_cells WHERE id = 'cell-stuck'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let eval_status: String = conn
+            .query_row(
+                "SELECT status FROM evaluation_runs WHERE id = 'er-stuck'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_ne!(run_status, "running");
+        assert_ne!(cell_status, "running");
+        assert_ne!(eval_status, "running");
+        assert_eq!(run_status, "error");
+        assert_eq!(cell_status, "error");
+        assert_eq!(eval_status, "error");
     }
 
     #[test]
@@ -2172,9 +2467,698 @@ mod tests {
                 .len(),
             2
         );
-        assert_eq!(list_runs(&conn).unwrap().len(), 3);
+        assert_eq!(list_runs(&conn, &encryption).unwrap().len(), 3);
         assert_eq!(list_evaluation_runs(&conn).unwrap().len(), 1);
-        assert_eq!(get_run(&conn, &playground.id).unwrap().status, "success");
+        assert_eq!(
+            get_run(&conn, &encryption, &playground.id).unwrap().status,
+            "success"
+        );
+    }
+
+    #[test]
+    fn label_rejects_invalid_label_action_foreign_and_unevaluated_revisions() {
+        let (pool, _encryption, revision) = setup();
+        let conn = pool.get().unwrap();
+        let other = prompt::create(
+            &conn,
+            PromptCreate {
+                title: "Other".into(),
+                user_prompt: "body".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let other_revision = crate::services::version::list(&conn, &other.id)
+            .unwrap()
+            .pop()
+            .unwrap();
+        let labels_before = table_count(&conn, "prompt_labels");
+        let history_before = table_count(&conn, "prompt_label_history");
+
+        let invalid_label =
+            move_label(&conn, &revision.prompt_id, "prod", &revision.id, "move").unwrap_err();
+        assert_eq!(invalid_label.code_str(), "VALIDATION");
+
+        let invalid_action = move_label(
+            &conn,
+            &revision.prompt_id,
+            "candidate",
+            &revision.id,
+            "assign",
+        )
+        .unwrap_err();
+        assert_eq!(invalid_action.code_str(), "VALIDATION");
+
+        let foreign = move_label(
+            &conn,
+            &revision.prompt_id,
+            "candidate",
+            &other_revision.id,
+            "move",
+        )
+        .unwrap_err();
+        assert_eq!(foreign.code_str(), "NOT_FOUND");
+
+        let unevaluated = move_label(
+            &conn,
+            &revision.prompt_id,
+            "candidate",
+            &revision.id,
+            "move",
+        )
+        .unwrap_err();
+        assert_eq!(unevaluated.code_str(), "VALIDATION");
+
+        assert_eq!(table_count(&conn, "prompt_labels"), labels_before);
+        assert_eq!(table_count(&conn, "prompt_label_history"), history_before);
+    }
+
+    #[tokio::test]
+    async fn label_move_and_rollback_append_history_without_rewriting_prompt_rows() {
+        let (pool, encryption, first_revision) = setup();
+        let (second_revision, profile, test_set, evaluator) = {
+            let conn = pool.get().unwrap();
+            let second_revision = crate::services::version::create(
+                &conn,
+                &first_revision.prompt_id,
+                Some("candidate".into()),
+            )
+            .unwrap();
+            let profile = mock_profile(&conn, &encryption);
+            let test_set = named_case_set(&conn, "Labels", 1);
+            let evaluator = evaluator(&conn, "Exact", "exact", json!({}));
+            (second_revision, profile, test_set, evaluator)
+        };
+        run_matrix(
+            &pool,
+            &encryption,
+            &DefaultProviderAdapter,
+            EvaluationMatrixInput {
+                test_set_id: test_set.id,
+                prompt_revision_ids: vec![first_revision.id.clone(), second_revision.id.clone()],
+                profile_revision_ids: vec![profile.id],
+                evaluator_ids: vec![evaluator.id],
+            },
+            &CancellationToken::new(),
+            &Sink,
+        )
+        .await
+        .unwrap();
+
+        let conn = pool.get().unwrap();
+        let prompt_before = prompt::get(&conn, &first_revision.prompt_id).unwrap();
+        let versions_before =
+            crate::services::version::list(&conn, &first_revision.prompt_id).unwrap();
+        let history_before = table_count(&conn, "prompt_label_history");
+
+        move_label(
+            &conn,
+            &first_revision.prompt_id,
+            "candidate",
+            &first_revision.id,
+            "move",
+        )
+        .unwrap();
+        move_label(
+            &conn,
+            &first_revision.prompt_id,
+            "candidate",
+            &second_revision.id,
+            "move",
+        )
+        .unwrap();
+        let rolled = move_label(
+            &conn,
+            &first_revision.prompt_id,
+            "candidate",
+            &first_revision.id,
+            "rollback",
+        )
+        .unwrap();
+        assert_eq!(rolled.prompt_revision_id, first_revision.id);
+
+        let history = label_history(&conn, &first_revision.prompt_id).unwrap();
+        assert_eq!(history.len(), history_before as usize + 3);
+        assert!(history.iter().any(|entry| entry.action == "rollback"));
+        assert_eq!(
+            prompt::get(&conn, &first_revision.prompt_id).unwrap(),
+            prompt_before
+        );
+        assert_eq!(
+            crate::services::version::list(&conn, &first_revision.prompt_id).unwrap(),
+            versions_before
+        );
+    }
+
+    #[tokio::test]
+    async fn manual_result_stays_skipped_until_reviewed_and_rejects_bad_cells() {
+        let (pool, encryption, revision) = setup();
+        let missing = set_manual_result(
+            &pool.get().unwrap(),
+            "missing-cell",
+            "missing-evaluator",
+            true,
+            "ok",
+        )
+        .unwrap_err();
+        assert_eq!(missing.code_str(), "NOT_FOUND");
+
+        let (profile, test_set, exact, manual) = {
+            let conn = pool.get().unwrap();
+            (
+                mock_profile(&conn, &encryption),
+                named_case_set(&conn, "Manual", 1),
+                evaluator(&conn, "Exact", "exact", json!({})),
+                evaluator(&conn, "Human", "manual", json!({})),
+            )
+        };
+        let detail = run_matrix(
+            &pool,
+            &encryption,
+            &DefaultProviderAdapter,
+            EvaluationMatrixInput {
+                test_set_id: test_set.id,
+                prompt_revision_ids: vec![revision.id],
+                profile_revision_ids: vec![profile.id],
+                evaluator_ids: vec![exact.id.clone(), manual.id.clone()],
+            },
+            &CancellationToken::new(),
+            &Sink,
+        )
+        .await
+        .unwrap();
+        let cell = &detail.cells[0];
+        let manual_result = cell
+            .results
+            .iter()
+            .find(|result| result.evaluator_id == manual.id)
+            .unwrap();
+        assert!(manual_result.skipped);
+        assert_eq!(manual_result.passed, None);
+        let results_before = cell.results.clone();
+
+        let conn = pool.get().unwrap();
+        let non_manual = set_manual_result(&conn, &cell.id, &exact.id, true, "ok").unwrap_err();
+        assert_eq!(non_manual.code_str(), "VALIDATION");
+        let unchanged = get_evaluation_run(&conn, &detail.run.id)
+            .unwrap()
+            .cells
+            .into_iter()
+            .find(|item| item.id == cell.id)
+            .unwrap();
+        assert_eq!(unchanged.results, results_before);
+
+        let reviewed = set_manual_result(&conn, &cell.id, &manual.id, true, "looks good").unwrap();
+        let stored = reviewed
+            .results
+            .iter()
+            .find(|result| result.evaluator_id == manual.id)
+            .unwrap();
+        assert!(!stored.skipped);
+        assert_eq!(stored.passed, Some(true));
+    }
+
+    #[tokio::test]
+    async fn cancelled_run_and_matrix_cells_persist_cancelled() {
+        let (pool, encryption, revision) = setup();
+        let (profile, test_set, evaluator) = {
+            let conn = pool.get().unwrap();
+            (
+                mock_profile(&conn, &encryption),
+                named_case_set(&conn, "Cancel", 2),
+                evaluator(&conn, "Exact", "exact", json!({})),
+            )
+        };
+        let cancelled = CancellationToken::new();
+        cancelled.cancel();
+        let run = execute_run(
+            &pool,
+            &encryption,
+            &DefaultProviderAdapter,
+            PromptRunInput {
+                prompt_revision_id: revision.id.clone(),
+                profile_revision_id: profile.id.clone(),
+                inputs: BTreeMap::from([("name".into(), "Ada".into())]),
+                test_case_id: None,
+            },
+            None,
+            &cancelled,
+            &Sink,
+        )
+        .await
+        .unwrap();
+        assert_eq!(run.status, "cancelled");
+        assert!(run.error.is_none());
+        {
+            let conn = pool.get().unwrap();
+            let stored = get_run(&conn, &encryption, &run.id).unwrap();
+            assert_eq!(stored.status, "cancelled");
+            assert!(stored.error.is_none());
+        }
+
+        let token = CancellationToken::new();
+        let detail = run_matrix(
+            &pool,
+            &encryption,
+            &DefaultProviderAdapter,
+            EvaluationMatrixInput {
+                test_set_id: test_set.id,
+                prompt_revision_ids: vec![revision.id],
+                profile_revision_ids: vec![profile.id],
+                evaluator_ids: vec![evaluator.id],
+            },
+            &token,
+            &CancelOnFirstProgress {
+                token: token.clone(),
+            },
+        )
+        .await
+        .unwrap();
+        let persisted = {
+            let conn = pool.get().unwrap();
+            get_evaluation_run(&conn, &detail.run.id).unwrap()
+        };
+        assert_eq!(persisted.run.status, "cancelled");
+        assert_eq!(
+            persisted
+                .cells
+                .iter()
+                .filter(|cell| cell.status == "success")
+                .count(),
+            1
+        );
+        assert_eq!(
+            persisted
+                .cells
+                .iter()
+                .filter(|cell| cell.status == "cancelled")
+                .count(),
+            1
+        );
+        assert!(persisted
+            .cells
+            .iter()
+            .all(|cell| cell.status != "error" && cell.status != "running"));
+    }
+
+    #[test]
+    fn create_profile_with_credential_while_locked_is_unauthorized() {
+        let pool = create_memory_pool().unwrap();
+        let conn = pool.get().unwrap();
+        init_schema(&conn).unwrap();
+        let encryption = Mutex::new(EncryptionState::default());
+        crate::services::security::set_master_password(&conn, &encryption, "password123").unwrap();
+        crate::services::security::lock(&encryption).unwrap();
+        let before = table_count(&conn, "execution_profile_revisions");
+
+        let err = create_profile(
+            &conn,
+            &encryption,
+            ExecutionProfileInput {
+                profile_id: None,
+                name: "Remote".into(),
+                provider: "openai-compatible".into(),
+                endpoint: Some("https://example.com/v1/chat/completions".into()),
+                model: "model".into(),
+                parameters: json!({}),
+                credential: Some("secret-token".into()),
+            },
+        )
+        .unwrap_err();
+        assert_eq!(err.code_str(), "UNAUTHORIZED");
+        assert_eq!(table_count(&conn, "execution_profile_revisions"), before);
+    }
+
+    #[tokio::test]
+    async fn execute_run_with_credential_while_locked_is_unauthorized_and_writes_nothing() {
+        let (pool, encryption, revision) = setup();
+        let profile = {
+            let conn = pool.get().unwrap();
+            crate::services::security::set_master_password(&conn, &encryption, "password123")
+                .unwrap();
+            create_profile(
+                &conn,
+                &encryption,
+                ExecutionProfileInput {
+                    profile_id: None,
+                    name: "Remote".into(),
+                    provider: "openai-compatible".into(),
+                    endpoint: Some("https://example.com/v1/chat/completions".into()),
+                    model: "model".into(),
+                    parameters: json!({}),
+                    credential: Some("secret-token".into()),
+                },
+            )
+            .unwrap()
+        };
+        crate::services::security::lock(&encryption).unwrap();
+        let before = {
+            let conn = pool.get().unwrap();
+            table_count(&conn, "prompt_runs")
+        };
+        let err = execute_run(
+            &pool,
+            &encryption,
+            &DefaultProviderAdapter,
+            PromptRunInput {
+                prompt_revision_id: revision.id,
+                profile_revision_id: profile.id,
+                inputs: BTreeMap::from([("name".into(), "Ada".into())]),
+                test_case_id: None,
+            },
+            None,
+            &CancellationToken::new(),
+            &Sink,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(err.code_str(), "UNAUTHORIZED");
+        let after = {
+            let conn = pool.get().unwrap();
+            table_count(&conn, "prompt_runs")
+        };
+        assert_eq!(after, before);
+    }
+
+    #[tokio::test]
+    async fn execute_run_blocks_loopback_openai_endpoint_without_network() {
+        let (pool, encryption, revision) = setup();
+        for endpoint in ["http://127.0.0.1/", "http://localhost/"] {
+            let profile = {
+                let conn = pool.get().unwrap();
+                create_profile(
+                    &conn,
+                    &encryption,
+                    ExecutionProfileInput {
+                        profile_id: None,
+                        name: format!("Blocked {endpoint}"),
+                        provider: "openai-compatible".into(),
+                        endpoint: Some(endpoint.into()),
+                        model: "model".into(),
+                        parameters: json!({}),
+                        credential: None,
+                    },
+                )
+                .unwrap()
+            };
+            let before = {
+                let conn = pool.get().unwrap();
+                table_count(&conn, "prompt_runs")
+            };
+            let err = execute_run(
+                &pool,
+                &encryption,
+                &DefaultProviderAdapter,
+                PromptRunInput {
+                    prompt_revision_id: revision.id.clone(),
+                    profile_revision_id: profile.id,
+                    inputs: BTreeMap::from([("name".into(), "Ada".into())]),
+                    test_case_id: None,
+                },
+                None,
+                &CancellationToken::new(),
+                &Sink,
+            )
+            .await
+            .unwrap_err();
+            assert_eq!(err.code_str(), "SSRF_BLOCKED");
+            let after = {
+                let conn = pool.get().unwrap();
+                table_count(&conn, "prompt_runs")
+            };
+            assert_eq!(after, before);
+        }
+    }
+
+    async fn serve_recorded_http(
+        response: Vec<u8>,
+    ) -> (
+        std::net::SocketAddr,
+        tokio::sync::oneshot::Receiver<Vec<u8>>,
+        tokio::task::JoinHandle<()>,
+    ) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        let handle = tokio::spawn(async move {
+            let Ok((mut socket, _)) = listener.accept().await else {
+                return;
+            };
+            let mut buf = Vec::new();
+            let mut tmp = [0u8; 1024];
+            loop {
+                match tokio::io::AsyncReadExt::read(&mut socket, &mut tmp).await {
+                    Ok(0) | Err(_) => break,
+                    Ok(n) => {
+                        buf.extend_from_slice(&tmp[..n]);
+                        if buf.windows(4).any(|window| window == b"\r\n\r\n") {
+                            break;
+                        }
+                    }
+                }
+            }
+            let _ = tokio::io::AsyncWriteExt::write_all(&mut socket, &response).await;
+            let _ = tx.send(buf);
+        });
+        (addr, rx, handle)
+    }
+
+    fn header_has_authorization(headers: &[u8]) -> bool {
+        let text = String::from_utf8_lossy(headers).to_ascii_lowercase();
+        text.contains("authorization:")
+    }
+
+    #[tokio::test]
+    async fn execute_openai_omits_authorization_on_cross_host_redirect() {
+        let sse = b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\n\r\ndata: {\"choices\":[{\"delta\":{\"content\":\"ok\"}}]}\n\ndata: [DONE]\n\n";
+        let (second_addr, second_rx, second_handle) = serve_recorded_http(sse.to_vec()).await;
+        let location = format!(
+            "http://localhost:{}/v1/chat/completions",
+            second_addr.port()
+        );
+        let redirect =
+            format!("HTTP/1.1 302 Found\r\nLocation: {location}\r\nContent-Length: 0\r\n\r\n");
+        let (first_addr, first_rx, first_handle) = serve_recorded_http(redirect.into_bytes()).await;
+
+        let output = execute_openai(
+            ProviderRequest {
+                provider: "openai-compatible".into(),
+                endpoint: Some(format!(
+                    "http://127.0.0.1:{}/v1/chat/completions",
+                    first_addr.port()
+                )),
+                model: "model".into(),
+                parameters: json!({}),
+                credential: Some("secret-token".into()),
+                messages: vec![PromptMessage {
+                    role: "user".into(),
+                    content: "Hi".into(),
+                }],
+            },
+            &CancellationToken::new(),
+            "redirect-auth",
+            &Sink,
+            true,
+        )
+        .await
+        .unwrap();
+        assert_eq!(output.content, "ok");
+
+        let first_headers = first_rx.await.unwrap();
+        let second_headers = second_rx.await.unwrap();
+        assert!(
+            header_has_authorization(&first_headers),
+            "first hop must send Authorization, got {}",
+            String::from_utf8_lossy(&first_headers)
+        );
+        assert!(
+            !header_has_authorization(&second_headers),
+            "cross-host hop must omit Authorization, got {}",
+            String::from_utf8_lossy(&second_headers)
+        );
+        first_handle.abort();
+        second_handle.abort();
+    }
+
+    #[tokio::test]
+    async fn evaluation_input_validation_writes_nothing() {
+        let (pool, encryption, revision) = setup();
+        let conn = pool.get().unwrap();
+        let sets_before = table_count(&conn, "test_sets");
+        let cases_before = table_count(&conn, "test_cases");
+        let evaluators_before = table_count(&conn, "evaluator_configs");
+        let profiles_before = table_count(&conn, "execution_profile_revisions");
+        let runs_before = table_count(&conn, "evaluation_runs");
+        let cells_before = table_count(&conn, "evaluation_cells");
+
+        let empty_name = save_test_set(
+            &conn,
+            TestSetInput {
+                id: None,
+                name: "  ".into(),
+                cases: vec![],
+            },
+        )
+        .unwrap_err();
+        assert_eq!(empty_name.code_str(), "VALIDATION");
+
+        let too_many = save_test_set(
+            &conn,
+            TestSetInput {
+                id: None,
+                name: "Huge".into(),
+                cases: (0..1001)
+                    .map(|index| TestCaseInput {
+                        id: None,
+                        name: format!("c{index}"),
+                        inputs: BTreeMap::new(),
+                        expected_output: None,
+                        annotations: json!({}),
+                    })
+                    .collect(),
+            },
+        )
+        .unwrap_err();
+        assert_eq!(too_many.code_str(), "VALIDATION");
+
+        let empty_case = save_test_set(
+            &conn,
+            TestSetInput {
+                id: None,
+                name: "Cases".into(),
+                cases: vec![TestCaseInput {
+                    id: None,
+                    name: " ".into(),
+                    inputs: BTreeMap::new(),
+                    expected_output: None,
+                    annotations: json!({}),
+                }],
+            },
+        )
+        .unwrap_err();
+        assert_eq!(empty_case.code_str(), "VALIDATION");
+
+        let bad_annotations = save_test_set(
+            &conn,
+            TestSetInput {
+                id: None,
+                name: "Cases".into(),
+                cases: vec![TestCaseInput {
+                    id: None,
+                    name: "One".into(),
+                    inputs: BTreeMap::new(),
+                    expected_output: None,
+                    annotations: json!([]),
+                }],
+            },
+        )
+        .unwrap_err();
+        assert_eq!(bad_annotations.code_str(), "VALIDATION");
+
+        let empty_import = import_test_set(
+            &conn,
+            r#"{"id":"x","name":"","cases":[],"createdAt":"2026-01-01T00:00:00.000Z","updatedAt":"2026-01-01T00:00:00.000Z"}"#,
+        )
+        .unwrap_err();
+        assert_eq!(empty_import.code_str(), "VALIDATION");
+
+        let bad_kind = create_evaluator(
+            &conn,
+            EvaluatorInput {
+                name: "Odd".into(),
+                kind: "llm-judge".into(),
+                config: json!({}),
+            },
+        )
+        .unwrap_err();
+        assert_eq!(bad_kind.code_str(), "VALIDATION");
+
+        let bad_regex = create_evaluator(
+            &conn,
+            EvaluatorInput {
+                name: "Regex".into(),
+                kind: "regex".into(),
+                config: json!({ "pattern": "(" }),
+            },
+        )
+        .unwrap_err();
+        assert_eq!(bad_regex.code_str(), "VALIDATION");
+
+        let empty_profile = create_profile(
+            &conn,
+            &encryption,
+            ExecutionProfileInput {
+                profile_id: None,
+                name: " ".into(),
+                provider: "mock".into(),
+                endpoint: None,
+                model: "deterministic".into(),
+                parameters: json!({}),
+                credential: None,
+            },
+        )
+        .unwrap_err();
+        assert_eq!(empty_profile.code_str(), "VALIDATION");
+
+        assert_eq!(table_count(&conn, "test_sets"), sets_before);
+        assert_eq!(table_count(&conn, "test_cases"), cases_before);
+        assert_eq!(table_count(&conn, "evaluator_configs"), evaluators_before);
+        assert_eq!(
+            table_count(&conn, "execution_profile_revisions"),
+            profiles_before
+        );
+
+        drop(conn);
+        let empty_ids = run_matrix(
+            &pool,
+            &encryption,
+            &DefaultProviderAdapter,
+            EvaluationMatrixInput {
+                test_set_id: "missing".into(),
+                prompt_revision_ids: vec![],
+                profile_revision_ids: vec![],
+                evaluator_ids: vec![],
+            },
+            &CancellationToken::new(),
+            &Sink,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(empty_ids.code_str(), "VALIDATION");
+
+        let empty_set_id = {
+            let conn = pool.get().unwrap();
+            save_test_set(
+                &conn,
+                TestSetInput {
+                    id: None,
+                    name: "Empty".into(),
+                    cases: vec![],
+                },
+            )
+            .unwrap()
+            .id
+        };
+        let empty_set = run_matrix(
+            &pool,
+            &encryption,
+            &DefaultProviderAdapter,
+            EvaluationMatrixInput {
+                test_set_id: empty_set_id,
+                prompt_revision_ids: vec![revision.id],
+                profile_revision_ids: vec!["profile".into()],
+                evaluator_ids: vec!["evaluator".into()],
+            },
+            &CancellationToken::new(),
+            &Sink,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(empty_set.code_str(), "VALIDATION");
+
+        let conn = pool.get().unwrap();
+        assert_eq!(table_count(&conn, "evaluation_runs"), runs_before);
+        assert_eq!(table_count(&conn, "evaluation_cells"), cells_before);
     }
 
     #[tokio::test]
@@ -2200,9 +3184,137 @@ mod tests {
             &CancellationToken::new(),
             "live-smoke",
             &Sink,
+            false,
         )
         .await
         .unwrap();
         assert!(!output.content.trim().is_empty());
+    }
+
+    #[tokio::test]
+    async fn private_run_payloads_are_encrypted_redacted_while_locked_and_rekeyed() {
+        let pool = create_memory_pool().unwrap();
+        let encryption = Mutex::new(EncryptionState::default());
+        let (revision, profile) = {
+            let conn = pool.get().unwrap();
+            init_schema(&conn).unwrap();
+            crate::services::security::set_master_password(&conn, &encryption, "old-password")
+                .unwrap();
+            let prompt = prompt::create_secure(
+                &conn,
+                &encryption,
+                PromptCreate {
+                    title: "Private chat".into(),
+                    user_prompt: "classified body {{name}}".into(),
+                    variables: Some(vec![Variable {
+                        name: "name".into(),
+                        r#type: "text".into(),
+                        label: None,
+                        default_value: None,
+                        options: None,
+                        required: true,
+                    }]),
+                    is_private: Some(true),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            let revision = crate::services::version::list(&conn, &prompt.id)
+                .unwrap()
+                .pop()
+                .unwrap();
+            let profile = create_profile(
+                &conn,
+                &encryption,
+                ExecutionProfileInput {
+                    profile_id: None,
+                    name: "Mock".into(),
+                    provider: "mock".into(),
+                    endpoint: None,
+                    model: "deterministic".into(),
+                    parameters: json!({ "response": "classified-output" }),
+                    credential: None,
+                },
+            )
+            .unwrap();
+            (revision, profile)
+        };
+
+        let run = execute_run(
+            &pool,
+            &encryption,
+            &DefaultProviderAdapter,
+            PromptRunInput {
+                prompt_revision_id: revision.id.clone(),
+                profile_revision_id: profile.id.clone(),
+                inputs: BTreeMap::from([("name".into(), "Ada".into())]),
+                test_case_id: None,
+            },
+            None,
+            &CancellationToken::new(),
+            &Sink,
+        )
+        .await
+        .unwrap();
+        assert_eq!(run.output.as_deref(), Some("classified-output"));
+        assert_eq!(run.inputs.get("name").map(String::as_str), Some("Ada"));
+
+        let conn = pool.get().unwrap();
+        let (inputs, rendered, output): (String, String, Option<String>) = conn
+            .query_row(
+                "SELECT inputs, rendered_messages, output FROM prompt_runs WHERE id = ?1",
+                [&run.id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert!(inputs.starts_with("ENC::"));
+        assert!(rendered.starts_with("ENC::"));
+        assert!(output.as_deref().unwrap().starts_with("ENC::"));
+        assert!(!inputs.contains("Ada"));
+        assert!(!rendered.contains("classified body"));
+        assert!(!output.as_deref().unwrap().contains("classified-output"));
+
+        crate::services::security::lock(&encryption).unwrap();
+        let listed = list_runs(&conn, &encryption).unwrap();
+        let locked_run = listed.iter().find(|item| item.id == run.id).unwrap();
+        assert!(locked_run.inputs.is_empty());
+        assert!(locked_run.rendered_messages.is_empty());
+        assert!(locked_run.output.is_none());
+        assert!(!serde_json::to_string(locked_run)
+            .unwrap()
+            .contains("classified-output"));
+        let got = get_run(&conn, &encryption, &run.id).unwrap();
+        assert!(got.inputs.is_empty());
+        assert!(got.output.is_none());
+
+        crate::services::security::unlock(&conn, &encryption, "old-password").unwrap();
+        let old_key = crate::services::security::unlocked_key(&encryption)
+            .unwrap()
+            .unwrap();
+        crate::services::security::change_master_password(
+            &conn,
+            &encryption,
+            "old-password",
+            "new-password",
+        )
+        .unwrap();
+        let new_key = crate::services::security::unlocked_key(&encryption)
+            .unwrap()
+            .unwrap();
+        let output: String = conn
+            .query_row(
+                "SELECT output FROM prompt_runs WHERE id = ?1",
+                [&run.id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(crate::services::security::decrypt(&output, &old_key).is_err());
+        assert_eq!(
+            crate::services::security::decrypt(&output, &new_key).unwrap(),
+            "classified-output"
+        );
+        let opened = get_run(&conn, &encryption, &run.id).unwrap();
+        assert_eq!(opened.output.as_deref(), Some("classified-output"));
+        assert_eq!(opened.inputs.get("name").map(String::as_str), Some("Ada"));
     }
 }

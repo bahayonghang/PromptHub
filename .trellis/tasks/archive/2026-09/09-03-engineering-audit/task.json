@@ -1,0 +1,37 @@
+{
+  "id": "engineering-audit",
+  "name": "engineering-audit",
+  "title": "工程级代码审查整改",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "lyh",
+  "assignee": "lyh",
+  "createdAt": "2026-09-03",
+  "completedAt": "2026-09-04",
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "09-03-at-rest-crypto",
+    "09-03-webview-hardening",
+    "09-03-outbound-ssrf",
+    "09-03-sqlite-backup-fts",
+    "09-03-frontend-store-races",
+    "09-03-logging-error-taxonomy",
+    "09-03-library-eval-integrity"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "priority": "P0",
+    "description": "2026-09-03 deep first-party audit: classify findings and split independently completable child tasks. Parent is not an implementation target."
+  }
+}

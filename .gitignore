@@ -66,3 +66,6 @@ Desktop.ini
 .claude/
 .codex/
 .cursor/
+.omp/
+.grok/
+.kimi-code/

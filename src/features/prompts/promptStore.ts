@@ -14,6 +14,7 @@ import type {
   PortableExportResult,
   PortableImportResult,
   Prompt,
+  PromptListItem,
   PromptTypeDefinition,
   PromptVersion,
   SearchQuery,
@@ -70,8 +71,6 @@ export const DEFAULT_LIBRARY_COUNTS: LibraryCounts = {
   tags: {},
 };
 
-export const COUNT_QUERY_CONCURRENCY = 8;
-
 export const PROMPT_PAGE_SIZE = 50;
 
 export type SaveResult = { ok: true } | { ok: false; errors: Record<string, unknown> };
@@ -101,27 +100,8 @@ export function resolveLibraryScope(state: {
   return { kind: "all" };
 }
 
-async function runPool<T>(
-  items: readonly T[],
-  limit: number,
-  worker: (item: T) => Promise<void>,
-): Promise<void> {
-  if (items.length === 0) return;
-  let index = 0;
-  const runners = Array.from(
-    { length: Math.min(limit, items.length) },
-    async () => {
-      while (index < items.length) {
-        const current = items[index];
-        index += 1;
-        await worker(current);
-      }
-    },
-  );
-  await Promise.all(runners);
-}
-
 let countsGeneration = 0;
+let loadGeneration = 0;
 let searchGeneration = 0;
 let keywordTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -158,7 +138,7 @@ interface PromptStoreState {
   api: PromptApi;
 
   folders: Folder[];
-  prompts: Prompt[];
+  prompts: PromptListItem[];
   total: number;
   offset: number;
   tags: string[];
@@ -175,6 +155,8 @@ interface PromptStoreState {
   selectedPromptId: string | null;
   selectedPrompt: Prompt | null;
   selectedPromptIds: string[];
+  /** Overlay visibility; independent of `selectedPromptId`. */
+  detailOpen: boolean;
   /** Version history of the selected prompt (Req 7.1), ascending by version. */
   versions: PromptVersion[];
 
@@ -186,6 +168,8 @@ interface PromptStoreState {
   registerNavigationGuard: (guard: NavigationGuard | null) => void;
   registerDetailActions: (actions: DetailActions | null) => void;
   requestSelectPrompt: (id: string | null) => Promise<boolean>;
+  /** Hides the detail overlay without changing selection. */
+  closeDetail: () => void;
   createPromptAction: (() => void) | null;
   registerCreatePromptAction: (action: (() => void) | null) => void;
 
@@ -224,6 +208,11 @@ interface PromptStoreState {
     id: string,
     patch: Parameters<PromptApi["updatePrompt"]>[1],
   ) => Promise<Prompt | null>;
+  /**
+   * Increments usage after a successful clipboard write. Patches the list and
+   * selected prompt in place; does not reload search or set a view-level error.
+   */
+  incrementUsage: (id: string) => Promise<number | null>;
   /** Deletes a prompt and clears the selection if it was selected (Req 6.5). */
   deletePrompt: (id: string) => Promise<void>;
   duplicatePrompt: (id: string) => Promise<Prompt | null>;
@@ -285,6 +274,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
   selectedPromptId: null,
   selectedPrompt: null,
   selectedPromptIds: [],
+  detailOpen: false,
   versions: [],
 
   loading: false,
@@ -303,25 +293,45 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
       if (result === "cancel") return false;
     }
     await get().selectPrompt(id);
+    set({ detailOpen: id != null });
     return true;
   },
+  closeDetail: () => set({ detailOpen: false }),
 
   load: async () => {
     const { api, filters, offset } = get();
-    const sequence = ++searchGeneration;
+    const loadSeq = ++loadGeneration;
+    const searchSeq = ++searchGeneration;
+    const countSeq = ++countsGeneration;
     set({ loading: true, error: null });
     try {
-      const [folders, tags, promptTypeDefinitions, page] = await Promise.all([
-        api.listFolders(),
-        api.listTags(),
-        api.listPromptTypes(),
-        api.searchPrompts({
-          ...buildSearchQuery(filters),
-          limit: PROMPT_PAGE_SIZE,
-          offset,
-        }),
-      ]);
-      if (sequence === searchGeneration) {
+      const [folders, tags, promptTypeDefinitions, page, countsOutcome] =
+        await Promise.all([
+          api.listFolders(),
+          api.listTags(),
+          api.listPromptTypes(),
+          api.searchPrompts({
+            ...buildSearchQuery(filters),
+            limit: PROMPT_PAGE_SIZE,
+            offset,
+          }),
+          api
+            .countPrompts()
+            .then((counts) => ({ ok: true as const, counts }))
+            .catch(() => ({ ok: false as const })),
+        ]);
+      if (loadSeq !== loadGeneration) return;
+      const libraryCounts = countsOutcome.ok
+        ? {
+            views: {
+              all: countsOutcome.counts.total,
+              favorites: countsOutcome.counts.favorites,
+            },
+            folders: countsOutcome.counts.folders,
+            tags: countsOutcome.counts.tags,
+          }
+        : get().libraryCounts;
+      if (searchSeq === searchGeneration) {
         set({
           folders,
           tags,
@@ -329,13 +339,27 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
           prompts: page.items,
           total: page.total,
           offset: page.offset,
+          libraryCounts: countSeq === countsGeneration ? libraryCounts : get().libraryCounts,
+          countsLoading: false,
           loading: false,
+          error: null,
         });
       } else {
-        set({ folders, tags, promptTypeDefinitions, loading: false });
+        set({
+          folders,
+          tags,
+          promptTypeDefinitions,
+          libraryCounts: countSeq === countsGeneration ? libraryCounts : get().libraryCounts,
+          countsLoading: false,
+          loading: false,
+        });
       }
-      await get().refreshCounts();
     } catch (err) {
+      if (loadSeq !== loadGeneration) return;
+      if (searchSeq !== searchGeneration) {
+        set({ loading: false });
+        return;
+      }
       set({ error: errorMessage(err), loading: false });
     }
   },
@@ -360,7 +384,12 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
         });
       }
       if (sequence !== searchGeneration) return;
-      set({ prompts: page.items, total: page.total, offset: page.offset });
+      set({
+        prompts: page.items,
+        total: page.total,
+        offset: page.offset,
+        error: null,
+      });
     } catch (err) {
       if (sequence !== searchGeneration) return;
       set({ error: errorMessage(err) });
@@ -445,43 +474,23 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
 
   refreshCounts: async () => {
     const generation = ++countsGeneration;
-    const { api, folders, tags, libraryCounts } = get();
+    const { api, libraryCounts } = get();
     set({ countsLoading: true });
-    const next: LibraryCounts = {
-      views: { ...libraryCounts.views },
-      folders: { ...libraryCounts.folders },
-      tags: { ...libraryCounts.tags },
-    };
-    type Bucket =
-      | { kind: "view"; view: Exclude<SavedView, "recent">; query: SearchQuery }
-      | { kind: "folder"; id: string; query: SearchQuery }
-      | { kind: "tag"; tag: string; query: SearchQuery };
-    const buckets: Bucket[] = [
-      { kind: "view", view: "all", query: {} },
-      { kind: "view", view: "favorites", query: { isFavorite: true } },
-      ...folders.map((folder) => ({
-        kind: "folder" as const,
-        id: folder.id,
-        query: { folderId: folder.id },
-      })),
-      ...tags.map((tag) => ({
-        kind: "tag" as const,
-        tag,
-        query: { tags: [tag] },
-      })),
-    ];
-    await runPool(buckets, COUNT_QUERY_CONCURRENCY, async (bucket) => {
-      try {
-        const page = await api.searchPrompts({ ...bucket.query, limit: 1 });
-        if (bucket.kind === "view") next.views[bucket.view] = page.total;
-        else if (bucket.kind === "folder") next.folders[bucket.id] = page.total;
-        else next.tags[bucket.tag] = page.total;
-      } catch {
-        // Keep the previous count for this bucket.
-      }
-    });
-    if (generation !== countsGeneration) return;
-    set({ libraryCounts: next, countsLoading: false });
+    try {
+      const counts = await api.countPrompts();
+      if (generation !== countsGeneration) return;
+      set({
+        libraryCounts: {
+          views: { all: counts.total, favorites: counts.favorites },
+          folders: counts.folders,
+          tags: counts.tags,
+        },
+        countsLoading: false,
+      });
+    } catch {
+      if (generation !== countsGeneration) return;
+      set({ libraryCounts, countsLoading: false });
+    }
   },
 
   loadPreviousPage: async () => {
@@ -522,6 +531,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
       await get().refreshPrompts();
       await get().refreshCounts();
       await get().selectPrompt(prompt.id);
+      get().closeDetail();
       return prompt;
     } catch (err) {
       set({ error: errorMessage(err) });
@@ -550,13 +560,38 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
     }
   },
 
+  incrementUsage: async (id) => {
+    const { api } = get();
+    try {
+      const usage = await api.incrementUsage(id);
+      const { prompts, selectedPrompt } = get();
+      set({
+        prompts: prompts.map((prompt) =>
+          prompt.id === id ? { ...prompt, usageCount: usage.usageCount } : prompt,
+        ),
+        selectedPrompt:
+          selectedPrompt?.id === id
+            ? { ...selectedPrompt, usageCount: usage.usageCount }
+            : selectedPrompt,
+      });
+      return usage.usageCount;
+    } catch {
+      return null;
+    }
+  },
+
   deletePrompt: async (id) => {
     const { api } = get();
     set({ error: null });
     try {
       await api.deletePrompt(id);
       if (get().selectedPromptId === id) {
-        set({ selectedPromptId: null, selectedPrompt: null, versions: [] });
+        set({
+          selectedPromptId: null,
+          selectedPrompt: null,
+          versions: [],
+          detailOpen: false,
+        });
       }
       set({
         selectedPromptIds: get().selectedPromptIds.filter(
@@ -636,7 +671,12 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
       await get().api.batchDelete(ids);
       const selectedPromptId = get().selectedPromptId;
       if (selectedPromptId != null && ids.includes(selectedPromptId)) {
-        set({ selectedPromptId: null, selectedPrompt: null, versions: [] });
+        set({
+          selectedPromptId: null,
+          selectedPrompt: null,
+          versions: [],
+          detailOpen: false,
+        });
       }
       set({ selectedPromptIds: [] });
       await get().refreshPrompts();

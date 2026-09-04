@@ -1554,6 +1554,7 @@
     "copyPrompt": "クリップボードにコピー",
     "copyPromptNamed": "「{{title}}」をコピー",
     "copyPromptCopied": "コピーしました",
+    "copyPromptCopiedNamed": "「{{title}}」をコピーしました",
     "copyPromptFailed": "Prompt をコピーできませんでした",
     "copyPromptLocked": "プライベート内容をコピーするにはライブラリのロックを解除してください",
     "deletePrompt": "Prompt を削除",
@@ -1882,5 +1883,86 @@
     "duration": "Duration",
     "matrixRuns": "Matrix runs",
     "retry": "Retry failed cells"
+  },
+  "systemView": {
+    "window": {
+      "minimize": "最小化",
+      "maximize": "最大化",
+      "restore": "元に戻す",
+      "close": "閉じる",
+      "enterFullscreen": "全画面表示",
+      "exitFullscreen": "全画面を終了",
+      "closeActionTitle": "ウィンドウを閉じるとき",
+      "closeActionHint": "閉じるボタンをクリックしたときの動作を選びます。",
+      "closeAction": {
+        "ask": "毎回確認する",
+        "minimize": "トレイに最小化",
+        "exit": "アプリを終了"
+      },
+      "autoLaunch": "ログイン時に起動",
+      "autoLaunchHint": "パソコンにサインインしたとき、PromptHub を自動で起動します。"
+    },
+    "close": {
+      "title": "PromptHub を閉じますか？",
+      "message": "このまま実行、トレイに最小化、または終了できます。",
+      "cancel": "実行を続ける",
+      "minimize": "トレイに最小化",
+      "confirm": "終了"
+    },
+    "shortcuts": {
+      "title": "キーボードショートカット",
+      "hint": "最大 {{max}} 件まで登録できます。グローバルはどこでも、ローカルは PromptHub がフォーカスされているときだけ動作します。",
+      "empty": "ショートカットはまだありません。追加して始めましょう。",
+      "action": "アクション",
+      "actionPlaceholder": "アクション id（例: toggle-window）",
+      "accelerator": "ショートカット",
+      "acceleratorPlaceholder": "例: CmdOrCtrl+Shift+K",
+      "mode": "モード",
+      "modeGlobal": "グローバル",
+      "modeLocal": "ローカル",
+      "add": "ショートカットを追加",
+      "remove": "ショートカットを削除",
+      "save": "ショートカットを保存",
+      "lastTriggered": "最後に実行: {{action}}"
+    },
+    "notifications": {
+      "title": "通知",
+      "hint": "システム通知を送ります。タイトルは 256 文字、本文は 1000 文字までです。",
+      "titleLabel": "タイトル",
+      "bodyLabel": "本文",
+      "send": "テスト通知を送信",
+      "sent": "通知を送信しました。"
+    },
+    "updater": {
+      "title": "更新",
+      "hint": "アプリの更新を確認、ダウンロード、インストールします。",
+      "currentVersion": "現在のバージョン",
+      "check": "更新を確認",
+      "checking": "確認中…",
+      "upToDate": "最新バージョンです。",
+      "available": "バージョン {{version}} が利用できます。",
+      "download": "更新をダウンロード",
+      "downloading": "ダウンロード中…",
+      "downloadingPercent": "ダウンロード中… {{percent}}%",
+      "downloadingBytes": "ダウンロード中… {{downloaded}}",
+      "downloaded": "ダウンロードが完了しました。インストールすると次回起動時に適用されます。",
+      "install": "インストールして再起動",
+      "installing": "インストール中…",
+      "unavailable": "この実行環境では更新できません。"
+    },
+    "paths": {
+      "title": "実行時パス",
+      "platform": "プラットフォーム",
+      "data": "データディレクトリ",
+      "database": "データベースファイル",
+      "media": "メディアディレクトリ",
+      "rule": "ルールディレクトリ",
+      "backup": "バックアップディレクトリ",
+      "log": "ログディレクトリ",
+      "open": "ファイルマネージャーで開く",
+      "cache": "キャッシュ",
+      "clearCache": "キャッシュを消去",
+      "unavailable": "この実行環境ではウィンドウ操作を利用できません。"
+    }
   }
 }

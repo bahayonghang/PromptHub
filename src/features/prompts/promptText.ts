@@ -132,8 +132,11 @@ function formatLabeledBlock(label: string, content: string): string {
 
 /**
  * Builds paste-ready clipboard text. Chat mode (`messages.length > 0`) joins
- * labeled message blocks. Text mode emits `[System]` / `[User]` when a
- * non-whitespace system prompt exists, otherwise the user prompt only.
+ * labeled `[System]` / `[User]` / `[Assistant]` blocks when more than one role
+ * is present. A user-only message list copies the contents with no `[User]`
+ * label, matching text mode when the system prompt is absent. Text mode emits
+ * `[System]` / `[User]` when a non-whitespace system prompt exists, otherwise
+ * the user prompt only.
  */
 export function formatCopiedPrompt(parts: {
   systemPrompt?: string | null;
@@ -141,6 +144,9 @@ export function formatCopiedPrompt(parts: {
   messages: readonly { role: PromptMessageRole; content: string }[];
 }): string {
   if (parts.messages.length > 0) {
+    if (parts.messages.every((message) => message.role === "user")) {
+      return parts.messages.map((message) => message.content).join("\n\n");
+    }
     return parts.messages
       .map((message) =>
         formatLabeledBlock(COPY_ROLE_LABELS[message.role], message.content),

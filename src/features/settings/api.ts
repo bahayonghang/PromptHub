@@ -47,10 +47,14 @@ export interface SettingsApi {
   getDataPath(): Promise<string>;
   getDataStatus(): Promise<DataPathStatus>;
   previewDataChange(targetPath: string): Promise<PreviewResult>;
-  applyDataChange(targetPath: string, action: DataPathAction): Promise<ApplyResult>;
+  applyDataChange(
+    targetPath: string,
+    action: DataPathAction,
+    confirmToken: string,
+  ): Promise<ApplyResult>;
   recoveryScan(): Promise<RecoverySource[]>;
   recoveryPreview(sourcePath: string): Promise<RecoveryPreview>;
-  recoveryApply(sourcePath: string): Promise<ApplyResult>;
+  recoveryApply(sourcePath: string, confirmToken: string): Promise<ApplyResult>;
 
   // Sync transports (Req 17.1, 17.3, 17.13)
   testWebdav(config: WebDavConfig): Promise<ConnectionTestResult>;
@@ -90,13 +94,17 @@ export function createSettingsApi(bridge: RuntimeBridge = runtime): SettingsApi 
     getDataStatus: () => bridge.invoke<DataPathStatus>("data.getStatus"),
     previewDataChange: (targetPath) =>
       bridge.invoke<PreviewResult>("data.previewChange", { targetPath }),
-    applyDataChange: (targetPath, action) =>
-      bridge.invoke<ApplyResult>("data.applyChange", { targetPath, action }),
+    applyDataChange: (targetPath, action, confirmToken) =>
+      bridge.invoke<ApplyResult>("data.applyChange", {
+        targetPath,
+        action,
+        confirmToken,
+      }),
     recoveryScan: () => bridge.invoke<RecoverySource[]>("data.recoveryScan"),
     recoveryPreview: (sourcePath) =>
       bridge.invoke<RecoveryPreview>("data.recoveryPreview", { sourcePath }),
-    recoveryApply: (sourcePath) =>
-      bridge.invoke<ApplyResult>("data.recoveryApply", { sourcePath }),
+    recoveryApply: (sourcePath, confirmToken) =>
+      bridge.invoke<ApplyResult>("data.recoveryApply", { sourcePath, confirmToken }),
 
     testWebdav: (config) =>
       bridge.invoke<ConnectionTestResult>("webdav.test", { config }),

@@ -27,6 +27,8 @@ export interface SystemApi {
   maximizeWindow(): Promise<void>;
   restoreWindow(): Promise<void>;
   closeWindow(): Promise<void>;
+  quitWindow(): Promise<void>;
+  hideWindow(): Promise<void>;
   toggleVisibility(): Promise<void>;
   enterFullscreen(): Promise<void>;
   exitFullscreen(): Promise<void>;
@@ -70,6 +72,8 @@ export function createSystemApi(bridge: RuntimeBridge = runtime): SystemApi {
     maximizeWindow: () => bridge.invoke<void>("window.maximize"),
     restoreWindow: () => bridge.invoke<void>("window.restore"),
     closeWindow: () => bridge.invoke<void>("window.close"),
+    quitWindow: () => bridge.invoke<void>("window.quit"),
+    hideWindow: () => bridge.invoke<void>("window.hide"),
     toggleVisibility: () => bridge.invoke<void>("window.toggleVisibility"),
     enterFullscreen: () => bridge.invoke<void>("window.enterFullscreen"),
     exitFullscreen: () => bridge.invoke<void>("window.exitFullscreen"),

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { BridgeError } from "../../runtime";
 import {
   buildSearchQuery,
-  COUNT_QUERY_CONCURRENCY,
   DEFAULT_FILTERS,
   PROMPT_PAGE_SIZE,
   resolveLibraryScope,
@@ -9,14 +9,16 @@ import {
   usePromptStore,
   type PromptFilters,
 } from "./promptStore";
+import { createPromptApi } from "./api";
 import type { PromptApi } from "./api";
+import type { RuntimeBridge } from "../../runtime";
 import type {
   Folder,
   Prompt,
+  PromptCounts,
   PromptPage,
   PromptTypeDefinition,
   PromptVersion,
-  SearchQuery,
 } from "./types";
 
 function makePrompt(partial: Partial<Prompt> & { id: string }): Prompt {
@@ -61,6 +63,16 @@ function makePromptType(id = "type-1"): PromptTypeDefinition {
   };
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
+  return { promise, resolve, reject };
+}
+
 function makePage(items: Prompt[], total = items.length, offset = 0): PromptPage {
   return {
     items,
@@ -99,6 +111,12 @@ function makeApi(overrides: Partial<PromptApi> = {}): PromptApi {
     listPrompts: vi.fn(async () => []),
     getPrompt: vi.fn(async () => makePrompt({ id: "p1" })),
     searchPrompts: vi.fn(async () => makePage([])),
+    countPrompts: vi.fn(async () => ({
+      folders: {},
+      tags: {},
+      total: 0,
+      favorites: 0,
+    })),
     createPrompt: vi.fn(async () => makePrompt({ id: "new" })),
     updatePrompt: vi.fn(async () => makePrompt({ id: "p1" })),
     deletePrompt: vi.fn(async () => undefined),
@@ -112,6 +130,7 @@ function makeApi(overrides: Partial<PromptApi> = {}): PromptApi {
       messages: [],
       unexpanded: [],
     })),
+    incrementUsage: vi.fn(async (id) => ({ id, usageCount: 1 })),
     listReferences: vi.fn(async () => ({ outgoing: [], incoming: [] })),
     listPromptTypes: vi.fn(async () => []),
     createPromptType: vi.fn(async (input) => ({
@@ -177,6 +196,7 @@ function resetStore(api: PromptApi) {
     selectedPromptId: null,
     selectedPrompt: null,
     versions: [],
+    detailOpen: false,
     loading: false,
     error: null,
   });
@@ -237,6 +257,7 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
     expect(state.tags).toEqual(["t1"]);
     expect(state.promptTypeDefinitions).toEqual([makePromptType()]);
     expect(state.prompts.map((p) => p.id)).toEqual(["p1"]);
+    expect(api.searchPrompts).toHaveBeenCalledTimes(1);
     expect(api.searchPrompts).toHaveBeenCalledWith(
       {
         ...buildSearchQuery(DEFAULT_FILTERS),
@@ -244,6 +265,73 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
         offset: 0,
       },
     );
+    expect(api.countPrompts).toHaveBeenCalledTimes(1);
+  });
+
+  it("load() still applies the page when prompt.counts rejects", async () => {
+    const countPrompts = vi.fn(async () => {
+      throw new Error("unavailable");
+    });
+    const searchPrompts = vi.fn(async () => makePage([makePrompt({ id: "p1" })]));
+    resetStore(makeApi({ countPrompts, searchPrompts }));
+    usePromptStore.setState({
+      libraryCounts: { views: { all: 9, favorites: 3 }, folders: {}, tags: {} },
+    });
+
+    await usePromptStore.getState().load();
+
+    expect(usePromptStore.getState().prompts.map((item) => item.id)).toEqual([
+      "p1",
+    ]);
+    expect(usePromptStore.getState().libraryCounts.views.all).toBe(9);
+    expect(usePromptStore.getState().libraryCounts.views.favorites).toBe(3);
+    expect(usePromptStore.getState().error).toBeNull();
+  });
+
+  it("load() issues one counts command and one page search on a fake bridge", async () => {
+    const names: string[] = [];
+    const invoke = vi.fn(async (name: string) => {
+      names.push(name);
+      if (name === "prompt.search") {
+        return makePage([makePrompt({ id: "p1" })]);
+      }
+      if (name === "prompt.counts") {
+        return {
+          folders: { f1: 2 },
+          tags: { a: 1 },
+          total: 3,
+          favorites: 1,
+        } satisfies PromptCounts;
+      }
+      if (name === "folder.list") return [makeFolder("f1")];
+      if (name === "tag.list") return ["a"];
+      if (name === "promptType.list") return [];
+      return null;
+    });
+    const bridge: RuntimeBridge = {
+      capabilities: () => ({
+        appUpdate: true,
+        dataRecovery: true,
+        desktopWindowControls: true,
+      }),
+      invoke: invoke as RuntimeBridge["invoke"],
+      on: vi.fn(() => () => {}),
+    };
+    resetStore(createPromptApi(bridge));
+
+    await usePromptStore.getState().load();
+
+    expect(names.filter((name) => name === "prompt.search")).toEqual([
+      "prompt.search",
+    ]);
+    expect(names.filter((name) => name === "prompt.counts")).toEqual([
+      "prompt.counts",
+    ]);
+    expect(usePromptStore.getState().libraryCounts).toEqual({
+      views: { all: 3, favorites: 1 },
+      folders: { f1: 2 },
+      tags: { a: 1 },
+    });
   });
 
   it("setFilters() updates filters and re-runs the search (Req 5.4)", async () => {
@@ -353,16 +441,15 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
     ).toEqual({ kind: "all" });
   });
 
-  it("refreshCounts issues one limit-1 query per bucket and skips recent", async () => {
-    const queries: SearchQuery[] = [];
-    const searchPrompts = vi.fn(async (query: SearchQuery) => {
-      queries.push(query);
-      if (query.isFavorite) return makePage([], 4);
-      if (query.folderId === "f1") return makePage([], 12);
-      if (query.tags?.[0] === "a") return makePage([], 3);
-      return makePage([], 20);
-    });
-    resetStore(makeApi({ searchPrompts }));
+  it("refreshCounts issues one prompt.counts call", async () => {
+    const countPrompts = vi.fn(async () => ({
+      folders: { f1: 12 },
+      tags: { a: 3 },
+      total: 20,
+      favorites: 4,
+    }));
+    const searchPrompts = vi.fn(async () => makePage([]));
+    resetStore(makeApi({ countPrompts, searchPrompts }));
     usePromptStore.setState({
       folders: [makeFolder("f1")],
       tags: ["a"],
@@ -370,16 +457,8 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
 
     await usePromptStore.getState().refreshCounts();
 
-    expect(queries.every((query) => query.limit === 1)).toBe(true);
-    expect(queries.some((query) => query.sortBy === "updatedAt" && !query.folderId && !query.tags && !query.isFavorite && !query.keyword)).toBe(false);
-    expect(queries).toEqual(
-      expect.arrayContaining([
-        { limit: 1 },
-        { isFavorite: true, limit: 1 },
-        { folderId: "f1", limit: 1 },
-        { tags: ["a"], limit: 1 },
-      ]),
-    );
+    expect(countPrompts).toHaveBeenCalledTimes(1);
+    expect(searchPrompts).not.toHaveBeenCalled();
     expect(usePromptStore.getState().libraryCounts).toEqual({
       views: { all: 20, favorites: 4 },
       folders: { f1: 12 },
@@ -387,12 +466,11 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
     });
   });
 
-  it("keeps the prior count when a bucket query rejects", async () => {
-    const searchPrompts = vi.fn(async (query: SearchQuery) => {
-      if (query.isFavorite) throw new Error("unavailable");
-      return makePage([], 5);
+  it("keeps the prior counts when prompt.counts rejects", async () => {
+    const countPrompts = vi.fn(async () => {
+      throw new Error("unavailable");
     });
-    resetStore(makeApi({ searchPrompts }));
+    resetStore(makeApi({ countPrompts }));
     usePromptStore.setState({
       libraryCounts: { views: { all: 1, favorites: 9 }, folders: {}, tags: {} },
     });
@@ -400,7 +478,72 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
     await usePromptStore.getState().refreshCounts();
 
     expect(usePromptStore.getState().libraryCounts.views.favorites).toBe(9);
-    expect(usePromptStore.getState().libraryCounts.views.all).toBe(5);
+    expect(usePromptStore.getState().libraryCounts.views.all).toBe(1);
+  });
+
+  it("does not let a slower load overwrite newer folders, tags, and prompts", async () => {
+    const page1 = deferred<PromptPage>();
+    const page2 = deferred<PromptPage>();
+    let searches = 0;
+    const searchPrompts = vi.fn(() => {
+      searches += 1;
+      if (searches === 1) return page1.promise;
+      if (searches === 2) return page2.promise;
+      return Promise.resolve(makePage([]));
+    });
+    let folderCalls = 0;
+    const listFolders = vi.fn(async () => {
+      folderCalls += 1;
+      return folderCalls === 1 ? [makeFolder("old")] : [makeFolder("new")];
+    });
+    let tagCalls = 0;
+    const listTags = vi.fn(async () => {
+      tagCalls += 1;
+      return tagCalls === 1 ? ["old"] : ["new"];
+    });
+    resetStore(makeApi({ searchPrompts, listFolders, listTags }));
+
+    const first = usePromptStore.getState().load();
+    const second = usePromptStore.getState().load();
+    page2.resolve(makePage([makePrompt({ id: "new" })]));
+    await second;
+    page1.resolve(makePage([makePrompt({ id: "old" })]));
+    await first;
+
+    const state = usePromptStore.getState();
+    expect(state.folders.map((folder) => folder.id)).toEqual(["new"]);
+    expect(state.tags).toEqual(["new"]);
+    expect(state.prompts.map((item) => item.id)).toEqual(["new"]);
+  });
+
+  it("does not apply a slower load failure after a newer load succeeds", async () => {
+    const page1 = deferred<PromptPage>();
+    const page2 = deferred<PromptPage>();
+    let searches = 0;
+    const searchPrompts = vi.fn(() => {
+      searches += 1;
+      if (searches === 1) return page1.promise;
+      if (searches === 2) return page2.promise;
+      return Promise.resolve(makePage([]));
+    });
+    resetStore(makeApi({ searchPrompts }));
+
+    const first = usePromptStore.getState().load();
+    const second = usePromptStore.getState().load();
+    page2.resolve(makePage([makePrompt({ id: "new" })]));
+    await second;
+    page1.reject(new Error("stale load"));
+    await first;
+
+    expect(usePromptStore.getState().prompts.map((item) => item.id)).toEqual(["new"]);
+    expect(usePromptStore.getState().error).toBeNull();
+  });
+
+  it("clears error when refreshPrompts succeeds", async () => {
+    resetStore(makeApi());
+    usePromptStore.setState({ error: "stale search failed" });
+    await usePromptStore.getState().refreshPrompts();
+    expect(usePromptStore.getState().error).toBeNull();
   });
 
   it("discards an older refreshPrompts result that arrives last", async () => {
@@ -488,27 +631,23 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
     expect(usePromptStore.getState().filters).toEqual(DEFAULT_FILTERS);
   });
 
-  it("caps count refresh concurrency at 8", async () => {
+  it("refreshCounts does not issue a search per folder", async () => {
     const folders = Array.from({ length: 20 }, (_, index) => makeFolder(`f${index}`));
     const tags = Array.from({ length: 40 }, (_, index) => `t${index}`);
-    let inflight = 0;
-    let peak = 0;
-    const searchPrompts = vi.fn(async () => {
-      inflight += 1;
-      peak = Math.max(peak, inflight);
-      await Promise.resolve();
-      inflight -= 1;
-      return makePage([], 1);
-    });
-    resetStore(makeApi({ searchPrompts }));
+    const searchPrompts = vi.fn(async () => makePage([], 1));
+    const countPrompts = vi.fn(async () => ({
+      folders: Object.fromEntries(folders.map((folder) => [folder.id, 1])),
+      tags: Object.fromEntries(tags.map((tag) => [tag, 1])),
+      total: 20,
+      favorites: 0,
+    }));
+    resetStore(makeApi({ searchPrompts, countPrompts }));
     usePromptStore.setState({ folders, tags });
 
-    const started = Date.now();
     await usePromptStore.getState().refreshCounts();
-    const elapsedMs = Date.now() - started;
 
-    expect(peak).toBeLessThanOrEqual(COUNT_QUERY_CONCURRENCY);
-    expect(elapsedMs).toBeLessThan(200);
+    expect(countPrompts).toHaveBeenCalledTimes(1);
+    expect(searchPrompts).not.toHaveBeenCalled();
   });
 
   it("selectPrompt() loads the prompt's version history (Req 7.1)", async () => {
@@ -528,9 +667,41 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
     const ok = await usePromptStore.getState().requestSelectPrompt("p1");
     expect(ok).toBe(false);
     expect(usePromptStore.getState().selectedPromptId).toBeNull();
+    expect(usePromptStore.getState().detailOpen).toBe(false);
     usePromptStore.getState().registerNavigationGuard(async () => "proceed");
     const next = await usePromptStore.getState().requestSelectPrompt("p1");
     expect(next).toBe(true);
+    expect(usePromptStore.getState().selectedPromptId).toBe("p1");
+    expect(usePromptStore.getState().detailOpen).toBe(true);
+  });
+
+  it("requestSelectPrompt() sets detailOpen and selectPrompt() does not", async () => {
+    resetStore(makeApi());
+    await usePromptStore.getState().selectPrompt("p1");
+    expect(usePromptStore.getState().detailOpen).toBe(false);
+
+    usePromptStore.setState({ detailOpen: true });
+    await usePromptStore.getState().selectPrompt("p1");
+    expect(usePromptStore.getState().detailOpen).toBe(true);
+
+    const opened = await usePromptStore.getState().requestSelectPrompt("p1");
+    expect(opened).toBe(true);
+    expect(usePromptStore.getState().detailOpen).toBe(true);
+
+    const closed = await usePromptStore.getState().requestSelectPrompt(null);
+    expect(closed).toBe(true);
+    expect(usePromptStore.getState().selectedPromptId).toBeNull();
+    expect(usePromptStore.getState().detailOpen).toBe(false);
+  });
+
+  it("closeDetail() hides the overlay without changing selection", async () => {
+    resetStore(makeApi());
+    await usePromptStore.getState().selectPrompt("p1");
+    usePromptStore.setState({ detailOpen: true });
+
+    usePromptStore.getState().closeDetail();
+
+    expect(usePromptStore.getState().detailOpen).toBe(false);
     expect(usePromptStore.getState().selectedPromptId).toBe("p1");
   });
 
@@ -543,6 +714,7 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
         getPrompt: vi.fn(async () => created),
       }),
     );
+    usePromptStore.setState({ detailOpen: true });
 
     const result = await usePromptStore
       .getState()
@@ -550,6 +722,7 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
 
     expect(result).toEqual(created);
     expect(usePromptStore.getState().selectedPromptId).toBe("new");
+    expect(usePromptStore.getState().detailOpen).toBe(false);
   });
 
   it("savePrompt() surfaces a BridgeError message on failure (Req 3.5)", async () => {
@@ -569,14 +742,64 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
     expect(usePromptStore.getState().error).toBe("Prompt p9 not found");
   });
 
+  it("surfaces UNAUTHORIZED from create, update, and copy of locked private content", async () => {
+    const locked = new BridgeError(
+      "UNAUTHORIZED",
+      "unlock the prompt library to access private content",
+    );
+    const existing = [makePrompt({ id: "p1", title: "Public" })];
+    const searchPrompts = vi.fn(async () => makePage(existing));
+    resetStore(
+      makeApi({
+        searchPrompts,
+        createPrompt: vi.fn(async () => {
+          throw locked;
+        }),
+        updatePrompt: vi.fn(async () => {
+          throw locked;
+        }),
+        duplicatePrompt: vi.fn(async () => {
+          throw locked;
+        }),
+      }),
+    );
+    usePromptStore.setState({ prompts: existing, total: 1 });
+
+    const created = await usePromptStore.getState().createPrompt({
+      title: "Private",
+      userPrompt: "secret",
+      isPrivate: true,
+    });
+    expect(created).toBeNull();
+    expect(usePromptStore.getState().error).toBe(locked.message);
+    expect(usePromptStore.getState().prompts).toEqual(existing);
+    expect(searchPrompts).not.toHaveBeenCalled();
+
+    const updated = await usePromptStore
+      .getState()
+      .savePrompt("p1", { isPrivate: true });
+    expect(updated).toBeNull();
+    expect(usePromptStore.getState().error).toBe(locked.message);
+    expect(usePromptStore.getState().prompts).toEqual(existing);
+    expect(searchPrompts).not.toHaveBeenCalled();
+
+    const copied = await usePromptStore.getState().duplicatePrompt("p1");
+    expect(copied).toBeNull();
+    expect(usePromptStore.getState().error).toBe(locked.message);
+    expect(usePromptStore.getState().prompts).toEqual(existing);
+    expect(usePromptStore.getState().selectedPromptId).toBeNull();
+    expect(searchPrompts).not.toHaveBeenCalled();
+  });
+
   it("deletePrompt() clears the selection when the deleted prompt was selected (Req 6.5)", async () => {
     resetStore(makeApi());
-    usePromptStore.setState({ selectedPromptId: "p1" });
+    usePromptStore.setState({ selectedPromptId: "p1", detailOpen: true });
 
     await usePromptStore.getState().deletePrompt("p1");
 
     expect(usePromptStore.getState().selectedPromptId).toBeNull();
     expect(usePromptStore.getState().versions).toEqual([]);
+    expect(usePromptStore.getState().detailOpen).toBe(false);
   });
 
   it("createPromptType() refreshes definitions and returns the authoritative row", async () => {
@@ -616,6 +839,49 @@ describe("prompt store (Req 3.1, 5, 6, 7, 8)", () => {
 
     expect(reorder).toHaveBeenCalledWith(["b", "a"]);
     expect(listFolders).toHaveBeenCalled();
+  });
+
+  it("incrementUsage() patches list and selected usage without searching", async () => {
+    const incrementUsage = vi.fn(async () => ({ id: "p1", usageCount: 2 }));
+    const searchPrompts = vi.fn(async () => makePage([]));
+    resetStore(makeApi({ incrementUsage, searchPrompts }));
+    const p1 = makePrompt({ id: "p1", usageCount: 1 });
+    const p2 = makePrompt({ id: "p2", usageCount: 5 });
+    usePromptStore.setState({
+      prompts: [p1, p2],
+      selectedPromptId: "p1",
+      selectedPrompt: p1,
+    });
+
+    const count = await usePromptStore.getState().incrementUsage("p1");
+
+    expect(count).toBe(2);
+    expect(incrementUsage).toHaveBeenCalledWith("p1");
+    expect(searchPrompts).not.toHaveBeenCalled();
+    expect(usePromptStore.getState().prompts[0]?.usageCount).toBe(2);
+    expect(usePromptStore.getState().prompts[1]?.usageCount).toBe(5);
+    expect(usePromptStore.getState().selectedPrompt?.usageCount).toBe(2);
+    expect(usePromptStore.getState().error).toBeNull();
+  });
+
+  it("incrementUsage() returns null on failure without a view error", async () => {
+    const incrementUsage = vi.fn(async () => {
+      throw new BridgeError("NOT_FOUND", "prompt `p1` not found");
+    });
+    resetStore(makeApi({ incrementUsage }));
+    const p1 = makePrompt({ id: "p1", usageCount: 1 });
+    usePromptStore.setState({
+      prompts: [p1],
+      selectedPromptId: "p1",
+      selectedPrompt: p1,
+    });
+
+    const count = await usePromptStore.getState().incrementUsage("p1");
+
+    expect(count).toBeNull();
+    expect(usePromptStore.getState().error).toBeNull();
+    expect(usePromptStore.getState().prompts[0]?.usageCount).toBe(1);
+    expect(usePromptStore.getState().selectedPrompt?.usageCount).toBe(1);
   });
 
   it("rollbackVersion() reloads prompts and history (Req 7.3)", async () => {

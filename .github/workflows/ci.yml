@@ -1,0 +1,39 @@
+name: CI
+
+# Full gate on PRs into main or dev. Direct branch pushes do not run this workflow.
+on:
+  pull_request:
+    branches: [main, dev]
+
+concurrency:
+  group: ci-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    # Windows matches the development machine and needs no extra system
+    # libraries for the Tauri crates. A Linux runner would also need the
+    # Tauri v2 webkit2gtk packages.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: extractions/setup-just@v2
+
+      - name: Add Rust components
+        run: rustup component add clippy rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      # just ci = build, test, fmt-check, clippy, test-rust. See the justfile.
+      - run: just ci

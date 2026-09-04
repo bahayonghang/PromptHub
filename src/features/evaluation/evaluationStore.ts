@@ -24,9 +24,12 @@ function errorMessage(error: unknown): string {
   return String(error);
 }
 
-function requestId(): string {
+function createRequestId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `evaluation-${Date.now()}`;
 }
+
+let loadGeneration = 0;
+let labelsGeneration = 0;
 
 interface EvaluationStoreState {
   api: EvaluationApi;
@@ -38,7 +41,8 @@ interface EvaluationStoreState {
   selectedMatrix: EvaluationRunDetail | null;
   rendered: RenderedPrompt | null;
   streamedOutput: string;
-  activeRequestId: string | null;
+  playgroundRequestId: string | null;
+  matrixRequestId: string | null;
   progress: { completed: number; total: number } | null;
   labels: PromptLabel[];
   labelHistory: PromptLabelHistory[];
@@ -49,7 +53,7 @@ interface EvaluationStoreState {
   saveProfile: (input: ExecutionProfileInput) => Promise<ExecutionProfileRevision | null>;
   render: (revisionId: string, inputs: Record<string, string>) => Promise<void>;
   run: (input: PromptRunInput) => Promise<PromptRun | null>;
-  cancel: () => Promise<void>;
+  cancel: (scope?: "playground" | "matrix") => Promise<void>;
   saveTestSet: (input: TestSetInput) => Promise<TestSet | null>;
   importTestSet: (json: string) => Promise<TestSet | null>;
   exportTestSet: (id: string) => Promise<string | null>;
@@ -82,7 +86,8 @@ export const useEvaluationStore = create<EvaluationStoreState>((set, get) => ({
   selectedMatrix: null,
   rendered: null,
   streamedOutput: "",
-  activeRequestId: null,
+  playgroundRequestId: null,
+  matrixRequestId: null,
   progress: null,
   labels: [],
   labelHistory: [],
@@ -90,6 +95,7 @@ export const useEvaluationStore = create<EvaluationStoreState>((set, get) => ({
   error: null,
 
   load: async () => {
+    const sequence = ++loadGeneration;
     set({ loading: true, error: null });
     try {
       const [profiles, runs, testSets, evaluators, matrices] = await Promise.all([
@@ -99,20 +105,30 @@ export const useEvaluationStore = create<EvaluationStoreState>((set, get) => ({
         get().api.listEvaluators(),
         get().api.listMatrices(),
       ]);
-      set({ profiles, runs, testSets, evaluators, matrices, loading: false });
+      if (sequence !== loadGeneration) return;
+      set({
+        profiles,
+        runs,
+        testSets,
+        evaluators,
+        matrices,
+        loading: false,
+        error: null,
+      });
     } catch (error) {
+      if (sequence !== loadGeneration) return;
       set({ error: errorMessage(error), loading: false });
     }
   },
 
   subscribe: () => {
     const unsubscribeChunk = get().api.onRunChunk((event) => {
-      if (get().activeRequestId != null) {
+      if (event.requestId === get().playgroundRequestId) {
         set({ streamedOutput: get().streamedOutput + event.chunk });
       }
     });
     const unsubscribeProgress = get().api.onMatrixProgress((event) => {
-      if (get().activeRequestId != null) {
+      if (event.requestId === get().matrixRequestId) {
         set({ progress: { completed: event.completed, total: event.total } });
       }
     });
@@ -142,24 +158,30 @@ export const useEvaluationStore = create<EvaluationStoreState>((set, get) => ({
   },
 
   run: async (input) => {
-    const id = requestId();
-    set({ activeRequestId: id, streamedOutput: "", error: null });
+    const id = createRequestId();
+    set({ playgroundRequestId: id, streamedOutput: "", error: null });
     try {
       const run = await get().api.run(id, input);
+      if (get().playgroundRequestId !== id) return run;
+      const runs = await get().api.listRuns();
+      if (get().playgroundRequestId !== id) return run;
       set({
-        activeRequestId: null,
-        runs: await get().api.listRuns(),
+        playgroundRequestId: null,
+        runs,
         streamedOutput: run.output ?? get().streamedOutput,
+        error: run.status === "error" ? (run.error ?? "error") : null,
       });
       return run;
     } catch (error) {
-      set({ activeRequestId: null, error: errorMessage(error) });
+      if (get().playgroundRequestId !== id) return null;
+      set({ playgroundRequestId: null, error: errorMessage(error) });
       return null;
     }
   },
 
-  cancel: async () => {
-    const id = get().activeRequestId;
+  cancel: async (scope = "playground") => {
+    const id =
+      scope === "matrix" ? get().matrixRequestId : get().playgroundRequestId;
     if (id == null) return;
     try {
       await get().api.cancel(id);
@@ -211,38 +233,49 @@ export const useEvaluationStore = create<EvaluationStoreState>((set, get) => ({
   },
 
   runMatrix: async (input) => {
-    const id = requestId();
-    set({ activeRequestId: id, progress: { completed: 0, total: 0 }, error: null });
+    const id = createRequestId();
+    set({ matrixRequestId: id, progress: { completed: 0, total: 0 }, error: null });
     try {
       const detail = await get().api.runMatrix(id, input);
+      if (get().matrixRequestId !== id) return detail;
+      const [matrices, runs] = await Promise.all([
+        get().api.listMatrices(),
+        get().api.listRuns(),
+      ]);
+      if (get().matrixRequestId !== id) return detail;
       set({
-        activeRequestId: null,
+        matrixRequestId: null,
         progress: null,
         selectedMatrix: detail,
-        matrices: await get().api.listMatrices(),
-        runs: await get().api.listRuns(),
+        matrices,
+        runs,
       });
       return detail;
     } catch (error) {
-      set({ activeRequestId: null, progress: null, error: errorMessage(error) });
+      if (get().matrixRequestId !== id) return null;
+      set({ matrixRequestId: null, progress: null, error: errorMessage(error) });
       return null;
     }
   },
 
   retryMatrix: async (matrixId) => {
-    const id = requestId();
-    set({ activeRequestId: id, progress: { completed: 0, total: 0 }, error: null });
+    const id = createRequestId();
+    set({ matrixRequestId: id, progress: { completed: 0, total: 0 }, error: null });
     try {
       const detail = await get().api.retryMatrix(id, matrixId);
+      if (get().matrixRequestId !== id) return detail;
+      const matrices = await get().api.listMatrices();
+      if (get().matrixRequestId !== id) return detail;
       set({
-        activeRequestId: null,
+        matrixRequestId: null,
         progress: null,
         selectedMatrix: detail,
-        matrices: await get().api.listMatrices(),
+        matrices,
       });
       return detail;
     } catch (error) {
-      set({ activeRequestId: null, progress: null, error: errorMessage(error) });
+      if (get().matrixRequestId !== id) return null;
+      set({ matrixRequestId: null, progress: null, error: errorMessage(error) });
       return null;
     }
   },
@@ -266,13 +299,16 @@ export const useEvaluationStore = create<EvaluationStoreState>((set, get) => ({
   },
 
   loadLabels: async (promptId) => {
+    const sequence = ++labelsGeneration;
     try {
       const [labels, labelHistory] = await Promise.all([
         get().api.listLabels(promptId),
         get().api.labelHistory(promptId),
       ]);
-      set({ labels, labelHistory });
+      if (sequence !== labelsGeneration) return;
+      set({ labels, labelHistory, error: null });
     } catch (error) {
+      if (sequence !== labelsGeneration) return;
       set({ error: errorMessage(error) });
     }
   },

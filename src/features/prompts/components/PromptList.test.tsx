@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import i18n, { ensureBundle } from "../../../runtime/i18n";
 import { toLibraryItem } from "../libraryItem";
 import type { Prompt } from "../types";
+import { usePromptStore } from "../promptStore";
 import { PromptList } from "./PromptList";
 
 function itemsFrom(prompts: Prompt[]) {
@@ -88,10 +89,16 @@ describe("PromptList preview", () => {
 });
 
 describe("PromptList copy control", () => {
+  beforeEach(() => {
+    usePromptStore.setState({ incrementUsage: async () => null });
+  });
+
   it("exposes one copy control per row and copies without selecting", async () => {
     const onSelect = vi.fn();
     const onToggleSelection = vi.fn();
     const writeText = vi.fn().mockResolvedValue(undefined);
+    const incrementUsage = vi.fn(async () => null);
+    usePromptStore.setState({ incrementUsage });
     const first = makePrompt();
     const second = makePrompt({
       id: "prompt-2",
@@ -118,15 +125,21 @@ describe("PromptList copy control", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Copy Steelman" })).toBeTruthy();
+    const copy = screen.getByRole("button", { name: "Copy Steelman" });
+    expect(copy.nextElementSibling?.getAttribute("aria-label")).toBe("Steelman");
     expect(screen.getByRole("button", { name: "Copy Curiosity" })).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "Copy prompt" })).toBeNull();
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Copy Steelman" }));
+      fireEvent.click(copy);
     });
 
     expect(writeText).toHaveBeenCalledWith(
       "[System]\nBe terse.\n\n[User]\nArgue both sides.",
+    );
+    expect(incrementUsage).toHaveBeenCalledWith("prompt-1");
+    expect(writeText.mock.invocationCallOrder[0]).toBeLessThan(
+      incrementUsage.mock.invocationCallOrder[0],
     );
     expect(onSelect).not.toHaveBeenCalled();
     expect(onToggleSelection).not.toHaveBeenCalled();

@@ -22,92 +22,85 @@ Managed by Trellis. Edits outside this block are preserved; edits inside may be 
 
 # Repository Guidelines
 
-This `AGENTS.md` governs the repository root and all descendants unless a deeper
-`AGENTS.md` overrides or narrows it. Two nested guides apply:
+## Instruction files
 
-- `src/AGENTS.md` - React/TypeScript frontend (`src/**`).
-- `src-tauri/AGENTS.md` - Rust/Tauri backend (`src-tauri/**`).
+`AGENTS.md` is the single source of truth. Each `CLAUDE.md` only imports the
+`AGENTS.md` beside it.
 
-Before broad search or repo-wide grep, read `./code_map.md` and use its search
-anchors to jump to targeted files.
+- Root `AGENTS.md` holds the rules for the whole repository.
+- `src/AGENTS.md` adds the React/TypeScript rules. `src-tauri/AGENTS.md` adds the
+  Rust/Tauri rules.
+- Codex loads one instruction file per directory, from the repository root down to
+  your working directory. It does not load a file below that directory.
+- Claude Code loads the root `CLAUDE.md` at launch. It loads a nested `CLAUDE.md`
+  when it reads a file in that directory.
+- Read the nested file yourself when you work in `src/` or `src-tauri/` and the
+  file is not in context.
 
-## What This Repo Is
+## What this repo is
 
-PromptHub Desktop: a local-first Tauri 2 app for managing AI prompts, prompt
-versions, and platform rules. The Rust backend
-(`src-tauri/`) reimplements the original Electron main process; the React
-frontend (`src/`) reaches the backend only through the Runtime Bridge
-(`src/runtime`). The original Electron app is kept read-only under `ref/PromptHub`.
+PromptHub Desktop is a local-first Tauri 2 app for AI prompts, prompt versions,
+and platform rules. The Rust backend in `src-tauri/` reimplements the original
+Electron main process. The React frontend in `src/` reaches the backend only
+through the Runtime Bridge (`src/runtime`). `ref/PromptHub` keeps the original
+Electron app as a read-only reference.
 
-## Build, Test, and Development Commands
+## Navigation
 
-Prefer the checked-in `justfile` from the repo root:
+Read `./code_map.md` and use its search anchors before a repository-wide search.
+`src/` and `src-tauri/` each have their own `code_map.md`.
 
-- `just deps` - install frontend dependencies.
-- `just install` - build and install PromptHub on this machine.
-- `just dev` - full desktop dev environment (Vite + native window + Rust backend).
-- `just frontend` - frontend-only Vite dev server on `http://localhost:5173`.
-- `just build` - frontend gate: `tsc` typecheck + Vite production build.
-- `just test` - frontend Vitest suite.
-- `just test-rust` - backend unit + property tests.
-- `just fmt-check` / `just clippy` - backend format and lint gates.
-- `just ci` - full local gate: frontend build/tests, Rust fmt/clippy/tests.
+## Verification gates
 
-Raw equivalents live in `package.json` and `src-tauri/Cargo.toml`; use them only
-when a narrower command is needed while iterating.
+Run every recipe from the repository root. Run `just --list` for the full recipe
+list.
 
-## Coding Standards
+| Change                   | Run before you report the work as done            |
+| ------------------------ | ------------------------------------------------- |
+| Frontend (`src/**`)      | `just build` and `just test`                      |
+| Backend (`src-tauri/**`) | `just fmt-check`, `just clippy`, `just test-rust` |
+| Broad or cross-boundary  | `just ci`                                         |
 
-- Frontend never imports `@tauri-apps/api` directly. Every backend call and event
-  subscription goes through `src/runtime` (the Runtime Bridge).
-- Backend commands return the `CommandResult<T>` envelope and use the stable
-  `ErrorCode` taxonomy in `src-tauri/src/error.rs`; services stay Tauri-free.
-- Code comments and docs in this repo are written in English; match that.
-- Existing `Req N.M` / `Requirement N` comments are historical contract markers.
-  Preserve them when editing nearby code; when the source spec is absent, verify
-  behavior against tests and implementation instead of inventing new numbers.
+While you iterate, use a narrower command: `npx vitest run <path>` for one
+frontend test file, or `cargo test <name> --manifest-path src-tauri/Cargo.toml`
+for one backend test.
 
-## Testing and Verification
+## Cross-boundary contract
 
-- Prefer targeted checks while iterating: `npx vitest run <path>` for one
-  frontend test file, or `cargo test <name> --manifest-path src-tauri/Cargo.toml`
-  for a focused backend run.
-- Run `just build` and `just test` before claiming a frontend change is done.
-- Run `just fmt-check`, `just clippy`, and `just test-rust` before claiming a
-  backend change is done.
-- Run `just ci` for broad or cross-boundary changes.
+- The frontend never imports `@tauri-apps/api` outside `src/runtime`. Every
+  backend call and every event subscription goes through the Runtime Bridge.
+- Wire names are `domain.action`. Backend commands return the `CommandResult<T>`
+  envelope and use the `ErrorCode` taxonomy in `src-tauri/src/error.rs`. The
+  string codes are a stable contract.
+- Services under `src-tauri/src/services/` must not depend on Tauri.
 
-## Safety and Permissions
+## Code conventions
 
-- Never edit `ref/PromptHub/**`; it is a read-only reference implementation.
-- Do not hand-edit generated/build output: `dist/`, `src-tauri/target/`,
-  `src-tauri/gen/schemas/`, or `.omx/state/**`.
-- Treat `.trellis/workspace/**` as session/journal state. Prefer Trellis scripts
-  for task lifecycle changes instead of manual edits.
-- Updater signing keys (`*.key`, `*.pem`) are secrets and are gitignored; never
+- Write code comments and docs in English.
+- Keep the existing `Req N.M` and `Requirement N` comments when you edit nearby
+  code. Do not invent a new number. When the source spec is absent, verify the
+  behavior against the tests and the implementation.
+
+## Safety and permissions
+
+- Never edit `ref/PromptHub/**`. It is a read-only reference implementation.
+- Never hand-edit generated output: `dist/`, `src-tauri/target/`, or
+  `src-tauri/gen/schemas/`.
+- Treat `.trellis/workspace/**` as session and journal state. Use the Trellis
+  scripts for task lifecycle changes.
+- Outbound requests (AI calls, media download, sync) must pass the backend SSRF
+  policy (`SSRF_BLOCKED`). Do not weaken it.
+- Updater signing keys (`*.key`, `*.pem`) are secrets and are gitignored. Never
   commit them. The `pubkey` in `src-tauri/tauri.conf.json` is a placeholder.
-- Outbound requests (AI calls, media download, sync) must
-  pass the backend SSRF policy (`SSRF_BLOCKED`); do not bypass it.
-- Ask before destructive or external-production operations: sync/backup deletes,
-  data-path changes, schema changes, updater signing, or anything touching real
+- Ask before a destructive or production operation: a sync or backup delete, a
+  data-path change, a schema change, updater signing, or work with real
   credentials.
 
-## Notes on Scope
+## Scope
 
-This rewrite intentionally does not migrate old Electron data. CLI and Web
-variants are out of scope for this repository.
+This rewrite does not migrate old Electron data. CLI and Web variants are out of
+scope for this repository.
 
-## Agent skills
+## Issue tracker
 
-### Issue tracker
-
-Issues live in GitHub Issues on `bahayonghang/PromptHub`, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-Default vocabulary, label string equals role name: `needs-triage`, `needs-info`,
-`ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context layout: root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.
+Issues live in GitHub Issues on `bahayonghang/PromptHub`. Use the `gh` CLI.

@@ -19,10 +19,11 @@
 //!    of exactly the data categories named by the selected scope and returns the
 //!    archive's absolute path (17.5); a cancellation produces no archive (17.11).
 //! 4. **Upgrade backups** ([`backup_create`], [`backup_restore`],
-//!    [`backup_list`], [`backup_delete`]) — snapshot/restore the data directory
-//!    under the backup root. `create` returns `{ id, createdAt }` (17.6),
-//!    `restore` reports restart-required (17.7), and an unknown backup id yields
-//!    `NOT_FOUND` with the stored data/backups left unchanged (17.12).
+//!    [`backup_list`], [`backup_delete`]) — snapshot the live SQLite database
+//!    with the online Backup API, copy non-database files separately, and restore
+//!    via a sidecar directory replace. `create` returns `{ id, createdAt }`
+//!    (17.6), `restore` reports restart-required (17.7), and an unknown backup
+//!    id yields `NOT_FOUND` with the stored data/backups left unchanged (17.12).
 //!
 //! ## Configuration validation (security/robustness — 17.13)
 //!
@@ -43,10 +44,13 @@
 //! or backups (17.10, 17.12).
 #![allow(dead_code)]
 
+use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
+
+use rusqlite::Connection;
 
 use reqwest_dav::{Auth, ClientBuilder, DecodeError, Depth, Error as DavError};
 use rusty_s3::{Bucket, Credentials, S3Action, UrlStyle};
@@ -56,7 +60,9 @@ use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipWriter};
 
 use crate::error::AppError;
+use crate::services::data_path::DATABASE_FILE_NAME;
 use crate::state::RuntimePaths;
+use crate::storage::snapshot_database;
 use crate::storage::time::{millis_to_iso8601, now_millis};
 
 // ===========================================================================
@@ -70,8 +76,6 @@ const TRANSFER_TIMEOUT: Duration = Duration::from_secs(300);
 /// Validity window of a presigned S3 URL. Independent of the request timeout; it
 /// only needs to outlast the time between signing and issuing the request.
 const PRESIGN_EXPIRY: Duration = Duration::from_secs(15 * 60);
-/// User-Agent sent with every outbound sync request.
-const USER_AGENT: &str = "PromptHub/1.0";
 
 // ===========================================================================
 // Shared result DTOs
@@ -159,16 +163,19 @@ pub fn validate_webdav_config(config: &WebDavConfig) -> Result<Url, AppError> {
 /// Builds a `reqwest_dav` client for `config` with the given request timeout.
 ///
 /// The configuration must already have been validated by
-/// [`validate_webdav_config`]; this only constructs the transport.
-fn build_dav_client(
+/// [`validate_webdav_config`]; this only constructs the transport after the
+/// shared SSRF pin.
+async fn build_dav_client(
     config: &WebDavConfig,
     timeout: Duration,
+    allow_private_network: bool,
 ) -> Result<reqwest_dav::Client, AppError> {
-    let agent = reqwest::Client::builder()
-        .timeout(timeout)
-        .user_agent(USER_AGENT)
-        .build()
-        .map_err(|e| AppError::network(format!("failed to build WebDAV client: {e}")))?;
+    let (_url, agent) = crate::services::network_safety::prepare_public_url(
+        config.url.trim(),
+        timeout,
+        allow_private_network,
+    )
+    .await?;
 
     let auth = if config.username.is_empty() && config.password.is_empty() {
         Auth::Anonymous
@@ -214,9 +221,12 @@ fn map_dav_err(context: &str, error: DavError) -> AppError {
 /// A malformed configuration is rejected with `VALIDATION` and issues no request
 /// (17.13). Network, auth, and server failures are reported as `success: false`
 /// rather than as an error, so the Frontend always receives a definite outcome.
-pub async fn webdav_test(config: &WebDavConfig) -> Result<ConnectionTestResult, AppError> {
+pub async fn webdav_test(
+    config: &WebDavConfig,
+    allow_private_network: bool,
+) -> Result<ConnectionTestResult, AppError> {
     validate_webdav_config(config)?;
-    let client = build_dav_client(config, TEST_TIMEOUT)?;
+    let client = build_dav_client(config, TEST_TIMEOUT, allow_private_network).await?;
 
     match client.list("", Depth::Number(0)).await {
         Ok(_) => Ok(ConnectionTestResult::ok()),
@@ -241,9 +251,10 @@ pub async fn webdav_upload(
     config: &WebDavConfig,
     remote_path: &str,
     data: Vec<u8>,
+    allow_private_network: bool,
 ) -> Result<(), AppError> {
     validate_webdav_config(config)?;
-    let client = build_dav_client(config, TRANSFER_TIMEOUT)?;
+    let client = build_dav_client(config, TRANSFER_TIMEOUT, allow_private_network).await?;
     client
         .put(remote_path, data)
         .await
@@ -257,9 +268,10 @@ pub async fn webdav_upload(
 pub async fn webdav_download(
     config: &WebDavConfig,
     remote_path: &str,
+    allow_private_network: bool,
 ) -> Result<Vec<u8>, AppError> {
     validate_webdav_config(config)?;
-    let client = build_dav_client(config, TRANSFER_TIMEOUT)?;
+    let client = build_dav_client(config, TRANSFER_TIMEOUT, allow_private_network).await?;
     let response = client
         .get(remote_path)
         .await
@@ -275,9 +287,13 @@ pub async fn webdav_download(
 ///
 /// Returns `{ exists: false }` when the object is absent, and rejects malformed
 /// config with `VALIDATION` before any request (17.13).
-pub async fn webdav_stat(config: &WebDavConfig, remote_path: &str) -> Result<StatResult, AppError> {
+pub async fn webdav_stat(
+    config: &WebDavConfig,
+    remote_path: &str,
+    allow_private_network: bool,
+) -> Result<StatResult, AppError> {
     validate_webdav_config(config)?;
-    let client = build_dav_client(config, TRANSFER_TIMEOUT)?;
+    let client = build_dav_client(config, TRANSFER_TIMEOUT, allow_private_network).await?;
     match client.list(remote_path, Depth::Number(0)).await {
         Ok(entities) => {
             let last_modified = entities.first().map(|entity| match entity {
@@ -307,9 +323,13 @@ pub async fn webdav_stat(config: &WebDavConfig, remote_path: &str) -> Result<Sta
 /// (17.2).
 ///
 /// Rejects malformed config with `VALIDATION` before any request (17.13).
-pub async fn webdav_ensure_dir(config: &WebDavConfig, remote_path: &str) -> Result<(), AppError> {
+pub async fn webdav_ensure_dir(
+    config: &WebDavConfig,
+    remote_path: &str,
+    allow_private_network: bool,
+) -> Result<(), AppError> {
     validate_webdav_config(config)?;
-    let client = build_dav_client(config, TRANSFER_TIMEOUT)?;
+    let client = build_dav_client(config, TRANSFER_TIMEOUT, allow_private_network).await?;
 
     match client.list(remote_path, Depth::Number(0)).await {
         Ok(_) => Ok(()), // Already exists.
@@ -395,13 +415,19 @@ fn s3_credentials(config: &S3Config) -> Credentials {
     )
 }
 
-/// Builds a `reqwest` client for S3 requests with the given timeout.
-fn build_s3_agent(timeout: Duration) -> Result<reqwest::Client, AppError> {
-    reqwest::Client::builder()
-        .timeout(timeout)
-        .user_agent(USER_AGENT)
-        .build()
-        .map_err(|e| AppError::network(format!("failed to build S3 client: {e}")))
+/// Builds a DNS-pinned `reqwest` client for S3 requests with the given timeout.
+async fn build_s3_agent(
+    endpoint: &str,
+    timeout: Duration,
+    allow_private_network: bool,
+) -> Result<reqwest::Client, AppError> {
+    let (_url, client) = crate::services::network_safety::prepare_public_url(
+        endpoint,
+        timeout,
+        allow_private_network,
+    )
+    .await?;
+    Ok(client)
 }
 
 /// Normalizes an object key by stripping leading slashes (mirrors the reference).
@@ -423,10 +449,13 @@ fn map_reqwest_err(context: &str, e: reqwest::Error) -> AppError {
 ///
 /// A malformed configuration is rejected with `VALIDATION` and issues no request
 /// (17.13). Transport/auth failures are reported as `success: false`.
-pub async fn s3_test(config: &S3Config) -> Result<ConnectionTestResult, AppError> {
+pub async fn s3_test(
+    config: &S3Config,
+    allow_private_network: bool,
+) -> Result<ConnectionTestResult, AppError> {
     let bucket = validate_s3_config(config)?;
     let credentials = s3_credentials(config);
-    let agent = build_s3_agent(TEST_TIMEOUT)?;
+    let agent = build_s3_agent(&config.endpoint, TEST_TIMEOUT, allow_private_network).await?;
 
     let signed = bucket.head_bucket(Some(&credentials)).sign(PRESIGN_EXPIRY);
 
@@ -456,10 +485,15 @@ pub async fn s3_test(config: &S3Config) -> Result<ConnectionTestResult, AppError
 /// Uploads `data` to the S3 object `key` (17.4).
 ///
 /// Rejects malformed config with `VALIDATION` before any request (17.13).
-pub async fn s3_upload(config: &S3Config, key: &str, data: Vec<u8>) -> Result<(), AppError> {
+pub async fn s3_upload(
+    config: &S3Config,
+    key: &str,
+    data: Vec<u8>,
+    allow_private_network: bool,
+) -> Result<(), AppError> {
     let bucket = validate_s3_config(config)?;
     let credentials = s3_credentials(config);
-    let agent = build_s3_agent(TRANSFER_TIMEOUT)?;
+    let agent = build_s3_agent(&config.endpoint, TRANSFER_TIMEOUT, allow_private_network).await?;
 
     let signed = bucket
         .put_object(Some(&credentials), normalize_key(key))
@@ -486,10 +520,14 @@ pub async fn s3_upload(config: &S3Config, key: &str, data: Vec<u8>) -> Result<()
 ///
 /// Returns `NOT_FOUND` when the object does not exist, and rejects malformed
 /// config with `VALIDATION` before any request (17.13).
-pub async fn s3_download(config: &S3Config, key: &str) -> Result<Vec<u8>, AppError> {
+pub async fn s3_download(
+    config: &S3Config,
+    key: &str,
+    allow_private_network: bool,
+) -> Result<Vec<u8>, AppError> {
     let bucket = validate_s3_config(config)?;
     let credentials = s3_credentials(config);
-    let agent = build_s3_agent(TRANSFER_TIMEOUT)?;
+    let agent = build_s3_agent(&config.endpoint, TRANSFER_TIMEOUT, allow_private_network).await?;
 
     let signed = bucket
         .get_object(Some(&credentials), normalize_key(key))
@@ -523,10 +561,14 @@ pub async fn s3_download(config: &S3Config, key: &str) -> Result<Vec<u8>, AppErr
 ///
 /// Returns `{ exists: false }` when the object is absent, and rejects malformed
 /// config with `VALIDATION` before any request (17.13).
-pub async fn s3_stat(config: &S3Config, key: &str) -> Result<StatResult, AppError> {
+pub async fn s3_stat(
+    config: &S3Config,
+    key: &str,
+    allow_private_network: bool,
+) -> Result<StatResult, AppError> {
     let bucket = validate_s3_config(config)?;
     let credentials = s3_credentials(config);
-    let agent = build_s3_agent(TRANSFER_TIMEOUT)?;
+    let agent = build_s3_agent(&config.endpoint, TRANSFER_TIMEOUT, allow_private_network).await?;
 
     let signed = bucket
         .head_object(Some(&credentials), normalize_key(key))
@@ -798,6 +840,101 @@ fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<(), AppError> {
     Ok(())
 }
 
+/// Live SQLite files that must not be byte-copied: the main db is snapshotted
+/// separately, and `-wal`/`-shm`/`-journal` are not the authority.
+fn is_live_sqlite_artifact(name: &OsStr) -> bool {
+    let Some(name) = name.to_str() else {
+        return false;
+    };
+    name == DATABASE_FILE_NAME
+        || name
+            .strip_prefix(DATABASE_FILE_NAME)
+            .is_some_and(|rest| rest.starts_with('-'))
+}
+
+/// Copies non-database files and directories from `src` into `dest`.
+fn copy_non_database_entries(src: &Path, dest: &Path) -> Result<(), AppError> {
+    fs::create_dir_all(dest)
+        .map_err(|e| AppError::io(format!("failed to create directory: {e}")))?;
+    let entries =
+        fs::read_dir(src).map_err(|e| AppError::io(format!("failed to read directory: {e}")))?;
+    for entry in entries {
+        let entry =
+            entry.map_err(|e| AppError::io(format!("failed to read directory entry: {e}")))?;
+        let name = entry.file_name();
+        if is_live_sqlite_artifact(&name) {
+            continue;
+        }
+        let file_type = entry
+            .file_type()
+            .map_err(|e| AppError::io(format!("failed to determine entry type: {e}")))?;
+        let from = entry.path();
+        let to = dest.join(&name);
+        if file_type.is_dir() {
+            copy_dir_recursive(&from, &to)?;
+        } else if file_type.is_file() {
+            fs::copy(&from, &to).map_err(|e| AppError::io(format!("failed to copy file: {e}")))?;
+        }
+    }
+    Ok(())
+}
+
+/// Snapshots `data_dir` into `dest`: consistent SQLite file plus other files.
+fn snapshot_data_directory(data_dir: &Path, dest: &Path) -> Result<(), AppError> {
+    fs::create_dir_all(dest)
+        .map_err(|e| AppError::io(format!("failed to create backup directory: {e}")))?;
+    if !data_dir.is_dir() {
+        return Ok(());
+    }
+
+    let db_path = data_dir.join(DATABASE_FILE_NAME);
+    if db_path.is_file() {
+        let conn = Connection::open(&db_path)
+            .map_err(|e| AppError::io(format!("failed to open database for backup: {e}")))?;
+        conn.busy_timeout(Duration::from_millis(5_000))
+            .map_err(|e| AppError::io(format!("failed to set backup busy timeout: {e}")))?;
+        snapshot_database(&conn, &dest.join(DATABASE_FILE_NAME))?;
+    }
+    copy_non_database_entries(data_dir, dest)
+}
+
+fn sidecar_dir(data_dir: &Path, suffix: &str) -> Result<PathBuf, AppError> {
+    let parent = data_dir
+        .parent()
+        .ok_or_else(|| AppError::io("data directory must have a parent for restore"))?;
+    let name = data_dir
+        .file_name()
+        .ok_or_else(|| AppError::io("data directory must have a file name for restore"))?;
+    let mut sidecar = name.to_os_string();
+    sidecar.push(suffix);
+    Ok(parent.join(sidecar))
+}
+
+fn remove_dir_if_exists(path: &Path) -> Result<(), AppError> {
+    if path.exists() {
+        fs::remove_dir_all(path)
+            .map_err(|e| AppError::io(format!("failed to remove `{}`: {e}", path.display())))?;
+    }
+    Ok(())
+}
+
+/// Clears a leftover `.next` copy. Recovers `.prev` when `data_dir` is missing so
+/// an interrupted restore cannot delete the only remaining live data. A stale
+/// `.prev` next to an intact `data_dir` is leftover and is removed.
+fn prepare_restore_sidecars(data_dir: &Path, next: &Path, prev: &Path) -> Result<(), AppError> {
+    remove_dir_if_exists(next)?;
+    if data_dir.exists() {
+        remove_dir_if_exists(prev)?;
+    } else if prev.exists() {
+        fs::rename(prev, data_dir).map_err(|e| {
+            AppError::io(format!(
+                "failed to recover data directory from sidecar: {e}"
+            ))
+        })?;
+    }
+    Ok(())
+}
+
 /// Reads and parses the manifest for the backup at `backup_dir`.
 fn read_backup_manifest(backup_dir: &Path) -> Option<BackupEntry> {
     let manifest_path = backup_dir.join(BACKUP_MANIFEST_FILE);
@@ -808,8 +945,10 @@ fn read_backup_manifest(backup_dir: &Path) -> Option<BackupEntry> {
 /// Creates an upgrade backup: snapshots `data_dir` under `backup_root` and
 /// returns the new entry's id and ISO_8601 creation timestamp (17.6).
 ///
-/// The snapshot directory (`{backup_root}/{id}`) holds a copy of the data
-/// directory's contents plus a manifest. Existing backups are left unchanged.
+/// The live SQLite file is copied with [`snapshot_database`]; `-wal`/`-shm` are
+/// not the authority. Other files under `data_dir` are copied separately. The
+/// snapshot directory (`{backup_root}/{id}`) holds that tree plus a manifest.
+/// Existing backups are left unchanged.
 pub fn backup_create(data_dir: &Path, backup_root: &Path) -> Result<BackupEntry, AppError> {
     let now = now_millis();
     let created_at = millis_to_iso8601(now);
@@ -824,12 +963,9 @@ pub fn backup_create(data_dir: &Path, backup_root: &Path) -> Result<BackupEntry,
     }
 
     let data_snapshot = backup_dir.join("data");
-    if data_dir.is_dir() {
-        copy_dir_recursive(data_dir, &data_snapshot)?;
-    } else {
-        // No data directory yet: still produce a well-formed (empty) snapshot.
-        fs::create_dir_all(&data_snapshot)
-            .map_err(|e| AppError::io(format!("failed to create backup directory: {e}")))?;
+    if let Err(error) = snapshot_data_directory(data_dir, &data_snapshot) {
+        let _ = fs::remove_dir_all(&backup_dir);
+        return Err(error);
     }
 
     let entry = BackupEntry {
@@ -838,8 +974,12 @@ pub fn backup_create(data_dir: &Path, backup_root: &Path) -> Result<BackupEntry,
     };
     let manifest = serde_json::to_string_pretty(&entry)
         .map_err(|e| AppError::internal(format!("failed to encode backup manifest: {e}")))?;
-    fs::write(backup_dir.join(BACKUP_MANIFEST_FILE), manifest)
-        .map_err(|e| AppError::io(format!("failed to write backup manifest: {e}")))?;
+    if let Err(e) = fs::write(backup_dir.join(BACKUP_MANIFEST_FILE), manifest) {
+        let _ = fs::remove_dir_all(&backup_dir);
+        return Err(AppError::io(format!(
+            "failed to write backup manifest: {e}"
+        )));
+    }
 
     Ok(entry)
 }
@@ -895,8 +1035,10 @@ pub fn backup_delete(backup_root: &Path, id: &str) -> Result<(), AppError> {
 /// (17.7).
 ///
 /// Returns `NOT_FOUND` for a malformed or unknown id, leaving stored data and
-/// backups unchanged (17.12). On success the data directory's contents are
-/// replaced with the snapshot's and `restart_required` is `true`.
+/// backups unchanged (17.12). The snapshot is copied into a sidecar (`data.next`)
+/// and swapped into place; the live directory is never deleted first. On
+/// promotion failure the original directory remains and the error is `IO`.
+/// Callers that hold a connection pool should unload it before this call.
 pub fn backup_restore(
     data_dir: &Path,
     backup_root: &Path,
@@ -916,24 +1058,49 @@ pub fn backup_restore(
         )));
     }
 
-    // Replace the data directory's contents with the snapshot.
-    if data_dir.exists() {
-        fs::remove_dir_all(data_dir)
-            .map_err(|e| AppError::io(format!("failed to clear data directory: {e}")))?;
-    }
-    copy_dir_recursive(&data_snapshot, data_dir)?;
+    let next = sidecar_dir(data_dir, ".next")?;
+    let prev = sidecar_dir(data_dir, ".prev")?;
+    prepare_restore_sidecars(data_dir, &next, &prev)?;
 
-    Ok(RestoreResult {
-        id: id.to_string(),
-        restart_required: true,
-    })
+    if let Err(error) = copy_dir_recursive(&data_snapshot, &next) {
+        let _ = fs::remove_dir_all(&next);
+        return Err(error);
+    }
+
+    let had_live = data_dir.exists();
+    if had_live {
+        if let Err(e) = fs::rename(data_dir, &prev) {
+            let _ = fs::remove_dir_all(&next);
+            return Err(AppError::io(format!(
+                "failed to set aside data directory: {e}"
+            )));
+        }
+    }
+
+    match fs::rename(&next, data_dir) {
+        Ok(()) => {
+            let _ = fs::remove_dir_all(&prev);
+            Ok(RestoreResult {
+                id: id.to_string(),
+                restart_required: true,
+            })
+        }
+        Err(e) => {
+            if had_live {
+                let _ = fs::rename(&prev, data_dir);
+            }
+            let _ = fs::remove_dir_all(&next);
+            Err(AppError::io(format!(
+                "failed to promote restored data: {e}"
+            )))
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::error::ErrorCode;
-    use std::io::Read;
     use tempfile::TempDir;
 
     // --- WebDAV config validation (17.13) ---------------------------------
@@ -987,7 +1154,7 @@ mod tests {
             .build()
             .unwrap();
         let err = rt
-            .block_on(webdav_test(&WebDavConfig::default()))
+            .block_on(webdav_test(&WebDavConfig::default(), false))
             .unwrap_err();
         assert_eq!(err.code, ErrorCode::Validation);
     }
@@ -1041,8 +1208,45 @@ mod tests {
             .enable_all()
             .build()
             .unwrap();
-        let err = rt.block_on(s3_test(&S3Config::default())).unwrap_err();
+        let err = rt
+            .block_on(s3_test(&S3Config::default(), false))
+            .unwrap_err();
         assert_eq!(err.code, ErrorCode::Validation);
+    }
+
+    #[tokio::test]
+    async fn webdav_test_blocks_localhost_when_private_network_disallowed() {
+        let err = webdav_test(
+            &WebDavConfig {
+                url: "http://localhost/".into(),
+                ..Default::default()
+            },
+            false,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(err.code, ErrorCode::SsrfBlocked);
+    }
+
+    #[tokio::test]
+    async fn webdav_test_allows_localhost_attempt_when_private_network_enabled() {
+        let closed = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = closed.local_addr().unwrap().port();
+        drop(closed);
+
+        let result = webdav_test(
+            &WebDavConfig {
+                url: format!("http://localhost:{port}/"),
+                ..Default::default()
+            },
+            true,
+        )
+        .await
+        .unwrap();
+        assert!(
+            !result.success,
+            "private URL must be attempted after policy: {result:?}"
+        );
     }
 
     // --- Export scope mapping + archive (17.5, Property 36) ----------------
@@ -1153,14 +1357,48 @@ mod tests {
 
     // --- Upgrade backups (17.6, 17.7, 17.8, 17.12) ------------------------
 
-    /// Creates a data directory with one file and returns `(data_dir,
-    /// backup_root)` rooted under `base`.
+    /// Creates a data directory with a real SQLite database and returns
+    /// `(data_dir, backup_root)` rooted under `base`.
     fn backup_dirs(base: &Path) -> (PathBuf, PathBuf) {
         let data = base.join("data");
         let backup = base.join("backups");
         fs::create_dir_all(&data).unwrap();
-        fs::write(data.join("prompthub.db"), b"DBDATA").unwrap();
+        seed_sqlite(&data.join(DATABASE_FILE_NAME), "DBDATA");
+        fs::write(data.join("notes.txt"), b"keep").unwrap();
         (data, backup)
+    }
+
+    fn seed_sqlite(path: &Path, marker: &str) {
+        let conn = Connection::open(path).unwrap();
+        conn.execute_batch(
+            "PRAGMA journal_mode = WAL; CREATE TABLE IF NOT EXISTS marker (v TEXT);",
+        )
+        .unwrap();
+        conn.execute("DELETE FROM marker", []).unwrap();
+        conn.execute("INSERT INTO marker (v) VALUES (?1)", [marker])
+            .unwrap();
+    }
+
+    fn read_marker(path: &Path) -> String {
+        let conn = Connection::open(path).unwrap();
+        conn.query_row("SELECT v FROM marker LIMIT 1", [], |row| row.get(0))
+            .unwrap()
+    }
+
+    fn integrity_ok(path: &Path) -> bool {
+        let conn = Connection::open(path).unwrap();
+        let check: String = conn
+            .query_row("PRAGMA integrity_check", [], |row| row.get(0))
+            .unwrap();
+        check == "ok"
+    }
+
+    fn assert_backup_id_format(id: &str) {
+        let rest = id.strip_prefix("backup-").expect("backup- prefix");
+        let (millis, hex) = rest.split_once('-').expect("millis-hex");
+        assert!(millis.chars().all(|c| c.is_ascii_digit()));
+        assert_eq!(hex.len(), 8);
+        assert!(hex.chars().all(|c| c.is_ascii_hexdigit()));
     }
 
     #[test]
@@ -1170,15 +1408,31 @@ mod tests {
 
         let entry = backup_create(&data, &backup_root).unwrap();
         assert!(!entry.id.is_empty());
+        assert_backup_id_format(&entry.id);
         // ISO_8601 millisecond form (`...Z`, 24 chars) per Requirement 4.9.
         assert!(entry.created_at.ends_with('Z'));
         assert_eq!(entry.created_at.len(), 24);
-        // The snapshot directory and a copy of the data exist.
-        assert!(backup_root
+        let snap = backup_root
             .join(&entry.id)
             .join("data")
-            .join("prompthub.db")
-            .is_file());
+            .join(DATABASE_FILE_NAME);
+        assert!(snap.is_file());
+        assert!(integrity_ok(&snap));
+        assert_eq!(read_marker(&snap), "DBDATA");
+        assert_eq!(
+            fs::read_to_string(backup_root.join(&entry.id).join("data").join("notes.txt")).unwrap(),
+            "keep"
+        );
+        assert!(!backup_root
+            .join(&entry.id)
+            .join("data")
+            .join(format!("{DATABASE_FILE_NAME}-wal"))
+            .exists());
+        assert!(!backup_root
+            .join(&entry.id)
+            .join("data")
+            .join(format!("{DATABASE_FILE_NAME}-shm"))
+            .exists());
     }
 
     #[test]
@@ -1247,7 +1501,7 @@ mod tests {
         let entry = backup_create(&data, &backup_root).unwrap();
 
         // Mutate the live data after the backup.
-        fs::write(data.join("prompthub.db"), b"CHANGED").unwrap();
+        seed_sqlite(&data.join(DATABASE_FILE_NAME), "CHANGED");
         fs::write(data.join("extra.txt"), b"new").unwrap();
 
         let result = backup_restore(&data, &backup_root, &entry.id).unwrap();
@@ -1255,13 +1509,10 @@ mod tests {
         assert_eq!(result.id, entry.id);
 
         // The snapshot's contents are restored; the post-backup file is gone.
-        let mut restored = String::new();
-        fs::File::open(data.join("prompthub.db"))
-            .unwrap()
-            .read_to_string(&mut restored)
-            .unwrap();
-        assert_eq!(restored, "DBDATA");
+        assert_eq!(read_marker(&data.join(DATABASE_FILE_NAME)), "DBDATA");
         assert!(!data.join("extra.txt").exists());
+        assert!(!sidecar_dir(&data, ".next").unwrap().exists());
+        assert!(!sidecar_dir(&data, ".prev").unwrap().exists());
     }
 
     #[test]
@@ -1273,10 +1524,173 @@ mod tests {
         let err = backup_restore(&data, &backup_root, "nope").unwrap_err();
         assert_eq!(err.code, ErrorCode::NotFound);
         // Existing data is unchanged (17.12).
-        assert_eq!(
-            fs::read_to_string(data.join("prompthub.db")).unwrap(),
-            "DBDATA"
-        );
+        assert_eq!(read_marker(&data.join(DATABASE_FILE_NAME)), "DBDATA");
+    }
+
+    #[test]
+    fn backup_create_snapshot_is_consistent_under_wal_writes() {
+        let tmp = TempDir::new().unwrap();
+        let data = tmp.path().join("data");
+        let backup_root = tmp.path().join("backups");
+        fs::create_dir_all(&data).unwrap();
+        let db_path = data.join(DATABASE_FILE_NAME);
+        let pool = crate::storage::create_pool(&db_path).unwrap();
+        {
+            let conn = pool.get().unwrap();
+            crate::storage::init_schema(&conn).unwrap();
+            conn.execute(
+                "INSERT INTO prompts (id, title, user_prompt, created_at, updated_at) \
+                 VALUES ('seed', 'SeedTitle', 'body', 0, 0)",
+                [],
+            )
+            .unwrap();
+        }
+
+        let stop = std::sync::Arc::new(AtomicBool::new(false));
+        let writes = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
+        let writer_stop = std::sync::Arc::clone(&stop);
+        let writer_writes = std::sync::Arc::clone(&writes);
+        let writer_pool = pool.clone();
+        let writer = std::thread::spawn(move || {
+            let conn = writer_pool.get().unwrap();
+            let mut i = 0u64;
+            while !writer_stop.load(Ordering::Relaxed) {
+                let id = format!("w{i}");
+                if conn
+                    .execute(
+                        "INSERT INTO prompts (id, title, user_prompt, created_at, updated_at) \
+                         VALUES (?1, ?2, 'body', 0, 0)",
+                        rusqlite::params![id, format!("Title{i}")],
+                    )
+                    .is_ok()
+                {
+                    writer_writes.fetch_add(1, Ordering::Relaxed);
+                }
+                i = i.wrapping_add(1);
+            }
+        });
+
+        let deadline = std::time::Instant::now() + Duration::from_secs(2);
+        while writes.load(Ordering::Relaxed) == 0 {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "WAL writer must insert before backup"
+            );
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        let entry = backup_create(&data, &backup_root).unwrap();
+        stop.store(true, Ordering::Relaxed);
+        writer.join().unwrap();
+        assert!(writes.load(Ordering::Relaxed) > 0);
+
+        let snap = backup_root
+            .join(&entry.id)
+            .join("data")
+            .join(DATABASE_FILE_NAME);
+        assert!(snap.is_file());
+        assert!(!backup_root
+            .join(&entry.id)
+            .join("data")
+            .join(format!("{DATABASE_FILE_NAME}-wal"))
+            .exists());
+        assert!(!backup_root
+            .join(&entry.id)
+            .join("data")
+            .join(format!("{DATABASE_FILE_NAME}-shm"))
+            .exists());
+        assert!(integrity_ok(&snap));
+        let snap_conn = Connection::open(&snap).unwrap();
+        let seed: String = snap_conn
+            .query_row("SELECT title FROM prompts WHERE id = 'seed'", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(seed, "SeedTitle");
+        let snap_count: i64 = snap_conn
+            .query_row("SELECT COUNT(*) FROM prompts", [], |row| row.get(0))
+            .unwrap();
+        assert!(snap_count >= 1);
+    }
+
+    #[test]
+    fn backup_restore_with_open_pool_either_succeeds_or_keeps_original() {
+        let tmp = TempDir::new().unwrap();
+        let (data, backup_root) = backup_dirs(tmp.path());
+        let entry = backup_create(&data, &backup_root).unwrap();
+        seed_sqlite(&data.join(DATABASE_FILE_NAME), "CHANGED");
+        fs::write(data.join("marker.txt"), b"LIVE").unwrap();
+
+        let pool = crate::storage::create_pool(data.join(DATABASE_FILE_NAME)).unwrap();
+        let _held = pool.get().unwrap();
+
+        match backup_restore(&data, &backup_root, &entry.id) {
+            Ok(result) => {
+                assert!(result.restart_required);
+                assert_eq!(read_marker(&data.join(DATABASE_FILE_NAME)), "DBDATA");
+                assert!(!data.join("marker.txt").exists());
+            }
+            Err(err) => {
+                assert_eq!(err.code, ErrorCode::Io);
+                assert_eq!(fs::read_to_string(data.join("marker.txt")).unwrap(), "LIVE");
+                assert_eq!(read_marker(&data.join(DATABASE_FILE_NAME)), "CHANGED");
+            }
+        }
+        assert!(!sidecar_dir(&data, ".next").unwrap().exists());
+    }
+
+    #[test]
+    fn prepare_restore_sidecars_recovers_prev_when_data_missing() {
+        let tmp = TempDir::new().unwrap();
+        let data = tmp.path().join("data");
+        let prev = tmp.path().join("data.prev");
+        let next = tmp.path().join("data.next");
+        fs::create_dir_all(&prev).unwrap();
+        fs::write(prev.join("keep.txt"), b"ORIG").unwrap();
+        fs::create_dir_all(&next).unwrap();
+        fs::write(next.join("stale.txt"), b"NEXT").unwrap();
+
+        prepare_restore_sidecars(&data, &next, &prev).unwrap();
+
+        assert_eq!(fs::read_to_string(data.join("keep.txt")).unwrap(), "ORIG");
+        assert!(!prev.exists());
+        assert!(!next.exists());
+    }
+
+    #[test]
+    fn prepare_restore_sidecars_drops_stale_prev_when_data_exists() {
+        let tmp = TempDir::new().unwrap();
+        let data = tmp.path().join("data");
+        let prev = tmp.path().join("data.prev");
+        let next = tmp.path().join("data.next");
+        fs::create_dir_all(&data).unwrap();
+        fs::write(data.join("live.txt"), b"LIVE").unwrap();
+        fs::create_dir_all(&prev).unwrap();
+        fs::write(prev.join("old.txt"), b"OLD").unwrap();
+
+        prepare_restore_sidecars(&data, &next, &prev).unwrap();
+
+        assert_eq!(fs::read_to_string(data.join("live.txt")).unwrap(), "LIVE");
+        assert!(!prev.exists());
+        assert!(!data.join("old.txt").exists());
+    }
+
+    #[test]
+    fn backup_restore_recovers_prev_sidecar_when_data_missing() {
+        let tmp = TempDir::new().unwrap();
+        let (data, backup_root) = backup_dirs(tmp.path());
+        let entry = backup_create(&data, &backup_root).unwrap();
+        seed_sqlite(&data.join(DATABASE_FILE_NAME), "CHANGED");
+        fs::write(data.join("marker.txt"), b"LIVE").unwrap();
+        let prev = sidecar_dir(&data, ".prev").unwrap();
+        fs::rename(&data, &prev).unwrap();
+        assert!(!data.exists());
+
+        let result = backup_restore(&data, &backup_root, &entry.id).unwrap();
+        assert!(result.restart_required);
+        assert_eq!(read_marker(&data.join(DATABASE_FILE_NAME)), "DBDATA");
+        assert!(!data.join("marker.txt").exists());
+        assert!(!prev.exists());
+        assert!(!sidecar_dir(&data, ".next").unwrap().exists());
     }
 
     #[test]

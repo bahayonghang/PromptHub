@@ -47,17 +47,15 @@ pub async fn run<R: tauri::Runtime>(
     if request_id.trim().is_empty() {
         return CommandResult::Err(AppError::validation("requestId is required"));
     }
-    let pool = match state.pool.lock() {
-        Ok(pool) => match pool.clone() {
-            Some(pool) => pool,
-            None => {
-                return CommandResult::Err(AppError::internal("database pool is not initialized"))
-            }
-        },
-        Err(_) => return CommandResult::Err(AppError::internal("database pool lock is poisoned")),
+    let pool = match async_context(&state) {
+        Ok(pool) => pool,
+        Err(error) => return CommandResult::Err(error),
     };
-    let token = state.register_request(&request_id);
-    let sink = TauriEvaluationEventSink::new(app.clone());
+    let token = match state.register_request(&request_id) {
+        Ok(token) => token,
+        Err(error) => return CommandResult::Err(error),
+    };
+    let sink = TauriEvaluationEventSink::new(app.clone(), request_id.clone());
     let result = evaluation::execute_run(
         &pool,
         &state.encryption,
@@ -68,27 +66,30 @@ pub async fn run<R: tauri::Runtime>(
         &sink,
     )
     .await;
-    state.finish_request(&request_id);
+    let _ = state.finish_request(&request_id);
     result.into()
 }
 
 #[tauri::command(rename = "evaluation.runList")]
 pub fn run_list(state: tauri::State<'_, AppState>) -> CommandResult<Vec<PromptRun>> {
-    into_command(conn(&state).and_then(|conn| evaluation::list_runs(&conn)))
+    into_command(conn(&state).and_then(|conn| evaluation::list_runs(&conn, &state.encryption)))
 }
 
 #[tauri::command(rename = "evaluation.runGet")]
 pub fn run_get(id: String, state: tauri::State<'_, AppState>) -> CommandResult<PromptRun> {
-    into_command(conn(&state).and_then(|conn| evaluation::get_run(&conn, &id)))
+    into_command(conn(&state).and_then(|conn| evaluation::get_run(&conn, &state.encryption, &id)))
 }
 
 #[tauri::command(rename = "evaluation.cancel")]
 pub fn cancel(request_id: String, state: tauri::State<'_, AppState>) -> CommandResult<()> {
     match ensure_ready(&state) {
-        Ok(()) if state.cancel_request(&request_id) => CommandResult::Ok(()),
-        Ok(()) => CommandResult::Err(AppError::not_found(format!(
-            "evaluation request `{request_id}` is not active"
-        ))),
+        Ok(()) => match state.cancel_request(&request_id) {
+            Ok(true) => CommandResult::Ok(()),
+            Ok(false) => CommandResult::Err(AppError::not_found(format!(
+                "evaluation request `{request_id}` is not active"
+            ))),
+            Err(error) => CommandResult::Err(error),
+        },
         Err(error) => CommandResult::Err(error),
     }
 }
@@ -131,10 +132,7 @@ pub fn evaluator_create(
 
 fn async_context(state: &AppState) -> Result<crate::storage::DbPool, AppError> {
     ensure_ready(state)?;
-    state
-        .pool
-        .lock()
-        .map_err(|_| AppError::internal("database pool lock is poisoned"))?
+    crate::logging::lock_mutex(&state.pool, "database pool")?
         .clone()
         .ok_or_else(|| AppError::internal("database pool is not initialized"))
 }
@@ -153,8 +151,11 @@ pub async fn matrix_run<R: tauri::Runtime>(
     if request_id.trim().is_empty() {
         return CommandResult::Err(AppError::validation("requestId is required"));
     }
-    let token = state.register_request(&request_id);
-    let sink = TauriEvaluationEventSink::new(app.clone());
+    let token = match state.register_request(&request_id) {
+        Ok(token) => token,
+        Err(error) => return CommandResult::Err(error),
+    };
+    let sink = TauriEvaluationEventSink::new(app.clone(), request_id.clone());
     let result = evaluation::run_matrix(
         &pool,
         &state.encryption,
@@ -164,7 +165,7 @@ pub async fn matrix_run<R: tauri::Runtime>(
         &sink,
     )
     .await;
-    state.finish_request(&request_id);
+    let _ = state.finish_request(&request_id);
     result.into()
 }
 
@@ -179,8 +180,14 @@ pub async fn matrix_retry<R: tauri::Runtime>(
         Ok(pool) => pool,
         Err(error) => return CommandResult::Err(error),
     };
-    let token = state.register_request(&request_id);
-    let sink = TauriEvaluationEventSink::new(app.clone());
+    if request_id.trim().is_empty() {
+        return CommandResult::Err(AppError::validation("requestId is required"));
+    }
+    let token = match state.register_request(&request_id) {
+        Ok(token) => token,
+        Err(error) => return CommandResult::Err(error),
+    };
+    let sink = TauriEvaluationEventSink::new(app.clone(), request_id.clone());
     let result = evaluation::retry_evaluation_run(
         &pool,
         &state.encryption,
@@ -190,7 +197,7 @@ pub async fn matrix_retry<R: tauri::Runtime>(
         &sink,
     )
     .await;
-    state.finish_request(&request_id);
+    let _ = state.finish_request(&request_id);
     result.into()
 }
 

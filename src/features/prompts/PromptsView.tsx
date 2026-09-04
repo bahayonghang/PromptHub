@@ -38,6 +38,7 @@ export function PromptsView() {
   const batchMode = usePromptStore((s) => s.batchMode);
   const viewMode = usePromptStore((s) => s.viewMode);
   const selectedPromptId = usePromptStore((s) => s.selectedPromptId);
+  const detailOpen = usePromptStore((s) => s.detailOpen);
   const versions = usePromptStore((s) => s.versions);
   const loading = usePromptStore((s) => s.loading);
   const error = usePromptStore((s) => s.error);
@@ -50,6 +51,7 @@ export function PromptsView() {
   const loadPreviousPage = usePromptStore((s) => s.loadPreviousPage);
   const loadNextPage = usePromptStore((s) => s.loadNextPage);
   const requestSelectPrompt = usePromptStore((s) => s.requestSelectPrompt);
+  const closeDetail = usePromptStore((s) => s.closeDetail);
   const selectPrompt = usePromptStore((s) => s.selectPrompt);
   const createPrompt = usePromptStore((s) => s.createPrompt);
   const savePrompt = usePromptStore((s) => s.savePrompt);
@@ -94,7 +96,7 @@ export function PromptsView() {
     }
   };
 
-  const overlayOpen = creating || selectedPrompt != null;
+  const overlayOpen = creating || (detailOpen && selectedPrompt != null);
   const libraryItems = useMemo(
     () => prompts.map((prompt) => toLibraryItem(prompt, promptTypeDefinitions, t)),
     [prompts, promptTypeDefinitions, t],
@@ -233,6 +235,7 @@ export function PromptsView() {
         knownTags={tags}
         onClose={() => {
           setCreating(false);
+          closeDetail();
           void selectPrompt(null);
         }}
         onCreate={async (input) => {

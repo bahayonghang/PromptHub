@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CheckIcon, ClipboardCopyIcon } from "lucide-react";
+import { useToastStore } from "../../notifications/toastStore";
 import { promptApi } from "../api";
+import { usePromptStore } from "../promptStore";
 import type { PromptCopyResult } from "../types";
 import {
   buildPromptCopyText,
@@ -10,16 +12,17 @@ import {
   type PromptCopySource,
 } from "../promptText";
 
+export const PROMPT_COPY_TOAST_GROUP = "prompt-copy";
+
 interface CopyPromptButtonProps {
   source: PromptCopySource;
   promptId?: string;
   copyPrompt?: (id: string, values: Record<string, string>) => Promise<PromptCopyResult>;
-  /** Prompt title used in the list's accessible name. */
+  /** Prompt title used in the accessible name and named copy toast. */
   name?: string;
   locked?: boolean;
-  /** List rows use the compact 28px control; the editor header uses 32px. */
-  compact?: boolean;
   writeText?: (text: string) => Promise<void>;
+  incrementUsage?: (id: string) => Promise<unknown>;
 }
 
 type CopyStatus = "idle" | "busy" | "copied" | "failed";
@@ -30,9 +33,49 @@ async function defaultWriteText(text: string): Promise<void> {
   await navigator.clipboard.writeText(text);
 }
 
+async function defaultIncrementUsage(id: string): Promise<unknown> {
+  return usePromptStore.getState().incrementUsage(id);
+}
+
+/** Pushes the copy success or failure toast, replacing any previous copy toast. */
+export function pushPromptCopyToast(
+  t: (key: string, options?: { title: string }) => string,
+  outcome: "success" | "failure",
+  name?: string,
+): void {
+  if (outcome === "success") {
+    useToastStore.getState().push({
+      message: name
+        ? t("promptsView.copyPromptCopiedNamed", { title: name })
+        : t("promptsView.copyPromptCopied"),
+      tone: "success",
+      replaceGroup: PROMPT_COPY_TOAST_GROUP,
+    });
+    return;
+  }
+  useToastStore.getState().push({
+    message: t("promptsView.copyPromptFailed"),
+    tone: "danger",
+    replaceGroup: PROMPT_COPY_TOAST_GROUP,
+  });
+}
+
+/** Records a persisted copy after the clipboard write succeeds. Failures are ignored. */
+export async function recordCopiedPromptUsage(
+  promptId: string | undefined,
+  incrementUsage: (id: string) => Promise<unknown> = defaultIncrementUsage,
+): Promise<void> {
+  if (!promptId) return;
+  try {
+    await incrementUsage(promptId);
+  } catch {
+    // Copy already succeeded; usage can stay stale until the next load.
+  }
+}
+
 /**
  * Icon-only clipboard copy for a prompt list row or the editor definition
- * header. Success and failure stay on this control.
+ * header. Success and failure stay on this control and also push a toast.
  */
 export function CopyPromptButton({
   source,
@@ -40,8 +83,8 @@ export function CopyPromptButton({
   copyPrompt = (id, values) => promptApi.copyPrompt(id, values),
   name,
   locked = false,
-  compact = false,
   writeText = defaultWriteText,
+  incrementUsage = defaultIncrementUsage,
 }: CopyPromptButtonProps) {
   const { t } = useTranslation();
   const [status, setStatus] = useState<CopyStatus>("idle");
@@ -87,8 +130,11 @@ export function CopyPromptButton({
         setStatus("idle");
         timerRef.current = null;
       }, COPIED_MS);
+      pushPromptCopyToast(t, "success", name);
+      await recordCopiedPromptUsage(promptId, incrementUsage);
     } catch {
       setStatus("failed");
+      pushPromptCopyToast(t, "failure");
     }
   };
 
@@ -103,16 +149,14 @@ export function CopyPromptButton({
         event.stopPropagation();
         void copy();
       }}
-      className={`flex shrink-0 items-center justify-center rounded-md transition-[transform,color,background-color] hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40 ${
-        compact ? "h-7 w-7" : "h-8 w-8"
-      } ${
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-[transform,color,background-color] hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96] disabled:pointer-events-none disabled:opacity-40 ${
         status === "copied" ? "text-primary" : "text-muted-foreground"
       }`}
     >
       {status === "copied" ? (
-        <CheckIcon className="h-3.5 w-3.5" aria-hidden="true" />
+        <CheckIcon className="h-5 w-5" aria-hidden="true" />
       ) : (
-        <ClipboardCopyIcon className="h-3.5 w-3.5" aria-hidden="true" />
+        <ClipboardCopyIcon className="h-5 w-5" aria-hidden="true" />
       )}
       <span className="sr-only" aria-live="polite">
         {status === "copied" ? t("promptsView.copyPromptCopied") : ""}

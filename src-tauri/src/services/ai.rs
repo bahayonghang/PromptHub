@@ -33,11 +33,13 @@
 //! channels. Tests provide an in-memory recording sink so the ordered-chunk
 //! concatenation property (Property 35, task 11.2) is checkable without a window.
 //!
-//! ## Provider endpoints are user-configured
+//! ## Outbound SSRF
 //!
-//! The endpoint is the user's own AI provider, so it is not subject to the SSRF
-//! policy used for untrusted media URLs. The URL is still validated to be a
-//! well-formed HTTP(S) URL before any client is built.
+//! Every hop uses [`crate::services::network_safety::prepare_public_url`]. The
+//! client disables automatic redirects and re-checks each Location. Loopback,
+//! RFC1918, link-local, and metadata addresses return `SSRF_BLOCKED` with no
+//! TCP connect unless `allow_private_network` is true. Cross-host redirects
+//! drop `Authorization`.
 #![allow(dead_code)]
 
 use std::collections::HashMap;
@@ -48,6 +50,7 @@ use serde::{Deserialize, Serialize};
 use tokio_util::sync::CancellationToken;
 
 use crate::error::AppError;
+use crate::services::network_safety::{prepare_public_url, same_http_origin, MAX_REDIRECTS};
 
 /// Per-request timeout for both non-streaming and streaming requests: 120
 /// seconds (16.1, 16.4). For a streaming request this bounds the whole stream;
@@ -170,30 +173,69 @@ fn map_reqwest_err(context: &str, e: reqwest::Error) -> AppError {
 // Client construction
 // ===========================================================================
 
-/// Builds the `reqwest` client used for both request modes (120s timeout, 16.1).
-fn build_client() -> Result<reqwest::Client, AppError> {
-    reqwest::Client::builder()
-        .timeout(REQUEST_TIMEOUT)
-        .user_agent(USER_AGENT)
-        .build()
-        .map_err(|e| map_reqwest_err("failed to build AI client", e))
-}
-
 /// Applies method, URL, headers, and body to a fresh request builder.
 fn build_request(
     client: &reqwest::Client,
     method: reqwest::Method,
     url: reqwest::Url,
     req: &AiRequest,
+    forward_authorization: bool,
 ) -> reqwest::RequestBuilder {
     let mut builder = client.request(method, url);
+    builder = builder.header(reqwest::header::USER_AGENT, USER_AGENT);
     for (name, value) in &req.headers {
+        if !forward_authorization && name.eq_ignore_ascii_case("authorization") {
+            continue;
+        }
         builder = builder.header(name.as_str(), value.as_str());
     }
     if let Some(body) = &req.body {
         builder = builder.body(body.clone());
     }
     builder
+}
+
+async fn send_following_redirects(
+    req: &AiRequest,
+    method: reqwest::Method,
+    allow_private_network: bool,
+) -> Result<reqwest::Response, AppError> {
+    let mut current = req.url.trim().to_string();
+    let mut allow = allow_private_network;
+    let mut forward_authorization = true;
+
+    for _ in 0..=MAX_REDIRECTS {
+        let (url, client) = prepare_public_url(&current, REQUEST_TIMEOUT, allow).await?;
+        let response = build_request(
+            &client,
+            method.clone(),
+            url.clone(),
+            req,
+            forward_authorization,
+        )
+        .send()
+        .await
+        .map_err(|e| map_reqwest_err("AI provider request failed", e))?;
+
+        if response.status().is_redirection() {
+            let location = response
+                .headers()
+                .get(reqwest::header::LOCATION)
+                .and_then(|value| value.to_str().ok())
+                .ok_or_else(|| AppError::network("AI provider redirect omitted Location"))?;
+            let next = url
+                .join(location)
+                .map_err(|e| AppError::network(format!("invalid AI provider redirect: {e}")))?;
+            forward_authorization = same_http_origin(&url, &next);
+            allow = allow_private_network && forward_authorization;
+            current = next.to_string();
+            continue;
+        }
+
+        return Ok(response);
+    }
+
+    Err(AppError::network("too many AI provider redirects"))
 }
 
 // ===========================================================================
@@ -203,14 +245,9 @@ fn build_request(
 /// Issues a non-streaming AI request and returns `{ requestId, content }` on a
 /// successful provider response, or a structured error on timeout, network
 /// failure, or a provider error response (16.1, 16.4, 16.5).
-pub async fn request(req: &AiRequest) -> Result<AiResponse, AppError> {
-    let (method, url) = validate(req)?;
-    let client = build_client()?;
-
-    let response = build_request(&client, method, url, req)
-        .send()
-        .await
-        .map_err(|e| map_reqwest_err("AI provider request failed", e))?;
+pub async fn request(req: &AiRequest, allow_private_network: bool) -> Result<AiResponse, AppError> {
+    let (method, _) = validate(req)?;
+    let response = send_following_redirects(req, method, allow_private_network).await?;
 
     let status = response.status();
     if !status.is_success() {
@@ -243,8 +280,13 @@ pub async fn request(req: &AiRequest) -> Result<AiResponse, AppError> {
 /// response, or a mid-stream read error: a single [`EventSink::emit_error`] and
 /// no further events (16.4). If `cancel` is cancelled at any point the outbound
 /// request is aborted and no further events are emitted (16.7).
-pub async fn stream(req: &AiRequest, cancel: &CancellationToken, sink: &dyn EventSink) {
-    let (method, url) = match validate(req) {
+pub async fn stream(
+    req: &AiRequest,
+    cancel: &CancellationToken,
+    sink: &dyn EventSink,
+    allow_private_network: bool,
+) {
+    let (method, _) = match validate(req) {
         Ok(parts) => parts,
         Err(e) => {
             if !cancel.is_cancelled() {
@@ -254,17 +296,7 @@ pub async fn stream(req: &AiRequest, cancel: &CancellationToken, sink: &dyn Even
         }
     };
 
-    let client = match build_client() {
-        Ok(client) => client,
-        Err(e) => {
-            if !cancel.is_cancelled() {
-                sink.emit_error(&req.request_id, &e.message);
-            }
-            return;
-        }
-    };
-
-    let send = build_request(&client, method, url, req).send();
+    let send = send_following_redirects(req, method, allow_private_network);
     let response = tokio::select! {
         biased;
         _ = cancel.cancelled() => return,
@@ -272,7 +304,7 @@ pub async fn stream(req: &AiRequest, cancel: &CancellationToken, sink: &dyn Even
             Ok(response) => response,
             Err(e) => {
                 if !cancel.is_cancelled() {
-                    sink.emit_error(&req.request_id, &map_reqwest_err("AI stream request failed", e).message);
+                    sink.emit_error(&req.request_id, &e.message);
                 }
                 return;
             }
@@ -698,6 +730,103 @@ mod tests {
                 .any(|e| matches!(e, SinkEvent::Complete { .. } | SinkEvent::Error { .. })),
             "no terminal complete/error after cancellation, got {events:?}"
         );
+    }
+
+    // ---- outbound SSRF ----------------------------------------------------
+
+    fn ssrf_request(url: &str) -> AiRequest {
+        AiRequest {
+            request_id: "ssrf".to_string(),
+            method: "POST".to_string(),
+            url: url.to_string(),
+            headers: HashMap::new(),
+            body: Some("{}".to_string()),
+        }
+    }
+
+    async fn serve_http_once(response: &[u8]) -> (String, tokio::task::JoinHandle<()>) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let body = response.to_vec();
+        let handle = tokio::spawn(async move {
+            if let Ok((mut socket, _)) = listener.accept().await {
+                let mut buf = vec![0u8; 4096];
+                let _ = tokio::io::AsyncReadExt::read(&mut socket, &mut buf).await;
+                let _ = tokio::io::AsyncWriteExt::write_all(&mut socket, &body).await;
+            }
+        });
+        (format!("http://127.0.0.1:{}", addr.port()), handle)
+    }
+
+    #[tokio::test]
+    async fn request_blocks_loopback_and_link_local_without_connect() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let accepted = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let flag = accepted.clone();
+        let server = tokio::spawn(async move {
+            if listener.accept().await.is_ok() {
+                flag.store(true, std::sync::atomic::Ordering::SeqCst);
+            }
+        });
+
+        let err = request(
+            &ssrf_request(&format!("http://127.0.0.1:{}/", addr.port())),
+            false,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(err.code_str(), "SSRF_BLOCKED");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        assert!(
+            !accepted.load(std::sync::atomic::Ordering::SeqCst),
+            "loopback must not be contacted"
+        );
+        server.abort();
+
+        for blocked in [
+            "http://169.254.169.254/",
+            "http://10.0.0.1/",
+            "http://192.168.0.1/",
+        ] {
+            let started = std::time::Instant::now();
+            let err = request(&ssrf_request(blocked), false).await.unwrap_err();
+            assert_eq!(err.code_str(), "SSRF_BLOCKED", "{blocked}");
+            assert!(
+                started.elapsed() < Duration::from_secs(2),
+                "{blocked} must be rejected before connect"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn request_blocks_redirect_to_loopback() {
+        let target = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let target_addr = target.local_addr().unwrap();
+        let accepted = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let flag = accepted.clone();
+        let server = tokio::spawn(async move {
+            if target.accept().await.is_ok() {
+                flag.store(true, std::sync::atomic::Ordering::SeqCst);
+            }
+        });
+
+        // Different host than the origin literal so allow-private does not
+        // follow. `localhost` is blocked when the hop is public-only.
+        let location = format!("http://localhost:{}/", target_addr.port());
+        let payload =
+            format!("HTTP/1.1 302 Found\r\nLocation: {location}\r\nContent-Length: 0\r\n\r\n");
+        let (origin, origin_handle) = serve_http_once(payload.as_bytes()).await;
+
+        let err = request(&ssrf_request(&origin), true).await.unwrap_err();
+        assert_eq!(err.code_str(), "SSRF_BLOCKED");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        assert!(
+            !accepted.load(std::sync::atomic::Ordering::SeqCst),
+            "redirect target must not be contacted"
+        );
+        origin_handle.abort();
+        server.abort();
     }
 
     // ---- Property 35: completion equals ordered chunk concatenation -------

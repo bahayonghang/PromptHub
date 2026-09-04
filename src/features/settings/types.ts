@@ -51,7 +51,19 @@ export interface Settings {
   updateChannel?: string | null;
   launchAtStartup?: boolean | null;
   minimizeOnLaunch?: boolean | null;
+  /** Close-window behavior: `ask` | `minimize` | `exit` (Req 20.4). */
+  closeAction?: string | null;
+  /**
+   * When true, AI and sync HTTP may target private, loopback, or link-local
+   * addresses. Absent or false keeps the public-only pin.
+   */
+  allowPrivateNetwork?: boolean | null;
+  /** Accepted on `settings.update` patches; `settings.get` never returns it. */
   githubToken?: string | null;
+  /** Whether a GitHub token is stored. `settings.get` reports this instead of the secret. */
+  hasGithubToken?: boolean | null;
+  /** Whether `sync.password` is stored. `settings.get` reports this instead of the secret. */
+  hasSyncPassword?: boolean | null;
   security?: SecuritySettingsSummary | null;
   /** Theme flavor: Latte | Frappé | Macchiato | Mocha | Claude Light | Claude Dark. */
   flavor?: string | null;
@@ -120,6 +132,8 @@ export interface PreviewResult {
   /** Recommended action: `migrate` (target empty) or `switch` (target has data). */
   recommendedAction: string;
   markers: DataMarker[];
+  /** One-time token required by the matching `data.applyChange`. */
+  confirmToken: string;
 }
 
 /** Result of `data.applyChange` / `data.recoveryApply` (Req 19.5, 19.8). */
@@ -140,6 +154,8 @@ export interface RecoveryPreview {
   exists: boolean;
   hasPromptHubData: boolean;
   markers: DataMarker[];
+  /** One-time token required by the matching `data.recoveryApply`. */
+  confirmToken: string;
 }
 
 // ===========================================================================

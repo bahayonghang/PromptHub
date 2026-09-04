@@ -33,6 +33,7 @@
 //! through [`crate::storage::mapping::prompt_from_row`] (Requirement 4.9).
 #![allow(dead_code)]
 
+use std::collections::BTreeMap;
 use std::sync::Mutex;
 
 use rusqlite::{params, Connection, OptionalExtension};
@@ -40,11 +41,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
 use crate::models::{
-    Prompt, PromptMessage, PromptPage, PromptRevisionSource, PromptType, PromptVersion, Variable,
+    Prompt, PromptCounts, PromptListItem, PromptMessage, PromptPage, PromptRevisionSource,
+    PromptType, PromptVersion, Variable,
 };
 use crate::models::{SearchQuery, SortField, SortOrder};
 use crate::state::EncryptionState;
-use crate::storage::mapping::prompt_from_row;
+use crate::storage::mapping::{prompt_from_row, prompt_list_item_from_row};
 use crate::storage::time::now_millis;
 
 /// Arguments for creating a prompt (Req 6.1, 6.6, 6.7).
@@ -545,6 +547,23 @@ pub(crate) fn present_prompt(mut prompt: Prompt, key: Option<&[u8]>) -> Result<P
     Ok(prompt)
 }
 
+fn present_list_item(
+    mut item: PromptListItem,
+    key: Option<&[u8]>,
+) -> Result<PromptListItem, AppError> {
+    if !item.is_private {
+        return Ok(item);
+    }
+    let Some(key) = key else {
+        item.description = None;
+        item.is_locked = true;
+        return Ok(item);
+    };
+    item.description = decrypt_optional(item.description, key)?;
+    item.is_locked = false;
+    Ok(item)
+}
+
 pub(crate) fn present_version(
     mut version: PromptVersion,
     key: Option<&[u8]>,
@@ -713,9 +732,74 @@ pub fn search_secure(
     page.items = page
         .items
         .into_iter()
-        .map(|prompt| present_prompt(prompt, key.as_deref()))
+        .map(|item| present_list_item(item, key.as_deref()))
         .collect::<Result<Vec<_>, _>>()?;
     Ok(page)
+}
+
+/// Folder, tag, and library totals for the sidebar. One round trip.
+pub fn counts(conn: &Connection) -> Result<PromptCounts, AppError> {
+    let total: i64 = conn
+        .query_row("SELECT COUNT(*) FROM prompts", [], |row| row.get(0))
+        .map_err(|e| db_err("failed to count prompts", e))?;
+    let favorites: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM prompts WHERE is_favorite = 1",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|e| db_err("failed to count favorite prompts", e))?;
+
+    let mut folders = BTreeMap::new();
+    {
+        let mut stmt = conn
+            .prepare(
+                "SELECT folders.id, COUNT(prompts.id)
+                 FROM folders
+                 LEFT JOIN prompts ON prompts.folder_id = folders.id
+                 GROUP BY folders.id",
+            )
+            .map_err(|e| db_err("failed to prepare folder counts", e))?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })
+            .map_err(|e| db_err("failed to query folder counts", e))?;
+        for row in rows {
+            let (id, n) = row.map_err(|e| db_err("failed to read folder count", e))?;
+            folders.insert(
+                id,
+                u64::try_from(n).map_err(|_| AppError::internal("folder count was negative"))?,
+            );
+        }
+    }
+
+    let mut tags = BTreeMap::new();
+    {
+        let mut stmt = conn
+            .prepare("SELECT value, COUNT(*) FROM prompts, json_each(prompts.tags) GROUP BY value")
+            .map_err(|e| db_err("failed to prepare tag counts", e))?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })
+            .map_err(|e| db_err("failed to query tag counts", e))?;
+        for row in rows {
+            let (name, n) = row.map_err(|e| db_err("failed to read tag count", e))?;
+            tags.insert(
+                name,
+                u64::try_from(n).map_err(|_| AppError::internal("tag count was negative"))?,
+            );
+        }
+    }
+
+    Ok(PromptCounts {
+        folders,
+        tags,
+        total: u64::try_from(total).map_err(|_| AppError::internal("prompt count was negative"))?,
+        favorites: u64::try_from(favorites)
+            .map_err(|_| AppError::internal("favorite count was negative"))?,
+    })
 }
 
 /// Deletes a prompt by identifier (Req 6.5).
@@ -1015,7 +1099,12 @@ pub fn search(conn: &Connection, query: SearchQuery) -> Result<PromptPage, AppEr
 
     let field = query.sort_by.unwrap_or_default();
     let order = query.sort_order.unwrap_or_default();
-    let mut sql = format!("SELECT prompts.*{from_sql}");
+    let mut sql = format!(
+        "SELECT prompts.id, prompts.title, prompts.description, prompts.prompt_type, \
+         prompts.type_definition_id, prompts.tags, prompts.folder_id, prompts.is_favorite, \
+         prompts.is_pinned, prompts.is_private, prompts.current_version, prompts.usage_count, \
+         prompts.created_at, prompts.updated_at{from_sql}"
+    );
     // `prompts.id` is a stable secondary key so equal sort values order
     // deterministically.
     sql.push_str(&format!(
@@ -1039,9 +1128,10 @@ pub fn search(conn: &Connection, query: SearchQuery) -> Result<PromptPage, AppEr
         // keyword surfaces here as a step error — classified as a structured parse
         // error rather than allowed to panic (Req 5.7).
         match rows.next() {
-            Ok(Some(row)) => {
-                out.push(prompt_from_row(row).map_err(|e| db_err("failed to map prompt row", e))?)
-            }
+            Ok(Some(row)) => out.push(
+                prompt_list_item_from_row(row)
+                    .map_err(|e| db_err("failed to map prompt list row", e))?,
+            ),
             Ok(None) => break,
             Err(e) if has_keyword => {
                 return Err(AppError::parse(format!(
@@ -1064,6 +1154,19 @@ pub fn search(conn: &Connection, query: SearchQuery) -> Result<PromptPage, AppEr
 }
 
 // --- copy + tag operations (task 4.2; Req 6.8–6.11) ------------------------
+
+/// Usage count after [`increment_usage`].
+///
+/// `updated_at` is intentionally omitted: a copy must not reshuffle
+/// "recently updated" order.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PromptUsage {
+    /// Prompt id whose usage was incremented.
+    pub id: String,
+    /// Stored `usage_count` after the increment.
+    pub usage_count: i64,
+}
 
 /// Substituted prompt text returned by [`copy`] (Req 6.11).
 ///
@@ -1182,6 +1285,26 @@ pub fn copy_secure(
             })
             .collect(),
         unexpanded,
+    })
+}
+
+/// Increments `usage_count` by one for `id` without touching `updated_at`.
+///
+/// Missing rows return `NOT_FOUND`. This is separate from [`copy`]: clipboard
+/// writes happen in the frontend, and a failed write must not count as a use.
+pub fn increment_usage(conn: &Connection, id: &str) -> Result<PromptUsage, AppError> {
+    let usage_count: i64 = conn
+        .query_row(
+            "UPDATE prompts SET usage_count = usage_count + 1 WHERE id = ?1 RETURNING usage_count",
+            [id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|e| db_err("failed to increment prompt usage", e))?
+        .ok_or_else(|| AppError::not_found(format!("prompt `{id}` not found")))?;
+    Ok(PromptUsage {
+        id: id.to_string(),
+        usage_count,
     })
 }
 
@@ -1441,6 +1564,105 @@ mod tests {
         let err = create(&conn, input).unwrap_err();
         assert_eq!(err.code, ErrorCode::Validation);
         assert!(list(&conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn create_rejects_invalid_message_role_and_empty_content() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let bad_role = create(
+            &conn,
+            PromptCreate {
+                title: "Chat".into(),
+                user_prompt: String::new(),
+                messages: Some(vec![PromptMessage {
+                    role: "tool".into(),
+                    content: "Hello".into(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(bad_role.code, ErrorCode::Validation);
+        assert!(list(&conn).unwrap().is_empty());
+
+        let empty_content = create(
+            &conn,
+            PromptCreate {
+                title: "Chat".into(),
+                user_prompt: String::new(),
+                messages: Some(vec![PromptMessage {
+                    role: "user".into(),
+                    content: "  ".into(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(empty_content.code, ErrorCode::Validation);
+        assert!(list(&conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn create_accepts_chat_only_messages_with_empty_user_prompt() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let messages = vec![
+            PromptMessage {
+                role: "system".into(),
+                content: "Be brief".into(),
+            },
+            PromptMessage {
+                role: "user".into(),
+                content: "Hello".into(),
+            },
+            PromptMessage {
+                role: "assistant".into(),
+                content: "Hi".into(),
+            },
+        ];
+        let created = create(
+            &conn,
+            PromptCreate {
+                title: "Chat only".into(),
+                user_prompt: String::new(),
+                messages: Some(messages.clone()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(created.user_prompt, "");
+        assert_eq!(created.messages, messages);
+        assert_eq!(list(&conn).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn update_rejects_clearing_user_prompt_and_messages() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let created = create(
+            &conn,
+            PromptCreate {
+                title: "Keep body".into(),
+                user_prompt: "original".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let before = get(&conn, &created.id).unwrap();
+
+        let err = update(
+            &conn,
+            &created.id,
+            PromptUpdate {
+                user_prompt: Some(String::new()),
+                messages: Some(vec![]),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(err.code, ErrorCode::Validation);
+        assert_eq!(get(&conn, &created.id).unwrap(), before);
     }
 
     #[test]
@@ -1794,6 +2016,67 @@ mod tests {
     }
 
     #[test]
+    fn increment_usage_counts_and_leaves_updated_at_unchanged() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let created = create(
+            &conn,
+            PromptCreate {
+                title: "T".into(),
+                user_prompt: "body".into(),
+                usage_count: Some(0),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(created.usage_count, 0);
+        let before = get(&conn, &created.id).unwrap();
+
+        let first = increment_usage(&conn, &created.id).unwrap();
+        assert_eq!(first.id, created.id);
+        assert_eq!(first.usage_count, 1);
+        let after_first = get(&conn, &created.id).unwrap();
+        assert_eq!(after_first.usage_count, 1);
+        assert_eq!(after_first.updated_at, before.updated_at);
+
+        let second = increment_usage(&conn, &created.id).unwrap();
+        assert_eq!(second.usage_count, 2);
+        let after_second = get(&conn, &created.id).unwrap();
+        assert_eq!(after_second.usage_count, 2);
+        assert_eq!(after_second.updated_at, before.updated_at);
+    }
+
+    #[test]
+    fn increment_usage_missing_id_returns_not_found() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let err = increment_usage(&conn, "missing").unwrap_err();
+        assert_eq!(err.code, ErrorCode::NotFound);
+        assert!(list(&conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn copy_does_not_increment_usage() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let created = create(
+            &conn,
+            PromptCreate {
+                title: "T".into(),
+                user_prompt: "Hello {{name}}".into(),
+                usage_count: Some(3),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let before = get(&conn, &created.id).unwrap();
+        let _ = copy(&conn, &created.id, &HashMap::new()).unwrap();
+        let after = get(&conn, &created.id).unwrap();
+        assert_eq!(after.usage_count, 3);
+        assert_eq!(after.updated_at, before.updated_at);
+    }
+
+    #[test]
     fn copy_without_references_is_byte_for_byte_with_substitution() {
         let pool = schema_pool();
         let conn = pool.get().unwrap();
@@ -1996,8 +2279,8 @@ mod tests {
         .unwrap();
     }
 
-    fn titles(prompts: &[Prompt]) -> Vec<String> {
-        prompts.iter().map(|p| p.title.clone()).collect()
+    fn titles(page: &PromptPage) -> Vec<String> {
+        page.items.iter().map(|p| p.title.clone()).collect()
     }
 
     #[test]
@@ -2295,6 +2578,41 @@ mod tests {
     }
 
     #[test]
+    fn search_list_items_omit_prompt_bodies() {
+        let pool = search_pool();
+        let conn = pool.get().unwrap();
+        create_full(&conn, "Body Prompt", &["tag"], None, false, 0);
+        let page = search(&conn, SearchQuery::default()).unwrap();
+        assert_eq!(page.items.len(), 1);
+        let value = serde_json::to_value(&page.items[0]).unwrap();
+        assert!(value.get("userPrompt").is_none());
+        assert!(value.get("systemPrompt").is_none());
+        assert!(value.get("messages").is_none());
+        assert_eq!(value["title"], "Body Prompt");
+    }
+
+    #[test]
+    fn counts_returns_folder_tag_total_and_favorites() {
+        let pool = search_pool();
+        let conn = pool.get().unwrap();
+        conn.execute(
+            "INSERT INTO folders (id, name, created_at) VALUES ('f1','F1',0),('f2','Empty',0)",
+            [],
+        )
+        .unwrap();
+        create_full(&conn, "A", &["red", "blue"], Some("f1"), true, 0);
+        create_full(&conn, "B", &["red"], Some("f1"), false, 0);
+        create_full(&conn, "C", &[], None, true, 0);
+        let counts = counts(&conn).unwrap();
+        assert_eq!(counts.total, 3);
+        assert_eq!(counts.favorites, 2);
+        assert_eq!(counts.folders.get("f1"), Some(&2));
+        assert_eq!(counts.folders.get("f2"), Some(&0));
+        assert_eq!(counts.tags.get("red"), Some(&2));
+        assert_eq!(counts.tags.get("blue"), Some(&1));
+    }
+
+    #[test]
     fn search_keyword_with_special_chars_does_not_panic() {
         let pool = search_pool();
         let conn = pool.get().unwrap();
@@ -2438,6 +2756,98 @@ mod tests {
         let rekeyed = get_secure(&conn, &encryption, &created.id).unwrap();
         assert_eq!(rekeyed.user_prompt, "classified body");
         assert_eq!(rekeyed.notes.as_deref(), Some("classified notes"));
+    }
+
+    #[test]
+    fn create_secure_private_while_locked_is_unauthorized_and_writes_nothing() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let encryption = Mutex::new(EncryptionState::default());
+        crate::services::security::set_master_password(&conn, &encryption, "password123").unwrap();
+        crate::services::security::lock(&encryption).unwrap();
+        let before = list(&conn).unwrap().len();
+
+        let err = create_secure(
+            &conn,
+            &encryption,
+            PromptCreate {
+                title: "Locked private".into(),
+                user_prompt: "secret body".into(),
+                is_private: Some(true),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(err.code, ErrorCode::Unauthorized);
+        assert_eq!(list(&conn).unwrap().len(), before);
+        assert!(list(&conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn update_secure_public_to_private_while_locked_is_unauthorized_and_unchanged() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let encryption = Mutex::new(EncryptionState::default());
+        let created = create(
+            &conn,
+            PromptCreate {
+                title: "Public prompt".into(),
+                user_prompt: "public body".into(),
+                is_private: Some(false),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        crate::services::security::set_master_password(&conn, &encryption, "password123").unwrap();
+        crate::services::security::lock(&encryption).unwrap();
+        let before = get(&conn, &created.id).unwrap();
+
+        let err = update_secure(
+            &conn,
+            &encryption,
+            &created.id,
+            PromptUpdate {
+                is_private: Some(true),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(err.code, ErrorCode::Unauthorized);
+        assert_eq!(get(&conn, &created.id).unwrap(), before);
+    }
+
+    #[test]
+    fn update_secure_private_content_while_locked_is_unauthorized_and_unchanged() {
+        let pool = schema_pool();
+        let conn = pool.get().unwrap();
+        let encryption = Mutex::new(EncryptionState::default());
+        crate::services::security::set_master_password(&conn, &encryption, "password123").unwrap();
+        let created = create_secure(
+            &conn,
+            &encryption,
+            PromptCreate {
+                title: "Private prompt".into(),
+                user_prompt: "classified body".into(),
+                is_private: Some(true),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        crate::services::security::lock(&encryption).unwrap();
+        let before = get(&conn, &created.id).unwrap();
+
+        let err = update_secure(
+            &conn,
+            &encryption,
+            &created.id,
+            PromptUpdate {
+                user_prompt: Some("replacement body".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+        assert_eq!(err.code, ErrorCode::Unauthorized);
+        assert_eq!(get(&conn, &created.id).unwrap(), before);
     }
 
     #[test]

@@ -92,7 +92,9 @@ When adding UI text:
 
 1. Add dot-notation keys to all seven locale bundles in `src/locales/`.
 2. Use `const { t } = useTranslation();` in the component.
-3. Add the rendered keys to the feature's `i18nKeys.test.ts`.
+3. Add the rendered keys to the feature's `i18nKeys.test.ts`, and assert
+   every key in **all seven** locale bundles. Checking only English lets
+   missing translations fall back to `en` in the UI.
 4. Prefer accessible queries in component tests so missing labels are caught.
 
 Current locale bundles: `en`, `zh`, `zh-TW`, `ja`, `fr`, `de`, and `es`.
@@ -130,3 +132,7 @@ Review frontend changes for:
   `createRuntimeBridge(deps)` or store `api` fields.
 - Treating all backend failures the same when a capability-gated path should
   degrade gracefully.
+- Calling `window.close` from the ask-close confirm path. CloseAction is still
+  `ask`, so that re-emits `window:close-requested`. Use `window.quit`. Hide
+  from that dialog must use `window.hide` (tray-aware), not
+  `window.toggleVisibility`. See `.trellis/spec/cross-layer/window-close-tray.md`.

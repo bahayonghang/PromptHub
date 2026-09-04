@@ -1551,6 +1551,7 @@
     "copyPrompt": "Copier le prompt",
     "copyPromptNamed": "Copier {{title}}",
     "copyPromptCopied": "Copie reussie",
+    "copyPromptCopiedNamed": "{{title}} copie",
     "copyPromptFailed": "Impossible de copier le prompt",
     "copyPromptLocked": "Deverrouillez la bibliotheque pour copier le contenu prive",
     "deletePrompt": "Supprimer le prompt",
@@ -1879,5 +1880,86 @@
     "duration": "Duration",
     "matrixRuns": "Matrix runs",
     "retry": "Retry failed cells"
+  },
+  "systemView": {
+    "window": {
+      "minimize": "Réduire",
+      "maximize": "Agrandir",
+      "restore": "Restaurer",
+      "close": "Fermer",
+      "enterFullscreen": "Plein écran",
+      "exitFullscreen": "Quitter le plein écran",
+      "closeActionTitle": "À la fermeture de la fenêtre",
+      "closeActionHint": "Choisissez l’action du bouton de fermeture.",
+      "closeAction": {
+        "ask": "Demander à chaque fois",
+        "minimize": "Réduire dans la barre d'état",
+        "exit": "Quitter l’application"
+      },
+      "autoLaunch": "Lancer à la connexion",
+      "autoLaunchHint": "Démarrer PromptHub automatiquement à la connexion de l’ordinateur."
+    },
+    "close": {
+      "title": "Fermer PromptHub ?",
+      "message": "Vous pouvez continuer, réduire dans la barre d'état, ou quitter.",
+      "cancel": "Continuer",
+      "minimize": "Réduire dans la barre d'état",
+      "confirm": "Quitter"
+    },
+    "shortcuts": {
+      "title": "Raccourcis clavier",
+      "hint": "Enregistrez jusqu’à {{max}} raccourcis. Les raccourcis globaux fonctionnent partout ; les locaux uniquement lorsque PromptHub a le focus.",
+      "empty": "Aucun raccourci. Ajoutez-en un pour commencer.",
+      "action": "Action",
+      "actionPlaceholder": "Id d’action, p. ex. toggle-window",
+      "accelerator": "Raccourci",
+      "acceleratorPlaceholder": "p. ex. CmdOrCtrl+Shift+K",
+      "mode": "Mode",
+      "modeGlobal": "Global",
+      "modeLocal": "Local",
+      "add": "Ajouter un raccourci",
+      "remove": "Supprimer le raccourci",
+      "save": "Enregistrer les raccourcis",
+      "lastTriggered": "Dernier déclenché : {{action}}"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "hint": "Envoyer une notification système. Titre jusqu’à 256 caractères, corps jusqu’à 1000.",
+      "titleLabel": "Titre",
+      "bodyLabel": "Corps",
+      "send": "Envoyer une notification de test",
+      "sent": "Notification envoyée."
+    },
+    "updater": {
+      "title": "Mises à jour",
+      "hint": "Vérifier, télécharger et installer les mises à jour.",
+      "currentVersion": "Version actuelle",
+      "check": "Rechercher des mises à jour",
+      "checking": "Vérification…",
+      "upToDate": "Vous avez la dernière version.",
+      "available": "La version {{version}} est disponible.",
+      "download": "Télécharger la mise à jour",
+      "downloading": "Téléchargement…",
+      "downloadingPercent": "Téléchargement… {{percent}} %",
+      "downloadingBytes": "Téléchargement… {{downloaded}}",
+      "downloaded": "Téléchargement terminé. L’installation s’appliquera au prochain redémarrage.",
+      "install": "Installer et redémarrer",
+      "installing": "Installation…",
+      "unavailable": "Les mises à jour ne sont pas disponibles dans cet environnement."
+    },
+    "paths": {
+      "title": "Chemins d’exécution",
+      "platform": "Plateforme",
+      "data": "Répertoire des données",
+      "database": "Fichier de base de données",
+      "media": "Répertoire des médias",
+      "rule": "Répertoire des règles",
+      "backup": "Répertoire des sauvegardes",
+      "log": "Répertoire des journaux",
+      "open": "Ouvrir dans l’explorateur",
+      "cache": "Cache",
+      "clearCache": "Vider le cache",
+      "unavailable": "Les contrôles de fenêtre ne sont pas disponibles dans cet environnement."
+    }
   }
 }

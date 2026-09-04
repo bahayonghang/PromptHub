@@ -7,6 +7,7 @@
 )]
 
 pub mod error;
+pub mod logging;
 pub mod state;
 
 pub mod commands;
@@ -16,7 +17,7 @@ pub mod storage;
 
 use tauri::{Emitter, Manager};
 
-use crate::services::window::{self, CapabilityDegradation};
+use crate::services::window::{self, CapabilityDegradation, CloseDecision, PlatformFeature};
 use crate::state::{AppState, RuntimePaths};
 
 /// Tauri event emitted to the Frontend when the startup sequence fails fatally,
@@ -72,6 +73,9 @@ fn announce_capability_degradations<R: tauri::Runtime>(
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            commands::window::show_main_window(app);
+        }))
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
@@ -89,27 +93,68 @@ pub fn run() {
             // event is emitted so the Frontend can show a fatal error surface
             // (Requirements 4.6, 4.7, 23.1, 23.3).
             let state = build_app_state(app.handle());
+            crate::logging::init(&state.paths.log);
             app.manage(state);
             app.manage(commands::CommandRuntimeState::default());
 
-            let state = app.state::<AppState>();
-            if let Err(error) = commands::startup::run_startup(&state) {
-                eprintln!("PromptHub startup failed: {error}");
-                let _ = app.emit(EVENT_INIT_FAILED, error.to_string());
+            let mut tray_language = String::from("en");
+            let mut stored_close_action: Option<String> = None;
+            {
+                let state = app.state::<AppState>();
+                if let Err(error) = commands::startup::run_startup(&state) {
+                    eprintln!("PromptHub startup failed: {error}");
+                    let _ = app.emit(EVENT_INIT_FAILED, error.to_string());
+                } else if let Ok(settings) =
+                    commands::conn(&state).and_then(|conn| crate::services::settings::get(&conn))
+                {
+                    tray_language = settings.language;
+                    stored_close_action = settings.close_action;
+                }
+            }
+            {
+                let runtime = app.state::<commands::CommandRuntimeState>();
+                commands::window::seed_close_action_from_settings(
+                    &runtime,
+                    stored_close_action.as_deref(),
+                );
             }
 
             // Probe platform-integration features and surface a non-fatal
             // indication for any unsupported on this Target_Platform; the app
             // keeps running and the supported features are applied on demand by
             // the Command_Layer (Requirements 23.4, 23.5).
-            announce_capability_degradations(app.handle());
+            let capabilities = announce_capability_degradations(app.handle());
+            if capabilities.tray {
+                if let Err(error) = commands::window::setup_tray(app.handle(), &tray_language) {
+                    eprintln!("PromptHub tray setup failed: {error}");
+                    let _ = app.emit::<CapabilityDegradation>(
+                        EVENT_CAPABILITY_DEGRADED,
+                        CapabilityDegradation::new(PlatformFeature::Tray),
+                    );
+                }
+            }
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if window.label() != "main" {
+                return;
+            }
+            let tauri::WindowEvent::CloseRequested { api, .. } = event else {
+                return;
+            };
+            let app = window.app_handle();
+            let runtime = app.state::<commands::CommandRuntimeState>();
+            match commands::window::apply_close(app, &runtime) {
+                Ok(CloseDecision::Terminate) => {}
+                _ => api.prevent_close(),
+            }
         })
         .invoke_handler(tauri::generate_handler![
             commands::app_status,
             commands::prompt::prompt_list,
             commands::prompt::prompt_get,
             commands::prompt::prompt_search,
+            commands::prompt::prompt_counts,
             commands::prompt::prompt_create,
             commands::prompt::prompt_update,
             commands::prompt::prompt_delete,
@@ -118,6 +163,7 @@ pub fn run() {
             commands::prompt::prompt_batch_tag,
             commands::prompt::prompt_batch_delete,
             commands::prompt::prompt_copy,
+            commands::prompt::prompt_increment_usage,
             commands::prompt::reference_list,
             commands::prompt::prompt_tag_list,
             commands::prompt::prompt_tag_rename,
@@ -173,14 +219,7 @@ pub fn run() {
             commands::data_path::data_path_recovery_preview,
             commands::data_path::data_path_recovery_apply,
             commands::sync::sync_webdav_test,
-            commands::sync::sync_webdav_upload,
-            commands::sync::sync_webdav_download,
-            commands::sync::sync_webdav_stat,
-            commands::sync::sync_webdav_ensure_dir,
             commands::sync::sync_s3_test,
-            commands::sync::sync_s3_upload,
-            commands::sync::sync_s3_download,
-            commands::sync::sync_s3_stat,
             commands::sync::sync_export_zip,
             commands::sync::sync_export_cancel,
             commands::sync::sync_backup_create,
@@ -194,9 +233,6 @@ pub fn run() {
             commands::rules::rules_add_project,
             commands::rules::rules_remove_project,
             commands::rules::rules_delete_version,
-            commands::ai::ai_request,
-            commands::ai::ai_stream,
-            commands::ai::ai_cancel,
             commands::media::media_select_paths,
             commands::media::media_image_save,
             commands::media::media_image_save_buffer,
@@ -221,6 +257,8 @@ pub fn run() {
             commands::window::window_maximize,
             commands::window::window_restore,
             commands::window::window_close,
+            commands::window::window_quit,
+            commands::window::window_hide,
             commands::window::window_toggle_visibility,
             commands::window::window_enter_fullscreen,
             commands::window::window_exit_fullscreen,

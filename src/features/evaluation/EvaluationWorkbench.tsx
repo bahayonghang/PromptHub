@@ -83,7 +83,8 @@ export function EvaluationWorkbench({ prompt, versions }: EvaluationWorkbenchPro
   const selectedMatrix = useEvaluationStore((state) => state.selectedMatrix);
   const rendered = useEvaluationStore((state) => state.rendered);
   const streamedOutput = useEvaluationStore((state) => state.streamedOutput);
-  const activeRequestId = useEvaluationStore((state) => state.activeRequestId);
+  const playgroundRequestId = useEvaluationStore((state) => state.playgroundRequestId);
+  const matrixRequestId = useEvaluationStore((state) => state.matrixRequestId);
   const progress = useEvaluationStore((state) => state.progress);
   const labels = useEvaluationStore((state) => state.labels);
   const labelHistory = useEvaluationStore((state) => state.labelHistory);
@@ -256,8 +257,8 @@ export function EvaluationWorkbench({ prompt, versions }: EvaluationWorkbenchPro
               <button type="button" disabled={!revisionId} onClick={() => void render(revisionId, inputs)} className="rounded border border-input px-3 py-1.5 text-xs text-foreground hover:bg-accent disabled:opacity-40">
                 {t("evaluation.preview")}
               </button>
-              {activeRequestId ? (
-                <button type="button" onClick={() => void cancel()} className="flex items-center gap-1.5 rounded border border-input px-3 py-1.5 text-xs text-foreground hover:bg-accent">
+              {playgroundRequestId ? (
+                <button type="button" onClick={() => void cancel("playground")} className="flex items-center gap-1.5 rounded border border-input px-3 py-1.5 text-xs text-foreground hover:bg-accent">
                   <SquareIcon className="h-3.5 w-3.5" aria-hidden="true" />{t("common.cancel")}
                 </button>
               ) : (
@@ -348,7 +349,7 @@ export function EvaluationWorkbench({ prompt, versions }: EvaluationWorkbenchPro
                 </div>
               </div>
               <div className="mt-3 flex items-center gap-2">
-                {activeRequestId ? <button type="button" onClick={() => void cancel()} className="flex items-center gap-1 rounded border border-input px-2 py-1 text-xs"><SquareIcon className="h-3 w-3" />{t("common.cancel")}</button> : <button type="button" disabled={!testSetId || selectedRevisions.length === 0 || selectedProfiles.length === 0 || selectedEvaluators.length === 0} onClick={() => void runMatrix({ testSetId, promptRevisionIds: selectedRevisions, profileRevisionIds: selectedProfiles, evaluatorIds: selectedEvaluators })} className="flex items-center gap-1 rounded bg-primary px-2 py-1 text-xs text-primary-foreground disabled:opacity-40"><PlayIcon className="h-3 w-3" />{t("evaluation.runMatrix")}</button>}
+                {matrixRequestId ? <button type="button" onClick={() => void cancel("matrix")} className="flex items-center gap-1 rounded border border-input px-2 py-1 text-xs"><SquareIcon className="h-3 w-3" />{t("common.cancel")}</button> : <button type="button" disabled={!testSetId || selectedRevisions.length === 0 || selectedProfiles.length === 0 || selectedEvaluators.length === 0} onClick={() => void runMatrix({ testSetId, promptRevisionIds: selectedRevisions, profileRevisionIds: selectedProfiles, evaluatorIds: selectedEvaluators })} className="flex items-center gap-1 rounded bg-primary px-2 py-1 text-xs text-primary-foreground disabled:opacity-40"><PlayIcon className="h-3 w-3" />{t("evaluation.runMatrix")}</button>}
                 {progress && <span aria-live="polite" className="text-xs tabular-nums text-muted-foreground">{progress.completed}/{progress.total}</span>}
               </div>
             </section>
