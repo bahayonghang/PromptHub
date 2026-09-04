@@ -10,6 +10,7 @@ import type { Settings } from "../types";
 import { PreferenceStatus } from "./PreferenceStatus";
 
 import { Select } from "../../../components/ui";
+
 interface GeneralPanelProps {
   settings: Settings | null;
   /** Persists a partial settings update through the backend (Req 19.2). */

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ImageIcon, PlusIcon, VideoIcon, XIcon } from "lucide-react";
 
+import { IconButton } from "../../../components/ui";
+
 interface MediaRefListProps {
   label: string;
   kind: "image" | "video";
@@ -40,14 +42,12 @@ export function MediaRefList({ label, kind, refs, onChange }: MediaRefListProps)
               className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1 text-label text-foreground"
             >
               <span className="min-w-0 flex-1 truncate">{ref}</span>
-              <button
-                type="button"
-                aria-label={t("promptsView.editor.removeMediaRef")}
+              <IconButton
+                label={t("promptsView.editor.removeMediaRef")}
+                icon={<XIcon className="h-3.5 w-3.5" aria-hidden="true" />}
+                variant="danger"
                 onClick={() => onChange(refs.filter((x) => x !== ref))}
-                className="text-muted-foreground hover:text-destructive"
-              >
-                <XIcon className="h-3.5 w-3.5" aria-hidden="true" />
-              </button>
+              />
             </li>
           ))}
         </ul>
@@ -65,14 +65,12 @@ export function MediaRefList({ label, kind, refs, onChange }: MediaRefListProps)
           }}
           className="w-full rounded-md border border-input bg-background px-2 py-1 text-label text-foreground outline-none"
         />
-        <button
-          type="button"
+        <IconButton
+          label={kind === "image" ? t("promptsView.editor.addImage") : t("promptsView.editor.addVideo")}
+          icon={<PlusIcon className="h-3.5 w-3.5" aria-hidden="true" />}
+          variant="bordered"
           onClick={add}
-          aria-label={kind === "image" ? t("promptsView.editor.addImage") : t("promptsView.editor.addVideo")}
-          className="flex shrink-0 items-center gap-1 rounded-md border border-input px-2 py-1 text-label text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <PlusIcon className="h-3.5 w-3.5" aria-hidden="true" />
-        </button>
+        />
       </div>
     </div>
   );

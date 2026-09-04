@@ -4,6 +4,7 @@ import { CheckIcon, FolderPlusIcon, LoaderCircleIcon, XIcon } from "lucide-react
 import type { CreateFolderInput, Folder } from "../../types";
 
 import { IconButton, Select} from "../../../../components/ui";
+
 export interface FolderPickerProps {
   folders: Folder[];
   value: string | null;

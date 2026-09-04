@@ -4,6 +4,8 @@ import { ImageIcon, LockIcon, PinIcon, StarIcon, VideoIcon } from "lucide-react"
 import type { LibraryItem } from "../libraryItem";
 import { CopyPromptButton } from "./CopyPromptButton";
 
+import { IconButton } from "../../../components/ui";
+
 interface PromptListProps {
   items: LibraryItem[];
   selectedPromptId: string | null;
@@ -146,15 +148,12 @@ export function PromptList({
                   {item.updatedLabel}
                 </td>
                 <td className="px-1 align-middle">
-                  <button
-                    type="button"
-                    aria-pressed={item.isFavorite}
-                    aria-label={item.isFavorite ? t("promptsView.unfavorite") : t("promptsView.favorite")}
+                  <IconButton
+                    label={item.isFavorite ? t("promptsView.unfavorite") : t("promptsView.favorite")}
+                    icon={<StarIcon className={`h-3.5 w-3.5 ${item.isFavorite ? "fill-current text-primary" : ""}`} aria-hidden="true" />}
                     onClick={() => onToggleFavorite(item.id, !item.isFavorite)}
-                    className="rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                  >
-                    <StarIcon className={`h-3.5 w-3.5 ${item.isFavorite ? "fill-current text-primary" : ""}`} aria-hidden="true" />
-                  </button>
+                    aria-pressed={item.isFavorite}
+                  />
                 </td>
               </tr>
             );

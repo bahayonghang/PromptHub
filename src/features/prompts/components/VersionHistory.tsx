@@ -10,6 +10,7 @@ import {
 import type { Prompt, PromptTypeDefinition, PromptVersion } from "../types";
 import { diffPromptRevision } from "../versionDiff";
 
+import { IconButton } from "../../../components/ui";
 /** The 1,000-character note limit enforced by `version.create` (Req 7.8). */
 const NOTE_MAX = 1000;
 
@@ -123,15 +124,11 @@ export function VersionHistory({
                   {t(`promptsView.history.sources.${version.sourceAction}`)}
                 </span>
                 <span className="ml-auto shrink-0">
-                  <button
-                    type="button"
-                    title={t("promptsView.history.restore")}
-                    aria-label={t("promptsView.history.restore")}
+                  <IconButton
+                    label={t("promptsView.history.restore")}
+                    icon={<RotateCcwIcon className="h-3.5 w-3.5" aria-hidden="true" />}
                     onClick={() => onRollback(version.version)}
-                    className="rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                  >
-                    <RotateCcwIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                  </button>
+                  />
                 </span>
               </div>
               {version.note && (

@@ -3,7 +3,8 @@ import { LayoutGridIcon, LayoutListIcon, SearchIcon } from "lucide-react";
 import { usePromptStore, type LibraryViewMode } from "../promptStore";
 import type { SortField, SortOrder } from "../types";
 
-import { Select } from "../../../components/ui";
+import { IconButton, Select} from "../../../components/ui";
+
 const SORT_FIELDS: { value: SortField; labelKey: string }[] = [
   { value: "updatedAt", labelKey: "promptsView.sortUpdated" },
   { value: "createdAt", labelKey: "promptsView.sortCreated" },
@@ -71,28 +72,24 @@ export function LibraryToolbar() {
           <option value="asc">{t("promptsView.sortAsc")}</option>
         </Select>
         <div className="inline-flex rounded-md border border-input p-0.5" role="group" aria-label={t("promptsView.chrome.viewMode")}>
-          <button
-            type="button"
-            aria-pressed={viewMode === "list"}
-            aria-label={t("promptsView.chrome.viewList")}
+          <IconButton
+            label={t("promptsView.chrome.viewList")}
+            icon={<LayoutListIcon className="h-3.5 w-3.5" aria-hidden="true" />}
             onClick={() => setMode("list")}
+            aria-pressed={viewMode === "list"}
             className={`flex h-7 w-7 items-center justify-center rounded-sm ${
               viewMode === "list" ? "bg-state-selected text-foreground" : "text-muted-foreground hover:bg-accent"
             }`}
-          >
-            <LayoutListIcon className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            aria-pressed={viewMode === "grid"}
-            aria-label={t("promptsView.chrome.viewGrid")}
+          />
+          <IconButton
+            label={t("promptsView.chrome.viewGrid")}
+            icon={<LayoutGridIcon className="h-3.5 w-3.5" aria-hidden="true" />}
             onClick={() => setMode("grid")}
+            aria-pressed={viewMode === "grid"}
             className={`flex h-7 w-7 items-center justify-center rounded-sm ${
               viewMode === "grid" ? "bg-state-selected text-foreground" : "text-muted-foreground hover:bg-accent"
             }`}
-          >
-            <LayoutGridIcon className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
+          />
         </div>
         <button
           type="button"

@@ -113,6 +113,24 @@ describe("style conventions", () => {
     expect(css).toContain("outline: 2px solid hsl(var(--ring))");
   });
 
+  it("expresses selection through a single state token", () => {
+    // bg-primary/10 vs /15 across views made "selected" read differently in
+    // each list; --state-selected is the one source of truth.
+    const bad: string[] = [];
+    for (const file of TSX) {
+      read(file)
+        .split("\n")
+        .forEach((line: string, i: number) => {
+          for (const m of line.matchAll(/bg-primary\/(\d+)/g)) {
+            // /70 is the usage-bar fill and /90 the primary-button hover;
+            // neither denotes selection.
+            if (m[1] !== "70" && m[1] !== "90") bad.push(`${file}:${i + 1}`);
+          }
+        });
+    }
+    expect(bad).toEqual([]);
+  });
+
   it("only uses alpha modifiers that exist on Tailwind's opacity scale", () => {
     // Off-scale values such as `/14` are silently dropped at build time,
     // leaving the element with no colour at all.

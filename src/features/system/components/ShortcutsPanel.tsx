@@ -4,7 +4,7 @@ import { PlusIcon, Trash2Icon } from "lucide-react";
 import { MAX_SHORTCUTS, type Shortcut, type ShortcutMode } from "../types";
 import { useSystemStore } from "../systemStore";
 
-import { Select } from "../../../components/ui";
+import { IconButton, Select} from "../../../components/ui";
 /** A blank shortcut row used when adding a new entry. */
 const EMPTY_SHORTCUT: Shortcut = { action: "", accelerator: "", mode: "global" };
 
@@ -92,15 +92,13 @@ export function ShortcutsPanel() {
               <option value="global">{t("systemView.shortcuts.modeGlobal")}</option>
               <option value="local">{t("systemView.shortcuts.modeLocal")}</option>
             </Select>
-            <button
-              type="button"
+            <IconButton
+              label={t("systemView.shortcuts.remove")}
+              icon={<Trash2Icon className="h-4 w-4" aria-hidden="true" />}
+              size="lg"
+              variant="danger"
               onClick={() => removeRow(index)}
-              title={t("systemView.shortcuts.remove")}
-              aria-label={t("systemView.shortcuts.remove")}
-              className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground"
-            >
-              <Trash2Icon className="h-4 w-4" aria-hidden="true" />
-            </button>
+            />
           </div>
         ))}
       </div>

@@ -11,6 +11,7 @@ import type {
 } from "../../types";
 
 import { Select } from "../../../../components/ui";
+
 export interface ReferencesTabProps {
   prompt: Prompt | null;
   prompts: PromptListItem[];

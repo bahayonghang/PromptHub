@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { VARIABLE_TYPES, type Variable, type VariableType } from "../types";
 
 import { Select } from "../../../components/ui";
+
 interface VariableEditorProps {
   /** Variables derived from the prompt text's `{{name}}` placeholders. */
   variables: Variable[];

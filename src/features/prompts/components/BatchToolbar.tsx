@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { CheckCheckIcon, FolderInputIcon, TagIcon, Trash2Icon, XIcon } from "lucide-react";
 import type { Folder } from "../types";
 
-import { Select } from "../../../components/ui";
+import { IconButton, Select} from "../../../components/ui";
+
 interface BatchToolbarProps {
   selectedCount: number;
   folders: Folder[];
@@ -35,24 +36,16 @@ export function BatchToolbar({
         <span className="min-w-0 flex-1">
           {t("promptsView.batch.selected", { count: selectedCount })}
         </span>
-        <button
-          type="button"
-          title={t("promptsView.batch.selectPage")}
-          aria-label={t("promptsView.batch.selectPage")}
+        <IconButton
+          label={t("promptsView.batch.selectPage")}
+          icon={<CheckCheckIcon className="h-3.5 w-3.5" aria-hidden="true" />}
           onClick={onSelectPage}
-          className="rounded-sm p-1 hover:bg-accent hover:text-foreground"
-        >
-          <CheckCheckIcon className="h-3.5 w-3.5" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          title={t("promptsView.batch.clear")}
-          aria-label={t("promptsView.batch.clear")}
+        />
+        <IconButton
+          label={t("promptsView.batch.clear")}
+          icon={<XIcon className="h-3.5 w-3.5" aria-hidden="true" />}
           onClick={onClear}
-          className="rounded-sm p-1 hover:bg-accent hover:text-foreground"
-        >
-          <XIcon className="h-3.5 w-3.5" aria-hidden="true" />
-        </button>
+        />
         <button
           type="button"
           title={t("promptsView.chrome.batchExit")}
@@ -77,15 +70,11 @@ export function BatchToolbar({
             </option>
           ))}
         </Select>
-        <button
-          type="button"
-          title={t("promptsView.batch.move")}
-          aria-label={t("promptsView.batch.move")}
+        <IconButton
+          label={t("promptsView.batch.move")}
+          icon={<FolderInputIcon className="h-4 w-4" aria-hidden="true" />}
           onClick={() => onMove(folderId || null)}
-          className="rounded-sm p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <FolderInputIcon className="h-4 w-4" aria-hidden="true" />
-        </button>
+        />
       </div>
       <div className="flex items-center gap-1">
         <input
@@ -94,28 +83,21 @@ export function BatchToolbar({
           placeholder={t("promptsView.batch.tagPlaceholder")}
           className="min-w-0 flex-1 rounded-sm border border-input bg-background px-2 py-1 text-label text-foreground"
         />
-        <button
-          type="button"
-          title={t("promptsView.batch.addTag")}
-          aria-label={t("promptsView.batch.addTag")}
+        <IconButton
+          label={t("promptsView.batch.addTag")}
+          icon={<TagIcon className="h-4 w-4" aria-hidden="true" />}
           disabled={tag.trim() === ""}
           onClick={() => {
             onTag([tag.trim()]);
             setTag("");
           }}
-          className="rounded-sm p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
-        >
-          <TagIcon className="h-4 w-4" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          title={t("promptsView.batch.delete")}
-          aria-label={t("promptsView.batch.delete")}
+        />
+        <IconButton
+          label={t("promptsView.batch.delete")}
+          icon={<Trash2Icon className="h-4 w-4" aria-hidden="true" />}
+          variant="danger"
           onClick={onDelete}
-          className="rounded-sm p-1.5 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
-        >
-          <Trash2Icon className="h-4 w-4" aria-hidden="true" />
-        </button>
+        />
       </div>
     </div>
   );

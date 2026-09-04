@@ -17,6 +17,7 @@ import { FolderTree } from "./FolderTree";
 import { TagManager } from "./TagManager";
 
 import { Tag, useConfirm} from "../../../components/ui";
+
 const SAVED_VIEWS: { view: SavedView; icon: LucideIcon }[] = [
   { view: "all", icon: InboxIcon },
   { view: "favorites", icon: StarIcon },
@@ -127,7 +128,7 @@ export function PromptLibraryNav() {
               onClick={() => handleSelectView(view)}
               className={`flex h-10 w-10 flex-col items-center justify-center rounded-lg text-micro font-mono ${
                 current
-                  ? "bg-primary/15 text-foreground"
+                  ? "bg-state-selected text-foreground"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent"
               }`}
             >
@@ -163,7 +164,7 @@ export function PromptLibraryNav() {
                 onClick={() => handleSelectView(view)}
                 className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-body ${
                   current
-                    ? "bg-primary/15 text-foreground"
+                    ? "bg-state-selected text-foreground"
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 }`}
               >

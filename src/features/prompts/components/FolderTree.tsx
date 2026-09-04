@@ -18,6 +18,8 @@ import {
 } from "../folderTree";
 import type { Folder } from "../types";
 
+import { IconButton } from "../../../components/ui";
+
 interface FolderTreeProps {
   folders: Folder[];
   /** The active folder filter, or `null` for "all prompts". */
@@ -216,40 +218,29 @@ export function FolderTree({
                 )}
               </button>
               <span className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
-                <button
-                  type="button"
-                  title={t("promptsView.newFolder")}
-                  aria-label={t("promptsView.newFolder")}
+                <IconButton
+                  label={t("promptsView.newFolder")}
+                  icon={<FolderPlusIcon className="h-3.5 w-3.5" aria-hidden="true" />}
                   onClick={() => {
                     setExpanded((p) => new Set(p).add(node.id));
                     setCreatingUnder(node.id);
                     setNewName("");
                   }}
-                  className="rounded-sm p-1 hover:bg-accent hover:text-foreground"
-                >
-                  <FolderPlusIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  title={t("promptsView.renameFolder")}
-                  aria-label={t("promptsView.renameFolder")}
+                />
+                <IconButton
+                  label={t("promptsView.renameFolder")}
+                  icon={<PencilIcon className="h-3.5 w-3.5" aria-hidden="true" />}
                   onClick={() => {
                     setRenamingId(node.id);
                     setRenameValue(node.name);
                   }}
-                  className="rounded-sm p-1 hover:bg-accent hover:text-foreground"
-                >
-                  <PencilIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  title={t("promptsView.deleteFolder")}
-                  aria-label={t("promptsView.deleteFolder")}
+                />
+                <IconButton
+                  label={t("promptsView.deleteFolder")}
+                  icon={<Trash2Icon className="h-3.5 w-3.5" aria-hidden="true" />}
+                  variant="danger"
                   onClick={() => onDeleteFolder(node)}
-                  className="rounded-sm p-1 hover:bg-destructive/15 hover:text-destructive"
-                >
-                  <Trash2Icon className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
+                />
               </span>
             </>
           )}
@@ -297,18 +288,14 @@ export function FolderTree({
         <span className="text-label font-semibold uppercase tracking-wide text-muted-foreground">
           {t("promptsView.folders")}
         </span>
-        <button
-          type="button"
-          title={t("promptsView.newFolder")}
-          aria-label={t("promptsView.newFolder")}
+        <IconButton
+          label={t("promptsView.newFolder")}
+          icon={<FolderPlusIcon className="h-4 w-4" aria-hidden="true" />}
           onClick={() => {
             setCreatingUnder(null);
             setNewName("");
           }}
-          className="rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <FolderPlusIcon className="h-4 w-4" aria-hidden="true" />
-        </button>
+        />
       </div>
 
       <button

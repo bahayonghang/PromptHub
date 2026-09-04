@@ -15,6 +15,7 @@ import { VariableEditor } from "../../VariableEditor";
 import type { PromptDraft } from "../promptDraft";
 
 import { Select } from "../../../../../components/ui";
+
 export interface DefinitionSectionProps {
   draft: PromptDraft;
   prompt: Prompt | null;

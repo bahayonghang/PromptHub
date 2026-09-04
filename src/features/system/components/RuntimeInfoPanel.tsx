@@ -3,6 +3,7 @@ import { ExternalLinkIcon, Trash2Icon } from "lucide-react";
 import type { RuntimePathsReport } from "../types";
 import { useSystemStore } from "../systemStore";
 
+import { IconButton } from "../../../components/ui";
 /** Formats a byte count as a compact human-readable string (e.g. "1.2 MB"). */
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -73,16 +74,12 @@ export function RuntimeInfoPanel() {
                       {value ?? "—"}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => value && void openPath(value)}
+                  <IconButton
+                    label={t("systemView.paths.open")}
+                    icon={<ExternalLinkIcon className="h-4 w-4" aria-hidden="true" />}
                     disabled={!value}
-                    title={t("systemView.paths.open")}
-                    aria-label={t("systemView.paths.open")}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <ExternalLinkIcon className="h-4 w-4" aria-hidden="true" />
-                  </button>
+                    onClick={() => value && void openPath(value)}
+                  />
                 </div>
               );
             })}

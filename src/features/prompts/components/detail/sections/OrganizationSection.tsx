@@ -4,7 +4,8 @@ import type { CreateFolderInput, Folder } from "../../../types";
 import type { PromptDraft } from "../promptDraft";
 import { FolderPicker } from "../FolderPicker";
 
-import { tagClasses } from "../../../../../components/ui";
+import { IconButton, tagClasses} from "../../../../../components/ui";
+
 export interface OrganizationSectionProps {
   draft: PromptDraft;
   folders: Folder[];
@@ -69,19 +70,16 @@ export function OrganizationSection({
                   className={`flex items-center gap-1 rounded-sm border px-1.5 h-5 text-meta ${tagClasses(tag, false)}`}
                 >
                   {tag}
-                  <button
-                    type="button"
-                    aria-label={t("common.cancel")}
+                  <IconButton
+                    label={t("common.cancel")}
+                    icon={<XIcon className="h-3 w-3" aria-hidden="true" />}
                     disabled={readOnly}
                     onClick={() =>
                       onChange({
                         tags: draft.tags.filter((item) => item !== tag),
                       })
                     }
-                    className="rounded-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
-                  >
-                    <XIcon className="h-3 w-3" aria-hidden="true" />
-                  </button>
+                  />
                 </span>
               ))}
             </div>

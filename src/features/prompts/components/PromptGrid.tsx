@@ -4,7 +4,8 @@ import { ImageIcon, LockIcon, PinIcon, StarIcon, VideoIcon } from "lucide-react"
 import type { LibraryItem } from "../libraryItem";
 import { CopyPromptButton } from "./CopyPromptButton";
 
-import { Tag } from "../../../components/ui";
+import { IconButton, Tag} from "../../../components/ui";
+
 interface PromptGridProps {
   items: LibraryItem[];
   selectedPromptId: string | null;
@@ -100,15 +101,12 @@ export function PromptGrid({
                   </div>
                   <p className="mt-1 line-clamp-2 text-label text-muted-foreground">{item.description}</p>
                 </div>
-                <button
-                  type="button"
-                  aria-pressed={item.isFavorite}
-                  aria-label={item.isFavorite ? t("promptsView.unfavorite") : t("promptsView.favorite")}
+                <IconButton
+                  label={item.isFavorite ? t("promptsView.unfavorite") : t("promptsView.favorite")}
+                  icon={<StarIcon className={`h-4 w-4 ${item.isFavorite ? "fill-current text-primary" : ""}`} aria-hidden="true" />}
                   onClick={() => onToggleFavorite(item.id, !item.isFavorite)}
-                  className="rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                >
-                  <StarIcon className={`h-4 w-4 ${item.isFavorite ? "fill-current text-primary" : ""}`} aria-hidden="true" />
-                </button>
+                  aria-pressed={item.isFavorite}
+                />
               </div>
               {(item.tags.length > 0 || item.overflowTagCount > 0) && (
                 <div className="flex flex-wrap gap-1">

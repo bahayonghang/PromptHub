@@ -2,6 +2,8 @@ import { useTranslation } from "react-i18next";
 import { AlertCircleIcon, CheckIcon, XIcon } from "lucide-react";
 import { useToastStore } from "./toastStore";
 
+import { IconButton } from "../../components/ui";
+
 export function ToastHost() {
   const { t } = useTranslation();
   const toasts = useToastStore((state) => state.toasts);
@@ -31,14 +33,12 @@ export function ToastHost() {
             <AlertCircleIcon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           ) : null}
           <p className="min-w-0 flex-1">{toast.message}</p>
-          <button
-            type="button"
-            aria-label={t("promptsView.toast.dismiss")}
+          <IconButton
+            label={t("promptsView.toast.dismiss")}
+            icon={<XIcon className="h-3.5 w-3.5" aria-hidden="true" />}
+            size="xs"
             onClick={() => dismiss(toast.id)}
-            className="flex h-6 w-6 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <XIcon className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
+          />
         </div>
       ))}
     </div>

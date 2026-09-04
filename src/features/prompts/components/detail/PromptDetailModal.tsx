@@ -67,6 +67,7 @@ import { platformModifier } from "../../../../shortcuts/platform";
 import { useToastStore } from "../../../notifications/toastStore";
 
 import { IconButton } from "../../../../components/ui";
+
 export type DetailTab = "content" | "versions" | "run" | "references";
 
 export interface PromptDetailModalProps {

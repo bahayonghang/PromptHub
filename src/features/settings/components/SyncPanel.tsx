@@ -18,6 +18,8 @@ import type {
 } from "../types";
 import { validateS3Config, validateWebDavConfig } from "../validation";
 
+import { IconButton } from "../../../components/ui";
+
 interface SyncPanelProps {
   settings: Settings | null;
   backups: BackupEntry[];
@@ -382,15 +384,12 @@ export function SyncPanel({
                 >
                   {t("settingsView.sync.backup.restore")}
                 </button>
-                <button
-                  type="button"
-                  aria-label={t("settingsView.sync.backup.delete")}
-                  title={t("settingsView.sync.backup.delete")}
+                <IconButton
+                  label={t("settingsView.sync.backup.delete")}
+                  icon={<Trash2Icon className="h-4 w-4" aria-hidden="true" />}
+                  variant="danger"
                   onClick={() => onDeleteBackup(backup.id)}
-                  className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
-                >
-                  <Trash2Icon className="h-4 w-4" aria-hidden="true" />
-                </button>
+                />
               </li>
             ))}
           </ul>

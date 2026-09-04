@@ -21,7 +21,8 @@ import type {
   TestCaseInput,
 } from "./types";
 
-import { Select } from "../../components/ui";
+import { IconButton, Select} from "../../components/ui";
+
 interface EvaluationWorkbenchProps {
   prompt: Prompt;
   versions: PromptVersion[];
@@ -307,7 +308,11 @@ export function EvaluationWorkbench({ prompt, versions }: EvaluationWorkbenchPro
             <section className="border-r border-border p-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-label font-semibold">{t("evaluation.testSet")}</h3>
-                <button type="button" onClick={addCase} aria-label={t("evaluation.addCase")} title={t("evaluation.addCase")} className="rounded-sm p-1 text-muted-foreground hover:bg-accent"><PlusIcon className="h-3.5 w-3.5" /></button>
+                <IconButton
+                  label={t("evaluation.addCase")}
+                  icon={<PlusIcon className="h-3.5 w-3.5" />}
+                  onClick={addCase}
+                />
               </div>
               <input value={testSetName} onChange={(event) => setTestSetName(event.target.value)} placeholder={t("evaluation.testSetName")} aria-label={t("evaluation.testSetName")} className={`${inputClass} mt-2`} />
               <div className="mt-2 max-h-32 space-y-2 overflow-y-auto">
@@ -315,7 +320,11 @@ export function EvaluationWorkbench({ prompt, versions }: EvaluationWorkbenchPro
                   <div key={index} className="grid grid-cols-[1fr_1.4fr_auto] gap-1">
                     <input value={testCase.name} onChange={(event) => setTestCases((cases) => cases.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))} aria-label={t("evaluation.caseName")} className={inputClass} />
                     <input value={JSON.stringify(testCase.inputs)} onChange={(event) => { const value = parseObject(event.target.value); if (value) setTestCases((cases) => cases.map((item, itemIndex) => itemIndex === index ? { ...item, inputs: Object.fromEntries(Object.entries(value).map(([key, itemValue]) => [key, String(itemValue)])) } : item)); }} aria-label={t("evaluation.caseInputs")} className={`${inputClass} font-mono`} />
-                    <button type="button" onClick={() => setTestCases((cases) => cases.filter((_, itemIndex) => itemIndex !== index))} aria-label={t("evaluation.removeCase")} title={t("evaluation.removeCase")} className="rounded-sm p-1 text-muted-foreground hover:bg-accent"><XIcon className="h-3.5 w-3.5" /></button>
+                    <IconButton
+                      label={t("evaluation.removeCase")}
+                      icon={<XIcon className="h-3.5 w-3.5" />}
+                      onClick={() => setTestCases((cases) => cases.filter((_, itemIndex) => itemIndex !== index))}
+                    />
                   </div>
                 ))}
               </div>
@@ -432,7 +441,11 @@ export function EvaluationWorkbench({ prompt, versions }: EvaluationWorkbenchPro
               <table className="w-full text-label"><thead><tr className="border-b border-border text-left text-muted-foreground"><th className="p-2">{t("evaluation.date")}</th><th className="p-2">{t("evaluation.revision")}</th><th className="p-2">{t("evaluation.profile")}</th><th className="p-2">{t("evaluation.status")}</th><th className="p-2">{t("evaluation.duration")}</th><th className="p-2">{t("evaluation.output")}</th></tr></thead><tbody>{filteredRuns.map((item) => <tr key={item.id} className="border-b border-border"><td className="p-2 tabular-nums">{new Date(item.startedAt).toLocaleString()}</td><td className="p-2">v{versions.find((version) => version.id === item.promptRevisionId)?.version ?? "?"}</td><td className="p-2">{profiles.find((profile) => profile.id === item.profileRevisionId)?.name ?? "-"}</td><td className="p-2">{item.status}</td><td className="p-2 tabular-nums">{item.durationMs ?? "-"} ms</td><td className="max-w-xs truncate p-2">{item.output ?? item.error ?? "-"}</td></tr>)}</tbody></table>
             </div>
             <aside className="overflow-y-auto border-t border-border p-3 lg:border-l lg:border-t-0">
-              <div className="flex items-center justify-between"><h3 className="text-label font-semibold">{t("evaluation.matrixRuns")}</h3>{selectedMatrix && <button type="button" onClick={() => void retryMatrix(selectedMatrix.run.id)} aria-label={t("evaluation.retry")} title={t("evaluation.retry")} className="rounded-sm p-1 text-muted-foreground hover:bg-accent"><RefreshCwIcon className="h-3.5 w-3.5" /></button>}</div>
+              <div className="flex items-center justify-between"><h3 className="text-label font-semibold">{t("evaluation.matrixRuns")}</h3>{selectedMatrix && <IconButton
+                                                                                                                                                                label={t("evaluation.retry")}
+                                                                                                                                                                icon={<RefreshCwIcon className="h-3.5 w-3.5" />}
+                                                                                                                                                                onClick={() => void retryMatrix(selectedMatrix.run.id)}
+                                                                                                                                                              />}</div>
               {matrices.map((matrix) => <button key={matrix.id} type="button" onClick={() => void selectMatrix(matrix.id)} className="mt-2 block w-full rounded-sm border border-input p-2 text-left text-label hover:bg-accent"><span className="block text-foreground">{matrix.status} · {matrix.completedCells}/{matrix.totalCells}</span><span className="text-muted-foreground">{new Date(matrix.startedAt).toLocaleString()}</span></button>)}
             </aside>
           </div>
